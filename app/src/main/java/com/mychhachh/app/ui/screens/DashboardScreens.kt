@@ -1,7 +1,13 @@
 package com.mychhachh.app.ui.screens
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.media.MediaRecorder
 import android.net.Uri
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,6 +40,7 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
+import java.io.File
 
 @Composable
 fun NotificationsScreen(
@@ -77,12 +85,129 @@ fun NotificationsScreen(
 }
 
 @Composable
-fun AnnouncementsScreen(items: List<Announcement>, loading: Boolean, error: String?, onLike: (Long) -> Unit) {
+fun AnnouncementsScreen(
+    items: List<Announcement>,
+    loading: Boolean,
+    error: String?,
+    onLike: (Long) -> Unit,
+    onPublish: (String, Uri?, File?) -> Unit
+) {
+    val context = LocalContext.current
+    var text by remember { mutableStateOf("") }
+    var photoUri by remember { mutableStateOf<Uri?>(null) }
+    var audioFile by remember { mutableStateOf<File?>(null) }
+    var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
+    var recording by remember { mutableStateOf(false) }
+
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) photoUri = uri
+    }
+
+    fun startRecording() {
+        val file = File(context.cacheDir, "announcement-${System.currentTimeMillis()}.m4a")
+        val r = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(context) else @Suppress("DEPRECATION") MediaRecorder()
+        r.setAudioSource(MediaRecorder.AudioSource.MIC)
+        r.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+        r.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+        r.setAudioEncodingBitRate(128000)
+        r.setAudioSamplingRate(44100)
+        r.setMaxDuration(300000)
+        r.setOutputFile(file.absolutePath)
+        r.prepare()
+        r.start()
+        recorder = r
+        audioFile = file
+        recording = true
+    }
+
+    fun stopRecording() {
+        val r = recorder ?: return
+        runCatching { r.stop() }
+        runCatching { r.release() }
+        recorder = null
+        recording = false
+    }
+
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) runCatching { startRecording() }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            if (recording) stopRecording()
+            runCatching { recorder?.release() }
+        }
+    }
+
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        JellyIcon(JellyIcons.Announcement, size = 38.dp)
+                        Spacer(Modifier.width(7.dp))
+                        Column {
+                            Text("Make an Announcement", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                            Text("Record your voice, add text or a photo.", color = JellyMuted, fontSize = 10.sp)
+                        }
+                    }
+                    OutlinedTextField(
+                        value = text,
+                        onValueChange = { text = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Write something with the announcement (optional)…") },
+                        minLines = 2,
+                        maxLines = 5,
+                        shape = RoundedCornerShape(18.dp)
+                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        JellyButton(
+                            if (recording) "Stop" else if (audioFile != null) "Voice ✓" else "Record Voice",
+                            Modifier.weight(1f),
+                            primary = recording,
+                            icon = JellyIcons.Announcement
+                        ) {
+                            if (recording) {
+                                stopRecording()
+                            } else {
+                                val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                                if (granted) runCatching { startRecording() } else micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                        }
+                        JellyButton(
+                            if (photoUri != null) "Photo ✓" else "Add Photo",
+                            Modifier.weight(1f),
+                            icon = JellyIcons.Photo
+                        ) { photoPicker.launch("image/*") }
+                    }
+                    if (audioFile != null && !recording) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Voice recording ready", Modifier.weight(1f), color = JellyMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            JellyButton("Remove") {
+                                runCatching { audioFile?.delete() }
+                                audioFile = null
+                            }
+                        }
+                    }
+                    JellyButton(
+                        "Publish Announcement",
+                        Modifier.fillMaxWidth(),
+                        primary = true,
+                        icon = JellyIcons.Send,
+                        enabled = !recording && (text.isNotBlank() || photoUri != null || audioFile != null)
+                    ) {
+                        onPublish(text.trim(), photoUri, audioFile)
+                        text = ""
+                        photoUri = null
+                        audioFile = null
+                    }
+                }
+            }
+        }
         if (loading && items.isEmpty()) item { LoadingBlock() }
         error?.let { item { ErrorCard(it) } }
         if (!loading && items.isEmpty() && error == null) item { EmptyCard("No announcements yet.", JellyIcons.Announcement) }
@@ -124,7 +249,6 @@ fun AnnouncementsScreen(items: List<Announcement>, loading: Boolean, error: Stri
         }
     }
 }
-
 @Composable
 fun VotesScreen(items: List<Vote>, loading: Boolean, error: String?, onCast: (Long, Int) -> Unit) {
     LazyColumn(
