@@ -322,7 +322,10 @@ class ApiClient(private val context: Context) {
                 resultRevealed = o.optBoolean("result_revealed", o.optString("status") != "active"),
                 durationHours = o.optInt("duration_hours", 24),
                 startsAt = o.optString("starts_at", ""),
-                endsAt = o.optString("ends_at", "")
+                endsAt = o.optString("ends_at", ""),
+                updatedAt = o.optString("updated_at", ""),
+                endedAt = o.optString("ended_at", ""),
+                tie = o.optBoolean("tie", false)
             )
         }}
     }
