@@ -1480,8 +1480,7 @@ fun SettingsScreen(
                     PrivacySwitch("Show my email on my profile", showEmail) { showEmail = it }
                     PrivacySwitch("Show my phone number on my profile", showPhone) { showPhone = it }
                     PrivacySwitch("Private profile (followers only)", privateProfile) { privateProfile = it }
-                    PrivacySwitch("Hide followers and following counts", hideFollowers) { hideFollowers = it }
-                    PrivacySwitch("Accept messages", acceptMessages) { acceptMessages = it }
+                    PrivacySwitch("Hide my followers and following counts", hideFollowers) { hideFollowers = it }
                     PrivacySwitch("Show current location", showLocation) { checked ->
                         showLocation = checked
                         if (checked) {
@@ -1496,17 +1495,6 @@ fun SettingsScreen(
                     JellyButton("Blocked Users (${blockedUsers.size})", Modifier.fillMaxWidth(), icon = JellyIcons.People) {
                         blockedOpen = true
                         onRefreshBlocked()
-                    }
-                    JellyButton("Save Changes", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Shield) {
-                        onPrivacy(
-                            JSONObject()
-                                .put("show_email", showEmail)
-                                .put("show_phone", showPhone)
-                                .put("show_location", showLocation)
-                                .put("hide_followers", hideFollowers)
-                                .put("accept_messages", acceptMessages)
-                                .put("profile_visibility", if (privateProfile) "followers" else "public")
-                        )
                     }
                 }
             }
@@ -1526,17 +1514,6 @@ fun SettingsScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionTitle("Notifications")
                     PrivacySwitch("Allow messages from people", acceptMessages) { acceptMessages = it }
-                    JellyButton("Save Changes", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Check) {
-                        onPrivacy(
-                            JSONObject()
-                                .put("show_email", showEmail)
-                                .put("show_phone", showPhone)
-                                .put("show_location", showLocation)
-                                .put("hide_followers", hideFollowers)
-                                .put("accept_messages", acceptMessages)
-                                .put("profile_visibility", if (privateProfile) "followers" else "public")
-                        )
-                    }
                 }
             }
         }
@@ -1778,7 +1755,25 @@ fun SettingsScreen(
             }
         }
 
-
+        item {
+            JellyButton(
+                if (busy) "Saving…" else "Save Changes",
+                Modifier.fillMaxWidth(),
+                primary = true,
+                icon = JellyIcons.Check,
+                enabled = !busy
+            ) {
+                onPrivacy(
+                    JSONObject()
+                        .put("show_email", showEmail)
+                        .put("show_phone", showPhone)
+                        .put("show_location", showLocation)
+                        .put("hide_followers", hideFollowers)
+                        .put("accept_messages", acceptMessages)
+                        .put("profile_visibility", if (privateProfile) "followers" else "public")
+                )
+            }
+        }
     }
 
     if (passwordOpen) {
