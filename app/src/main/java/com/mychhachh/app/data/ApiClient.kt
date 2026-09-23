@@ -213,8 +213,8 @@ class ApiClient(private val context: Context) {
         return groupName to items
     }
 
-    fun sendGroupMessage(groupId: Long, text: String, photo: String = "", locationLat: Double? = null, locationLng: Double? = null): Message {
-        val body = JSONObject().put("group_id", groupId).put("message", text).put("text", text).put("photo", photo)
+    fun sendGroupMessage(groupId: Long, text: String, photo: String = "", audio: String = "", locationLat: Double? = null, locationLng: Double? = null): Message {
+        val body = JSONObject().put("group_id", groupId).put("message", text).put("text", text).put("photo", photo).put("audio", audio)
         if (locationLat != null && locationLng != null) {
             body.put("location_lat", locationLat).put("location_lng", locationLng)
         }
@@ -241,7 +241,7 @@ class ApiClient(private val context: Context) {
             id=o.optLong("id"), senderId=o.optLong("user_id", o.optLong("sender_id")), receiverId=o.optLong("target_id", o.optLong("receiver_id")),
             text=o.optString("text", o.optString("message", "")),
             photo=mediaUrl(o.optString("photo", "")),
-            audio=mediaUrl(o.optString("audio", "")),
+            audio=mediaUrl(o.optString("audio", audio)),
             createdAt=o.optString("created_at", ""),
             locationLat=o.optString("location_lat", "").toDoubleOrNull(),
             locationLng=o.optString("location_lng", "").toDoubleOrNull()
@@ -249,8 +249,8 @@ class ApiClient(private val context: Context) {
         return u to items
     }
 
-    fun sendMessage(to: Long, text: String, photo: String = "", locationLat: Double? = null, locationLng: Double? = null): Message {
-        val body = JSONObject().put("receiver_id", to).put("message", text).put("text", text).put("photo", photo)
+    fun sendMessage(to: Long, text: String, photo: String = "", audio: String = "", locationLat: Double? = null, locationLng: Double? = null): Message {
+        val body = JSONObject().put("receiver_id", to).put("message", text).put("text", text).put("photo", photo).put("audio", audio)
         if (locationLat != null && locationLng != null) {
             body.put("location_lat", locationLat).put("location_lng", locationLng)
         }
