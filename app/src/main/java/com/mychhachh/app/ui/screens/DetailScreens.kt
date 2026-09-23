@@ -427,7 +427,7 @@ fun ProfileScreen(
                                 reason,
                                 { reason = it.take(3000) },
                                 Modifier.fillMaxWidth(),
-                                placeholder = { Text("Explain the problem…") },
+                                placeholder = { Text("Write report reason...") },
                                 minLines = 4,
                                 maxLines = 8,
                                 shape = RoundedCornerShape(18.dp)
@@ -991,11 +991,14 @@ fun ShopDetailScreen(
                             }
 
                             val businessRows = listOf(
+                                Triple("Business name", s.name, JellyIcons.Shop),
+                                Triple("Username", s.username.takeIf { it.isBlank() } ?: "@${s.username}", JellyIcons.User),
                                 Triple("Category", s.category, JellyIcons.Category),
                                 Triple("Phone", s.phone, JellyIcons.Phone),
+                                Triple("WhatsApp", s.whatsapp, JellyIcons.Whatsapp),
                                 Triple("City", s.city, JellyIcons.City),
                                 Triple("Village", s.village, JellyIcons.Village),
-                                Triple("Mohalla", s.area, JellyIcons.Mohalla),
+                                Triple("Mohalla / Area", s.area, JellyIcons.Mohalla),
                                 Triple("Address", s.location, JellyIcons.Address)
                             ).filter { it.second.isNotBlank() }
                             if (businessRows.isNotEmpty() || s.description.isNotBlank()) {
@@ -1016,10 +1019,14 @@ fun ShopDetailScreen(
                                             ShopInfoRow(label, value, icon)
                                         }
                                         if (s.locationUrl.isNotBlank()) {
-                                            JellyButton("Google Maps Location", Modifier.fillMaxWidth(), icon = JellyIcons.Map) {
-                                                runCatching {
-                                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(s.locationUrl)))
+                                            Box(
+                                                Modifier.fillMaxWidth().clickable {
+                                                    runCatching {
+                                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(s.locationUrl)))
+                                                    }
                                                 }
+                                            ) {
+                                                ShopInfoRow("Map location", "Open in Google Maps", JellyIcons.Map)
                                             }
                                         }
                                         if (s.description.isNotBlank()) {
@@ -1136,7 +1143,7 @@ private fun ShopPostComposer(
                 text,
                 { text = it },
                 Modifier.fillMaxWidth(),
-                placeholder = { Text("Write shop post…") },
+                placeholder = { Text("Write shop post...") },
                 minLines = 3,
                 maxLines = 7,
                 shape = RoundedCornerShape(18.dp)
@@ -1450,14 +1457,14 @@ fun SettingsScreen(
         if (settingsSection == "verification") item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SectionTitle("Identity Verification")
+                    SectionTitle("Identity verification")
                     val status = verification?.optString("status", "not_submitted") ?: "not_submitted"
                     Text(
                         when (status) {
                             "approved" -> "Verified ✓"
                             "pending" -> "Verification is pending admin review."
                             "rejected" -> "Verification was rejected. You can submit again."
-                            else -> "Verify identity to unlock media features when required by admin policy."
+                            else -> "Keep your account trusted and unlock approved photo and video uploads."
                         },
                         color = if (status == "approved") JellyGreen else JellyMuted,
                         fontWeight = FontWeight.Bold,
@@ -1538,7 +1545,7 @@ fun SettingsScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     SectionTitle("Help & Support")
                     Text(
-                        "Send a problem, safety report or feedback directly to the Chhachh Team.",
+                        "Send a problem, safety report or feedback directly to the Chhachh Team. Team replies stay in your support history.",
                         color = JellyMuted,
                         fontSize = 10.sp
                     )
@@ -1692,7 +1699,7 @@ fun SettingsScreen(
             title = { Text("Delete Account", color = JellyInk, fontWeight = FontWeight.Black) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("This permanently deletes your account and its data.", color = Color(0xFFB23A55), fontWeight = FontWeight.Bold)
+                    Text("This permanently deletes your account. This action cannot be undone.", color = Color(0xFFB23A55), fontWeight = FontWeight.Bold)
                     OutlinedTextField(password, { password = it }, Modifier.fillMaxWidth(), label = { Text("Password") }, shape = RoundedCornerShape(17.dp))
                 }
             },
