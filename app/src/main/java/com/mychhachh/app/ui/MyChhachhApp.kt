@@ -28,7 +28,7 @@ import com.mychhachh.app.ui.components.*
 import com.mychhachh.app.ui.screens.*
 import com.mychhachh.app.ui.theme.*
 
-enum class Screen { HOME, PEOPLE, SHOPS, MAP, MESSAGES, NOTIFICATIONS, ANNOUNCEMENTS, VOTES, SAVED, SEARCH, PROFILE, SHOP_DETAIL, CHAT, GROUP_CHAT, SETTINGS, WEATHER, AUTH }
+enum class Screen { HOME, PEOPLE, SHOPS, MAP, MESSAGES, NOTIFICATIONS, ANNOUNCEMENTS, VOTES, SAVED, SEARCH, PROFILE, SHOP_DETAIL, CHAT, GROUP_CHAT, SETTINGS, WEATHER, THEME, ADMIN, AUTH }
 
 @Composable
 fun MyChhachhApp() {
@@ -119,6 +119,15 @@ fun MyChhachhApp() {
     var settingsBusy by remember { mutableStateOf(false) }
     var settingsError by remember { mutableStateOf<String?>(null) }
     var blockedUsers by remember { mutableStateOf<List<User>>(emptyList()) }
+
+    var adminState by remember { mutableStateOf<JSONObject?>(null) }
+    var adminList by remember { mutableStateOf<JSONObject?>(null) }
+    var adminSection by remember { mutableStateOf("users") }
+    var adminQuery by remember { mutableStateOf("") }
+    var adminLoading by remember { mutableStateOf(false) }
+    var adminError by remember { mutableStateOf<String?>(null) }
+    var themeBusy by remember { mutableStateOf(false) }
+    var themeError by remember { mutableStateOf<String?>(null) }
 
     var commentPost by remember { mutableStateOf<Post?>(null) }
     var commentText by remember { mutableStateOf("") }
@@ -215,6 +224,25 @@ fun MyChhachhApp() {
             catch (e: Exception) { settingsError = e.message }
         }
     }
+    fun loadAdmin(loadState: Boolean = true) {
+        if (me?.isAdmin != true) return
+        scope.launch {
+            adminLoading = true
+            adminError = null
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    val state = if (loadState) api.adminState() else null
+                    val list = api.adminList(adminSection, query = adminQuery)
+                    state to list
+                }
+                if (result.first != null) adminState = result.first
+                adminList = result.second
+            } catch (e: Exception) {
+                adminError = e.message ?: "Admin data could not be loaded."
+            }
+            adminLoading = false
+        }
+    }
 
     fun sharePost(post: Post) {
         scope.launch { runCatching { withContext(Dispatchers.IO) { api.sharePost(post.id) } } }
@@ -254,6 +282,8 @@ fun MyChhachhApp() {
             Screen.GROUP_CHAT -> if (me != null && selectedId > 0) loadGroupChat(selectedId)
             Screen.WEATHER -> loadWeather()
             Screen.SETTINGS -> if (me != null) loadBlockedUsers()
+            Screen.ADMIN -> if (me?.isAdmin == true) loadAdmin(true)
+            Screen.THEME -> if (me?.isAdmin == true) loadAdmin(true)
             else -> Unit
         }
     }
@@ -884,6 +914,98 @@ fun MyChhachhApp() {
                         )
                     }
                     Screen.WEATHER -> WeatherScreen(weatherData, weatherLoading, weatherError, ::loadWeather)
+                    Screen.ADMIN -> if (currentUser?.isAdmin == true) {
+                        AdminCenterScreen(
+                            state = adminState,
+                            list = adminList,
+                            section = adminSection,
+                            query = adminQuery,
+                            loading = adminLoading,
+                            error = adminError,
+                            onSection = {
+                                adminSection = it
+                                scope.launch {
+                                    adminLoading = true
+                                    adminError = null
+                                    try { adminList = withContext(Dispatchers.IO) { api.adminList(it, query = adminQuery) } }
+                                    catch (e: Exception) { adminError = e.message }
+                                    adminLoading = false
+                                }
+                            },
+                            onQuery = { adminQuery = it },
+                            onRefresh = { loadAdmin(true) },
+                            onAction = { action, id, fields ->
+                                scope.launch {
+                                    adminLoading = true
+                                    adminError = null
+                                    try {
+                                        withContext(Dispatchers.IO) { api.adminAction(action, id, fields) }
+                                        val result = withContext(Dispatchers.IO) {
+                                            api.adminState() to api.adminList(adminSection, query = adminQuery)
+                                        }
+                                        adminState = result.first
+                                        adminList = result.second
+                                    } catch (e: Exception) {
+                                        adminError = e.message ?: "Admin action failed."
+                                    }
+                                    adminLoading = false
+                                }
+                            },
+                            onProfile = { open(Screen.PROFILE, it) }
+                        )
+                    }
+                    Screen.THEME -> if (currentUser?.isAdmin == true) {
+                        NativeThemeScreen(
+                            settings = adminState?.optJSONObject("settings") ?: features,
+                            busy = themeBusy,
+                            error = themeError,
+                            onSaveTheme = { fields ->
+                                scope.launch {
+                                    themeBusy = true
+                                    themeError = null
+                                    try {
+                                        val d = withContext(Dispatchers.IO) { api.saveTheme(fields) }
+                                        val s = d.optJSONObject("settings")
+                                        if (s != null) {
+                                            features = s
+                                            val state = adminState ?: JSONObject()
+                                            state.put("settings", s)
+                                            adminState = JSONObject(state.toString())
+                                        }
+                                    } catch (e: Exception) {
+                                        themeError = e.message ?: "Theme could not be saved."
+                                    }
+                                    themeBusy = false
+                                }
+                            },
+                            onSaveBrand = { fields, iconUri ->
+                                scope.launch {
+                                    themeBusy = true
+                                    themeError = null
+                                    try {
+                                        val body = JSONObject(fields.toString())
+                                        withContext(Dispatchers.IO) {
+                                            iconUri?.let {
+                                                val icon = api.uploadUri(it, "site-icon")
+                                                if (icon.isNotBlank()) body.put("site_icon", icon)
+                                            }
+                                            val d = api.saveBranding(body)
+                                            val s = d.optJSONObject("settings")
+                                            if (s != null) {
+                                                features = s
+                                                val state = adminState ?: JSONObject()
+                                                state.put("settings", s)
+                                                adminState = JSONObject(state.toString())
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        themeError = e.message ?: "Branding could not be saved."
+                                    }
+                                    themeBusy = false
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -1087,6 +1209,8 @@ private fun routeTitle(route: Screen): String = when (route) {
     Screen.GROUP_CHAT -> "Group"
     Screen.SETTINGS -> "Settings"
     Screen.WEATHER -> "Weather"
+    Screen.THEME -> "Theme"
+    Screen.ADMIN -> "Admin Center"
     else -> "My Chhachh"
 }
 
@@ -1161,6 +1285,10 @@ private fun SideMenu(
                 Spacer(Modifier.height(6.dp))
                 MenuRow("Saved", JellyIcons.Save) { onOpen(Screen.SAVED) }
                 MenuRow("Settings", JellyIcons.Gear) { onOpen(Screen.SETTINGS) }
+                if (user.isAdmin) {
+                    MenuRow("Theme", JellyIcons.Palette) { onOpen(Screen.THEME) }
+                    MenuRow("Admin Center", JellyIcons.Shield) { onOpen(Screen.ADMIN) }
+                }
                 Spacer(Modifier.weight(1f))
                 MenuRow("Logout", JellyIcons.Logout, onLogout)
             }
