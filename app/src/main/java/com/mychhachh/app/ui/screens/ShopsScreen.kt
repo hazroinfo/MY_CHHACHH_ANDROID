@@ -156,7 +156,7 @@ fun ShopsScreen(
                                     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                         JellyButton("View Shop", icon = JellyIcons.Eye) { onOpen(sh.id) }
                                         if (sh.whatsapp.isNotBlank()) {
-                                            JellyButton("WhatsApp", icon = JellyIcons.WhatsApp) { openWhatsApp(sh.whatsapp) }
+                                            JellyButton("WhatsApp", icon = JellyIcons.Whatsapp) { openWhatsApp(sh.whatsapp) }
                                         }
                                     }
                                 }
@@ -219,7 +219,7 @@ fun ShopsScreen(
                                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                                     JellyButton("View", icon = JellyIcons.Eye) { onOpen(sh.id) }
                                     if (sh.whatsapp.isNotBlank()) {
-                                        JellyButton("WhatsApp", icon = JellyIcons.WhatsApp) { openWhatsApp(sh.whatsapp) }
+                                        JellyButton("WhatsApp", icon = JellyIcons.Whatsapp) { openWhatsApp(sh.whatsapp) }
                                     }
                                 }
                             }
