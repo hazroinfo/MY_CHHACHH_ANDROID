@@ -40,7 +40,7 @@ fun AuthScreen(
     var code by remember(mode) { mutableStateOf("") }
 
     val title = when (mode) {
-        "register" -> "Sign up with email"
+        "register" -> "Create account"
         "verify" -> "Verify Email"
         "forgot" -> "Reset password"
         "reset" -> "Enter reset code"
@@ -91,7 +91,7 @@ fun AuthScreen(
                     }
                     else -> {
                         OutlinedTextField(identity, { identity = it }, label = { Text("Email, username or phone") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), singleLine = true)
-                        OutlinedTextField(password, { password = it }, label = { Text("Password (6+ characters)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                        OutlinedTextField(password, { password = it }, label = { Text("Password") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), visualTransformation = PasswordVisualTransformation(), singleLine = true)
                     }
                 }
 
