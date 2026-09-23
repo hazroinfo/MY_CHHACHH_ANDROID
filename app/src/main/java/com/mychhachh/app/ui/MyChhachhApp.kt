@@ -7,6 +7,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +21,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
@@ -100,6 +104,7 @@ fun MyChhachhApp() {
     var savedError by remember { mutableStateOf<String?>(null) }
 
     var searchQuery by remember { mutableStateOf("") }
+    var headerSearch by remember { mutableStateOf("") }
     var searchResult by remember { mutableStateOf(SearchBundle(emptyList(), emptyList(), emptyList())) }
     var searchLoading by remember { mutableStateOf(false) }
     var searchError by remember { mutableStateOf<String?>(null) }
@@ -196,9 +201,33 @@ fun MyChhachhApp() {
     fun loadSaved() {
         scope.launch { savedLoading = true; savedError = null; try { saved = withContext(Dispatchers.IO) { api.saved() } } catch (e: Exception) { savedError = e.message }; savedLoading = false }
     }
-    fun doSearch() {
-        if (searchQuery.isBlank()) return
-        scope.launch { searchLoading = true; searchError = null; try { searchResult = withContext(Dispatchers.IO) { api.search(searchQuery.trim()) } } catch (e: Exception) { searchError = e.message }; searchLoading = false }
+    fun doSearch(term: String = searchQuery) {
+        val q = term.trim()
+        if (q.isBlank()) {
+            searchQuery = ""
+            searchResult = SearchBundle(emptyList(), emptyList(), emptyList())
+            return
+        }
+        searchQuery = q
+        scope.launch {
+            searchLoading = true
+            searchError = null
+            try { searchResult = withContext(Dispatchers.IO) { api.search(q) } }
+            catch (e: Exception) { searchError = e.message }
+            searchLoading = false
+        }
+    }
+
+    fun searchPeopleFromHeader(term: String) {
+        val q = term.trim()
+        peopleQuery = q
+        scope.launch {
+            peopleLoading = true
+            peopleError = null
+            try { people = withContext(Dispatchers.IO) { api.users(q).first } }
+            catch (e: Exception) { peopleError = e.message }
+            peopleLoading = false
+        }
     }
     fun loadProfile(id: Long) {
         scope.launch { profileLoading = true; profileError = null; profileData = null; try { profileData = withContext(Dispatchers.IO) { api.user(id) } } catch (e: Exception) { profileError = e.message }; profileLoading = false }
@@ -442,7 +471,22 @@ fun MyChhachhApp() {
                         if (temp.isNaN()) "Weather" else "${temp.toInt()}°C · Weather"
                     } ?: "Weather",
                     onMenu = { menuOpen = true },
-                    onSearch = { open(Screen.SEARCH) },
+                    searchText = headerSearch,
+                    onSearchText = { headerSearch = it },
+                    onSearchSubmit = { term ->
+                        if (route == Screen.PEOPLE) {
+                            searchPeopleFromHeader(term)
+                        } else {
+                            open(Screen.SEARCH)
+                            doSearch(term)
+                        }
+                    },
+                    onFilter = {
+                        if (route != Screen.PEOPLE) {
+                            open(Screen.SEARCH)
+                            if (headerSearch.isNotBlank()) doSearch(headerSearch)
+                        }
+                    },
                     onNotifications = { open(Screen.NOTIFICATIONS) },
                     onProfile = { open(Screen.PROFILE, currentUser.id) },
                     onWeather = { open(Screen.WEATHER) },
@@ -861,7 +905,7 @@ fun MyChhachhApp() {
                         }
                     }
                     Screen.SAVED -> SavedScreen(saved, savedLoading, savedError, { open(Screen.PROFILE, it) }, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p) } }; loadSaved() } }, { openDiscussion(it) }, ::sharePost, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadSaved() } })
-                    Screen.SEARCH -> SearchScreen(searchResult, searchLoading, searchError, searchQuery, { searchQuery = it }, ::doSearch, { if (currentUser != null) open(Screen.PROFILE, it) }, { if (currentUser != null) open(Screen.SHOP_DETAIL, it) })
+                    Screen.SEARCH -> SearchScreen(searchResult, searchLoading, searchError, searchQuery, { searchQuery = it }, { doSearch() }, { if (currentUser != null) open(Screen.PROFILE, it) }, { if (currentUser != null) open(Screen.SHOP_DETAIL, it) })
                     Screen.PROFILE -> currentUser?.let { u ->
                         ProfileScreen(
                             data = profileData,
@@ -1316,7 +1360,12 @@ private fun AuthHeader(
     unread: Int,
     announcementUnread: Int,
     weatherText: String,
-    onMenu: () -> Unit, onSearch: () -> Unit, onNotifications: () -> Unit, onProfile: () -> Unit,
+    onMenu: () -> Unit,
+    searchText: String,
+    onSearchText: (String) -> Unit,
+    onSearchSubmit: (String) -> Unit,
+    onFilter: () -> Unit,
+    onNotifications: () -> Unit, onProfile: () -> Unit,
     onWeather: () -> Unit, onVotes: () -> Unit, onAnnouncements: () -> Unit,
     settings: JSONObject,
     onNav: (Screen) -> Unit
@@ -1374,22 +1423,52 @@ private fun AuthHeader(
             Modifier.fillMaxWidth().height(54.dp),
             radius = 999.dp,
             padding = 9.dp,
-            onClick = onSearch,
             surfaceColor = LiveJellyTheme.inputColor,
             surfaceOpacity = LiveJellyTheme.inputOpacity
         ) {
             Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                JellyIcon(JellyIcons.Search, size = 32.dp, contentDescription = "Search")
+                Box(
+                    Modifier.size(34.dp).clickable { onSearchSubmit(searchText) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    JellyIcon(JellyIcons.Search, size = 32.dp, contentDescription = "Search")
+                }
                 Spacer(Modifier.width(5.dp))
-                Text(
-                    "Search people, posts, places…",
-                    Modifier.weight(1f),
-                    color = Color(0xFF858EB1),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1
+                BasicTextField(
+                    value = searchText,
+                    onValueChange = onSearchText,
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    textStyle = androidx.compose.ui.text.TextStyle(
+                        color = JellyInk,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { onSearchSubmit(searchText) }),
+                    decorationBox = { inner ->
+                        Box(contentAlignment = Alignment.CenterStart) {
+                            if (searchText.isBlank()) {
+                                Text(
+                                    if (route == Screen.PEOPLE) "Search people…" else "Search people, posts, places…",
+                                    color = Color(0xFF858EB1),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1
+                                )
+                            }
+                            inner()
+                        }
+                    }
                 )
-                JellyIcon(JellyIcons.Filter, size = 32.dp, contentDescription = "Filters")
+                if (route != Screen.PEOPLE) {
+                    Box(
+                        Modifier.size(34.dp).clickable { onFilter() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        JellyIcon(JellyIcons.Filter, size = 32.dp, contentDescription = "Filters")
+                    }
+                }
             }
         }
 
