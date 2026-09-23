@@ -1233,7 +1233,7 @@ private fun AuthHeader(
                     listOf(
                         Color(0xFFDDF7FF).copy(alpha = .88f),
                         Color(0xFFE4F4FF).copy(alpha = .73f),
-                        Color(0xFFEEE AFF).copy(alpha = .68f)
+                        Color(0xFFEEEAFF).copy(alpha = .68f)
                     )
                 )
             )
