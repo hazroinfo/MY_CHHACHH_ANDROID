@@ -72,7 +72,7 @@ fun NotificationsScreen(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
+        contentPadding = PaddingValues(LiveJellyTheme.framePadding.dp, 8.dp, LiveJellyTheme.framePadding.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item { PageTitle("Notifications", "Stay updated with your Chhachh community", JellyIcons.Bell) }
@@ -182,7 +182,7 @@ fun AnnouncementsScreen(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
+        contentPadding = PaddingValues(LiveJellyTheme.framePadding.dp, 8.dp, LiveJellyTheme.framePadding.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item { PageTitle("Announcements", "Voice notices and important updates from people across Chhachh", JellyIcons.Announcement) }
@@ -395,7 +395,7 @@ fun VotesScreen(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
+        contentPadding = PaddingValues(LiveJellyTheme.framePadding.dp, 8.dp, LiveJellyTheme.framePadding.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
@@ -667,7 +667,7 @@ fun SavedScreen(
 ) {
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
+        contentPadding = PaddingValues(LiveJellyTheme.framePadding.dp, 8.dp, LiveJellyTheme.framePadding.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item { PageTitle("Saved", "Posts and videos you saved for later", JellyIcons.Save) }
@@ -693,7 +693,7 @@ fun SearchScreen(
 ) {
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
+        contentPadding = PaddingValues(LiveJellyTheme.framePadding.dp, 8.dp, LiveJellyTheme.framePadding.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item {
@@ -896,7 +896,7 @@ fun MapScreen(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
+        contentPadding = PaddingValues(LiveJellyTheme.framePadding.dp, 8.dp, LiveJellyTheme.framePadding.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item { PageTitle("Chhachh Map", "Plan a route between villages, places and local shops", JellyIcons.Map) }
@@ -1160,7 +1160,7 @@ private fun rememberMapViewWithLifecycle(): MapView {
 fun WeatherScreen(data: JSONObject?, loading: Boolean, error: String?, onRefresh: () -> Unit) {
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
+        contentPadding = PaddingValues(LiveJellyTheme.framePadding.dp, 8.dp, LiveJellyTheme.framePadding.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
