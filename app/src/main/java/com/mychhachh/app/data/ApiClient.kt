@@ -235,6 +235,23 @@ class ApiClient(private val context: Context) {
     fun weather(): JSONObject = get("/api/weather/current")
 
     fun geocode(q: String): JSONObject = get("/api/map/geocode?q=${java.net.URLEncoder.encode(q, "UTF-8")}")
+    fun geocodePlaces(q: String): List<CheckinPlace> {
+        val d = geocode(q)
+        val a = d.optJSONArray("items")
+        val out = mutableListOf<CheckinPlace>()
+        if (a != null) {
+            for (i in 0 until a.length()) {
+                val o = a.optJSONObject(i) ?: continue
+                val lat = o.optString("lat", "").toDoubleOrNull() ?: o.optDouble("lat", Double.NaN)
+                val lng = o.optString("lng", o.optString("lon", "")).toDoubleOrNull()
+                    ?: o.optDouble("lng", o.optDouble("lon", Double.NaN))
+                if (!lat.isNaN() && !lng.isNaN()) {
+                    out += CheckinPlace(o.optString("display_name", o.optString("name", "Place")), lat, lng)
+                }
+            }
+        }
+        return out.take(8)
+    }
     fun reverse(lat: Double, lng: Double): JSONObject = get("/api/map/reverse?lat=$lat&lng=$lng")
 
     fun uploadUri(uri: Uri, kind: String): String {
