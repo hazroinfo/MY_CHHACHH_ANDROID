@@ -613,10 +613,12 @@ fun SettingsScreen(
     busy: Boolean,
     error: String?,
     blockedUsers: List<User>,
+    verification: JSONObject?,
     onSave: (JSONObject, Uri?) -> Unit,
     onPrivacy: (JSONObject) -> Unit,
     onLocation: (Double, Double) -> Unit,
     onPassword: (String, String) -> Unit,
+    onSubmitVerification: (String, String, Uri, Uri?, Uri) -> Unit,
     onRefreshBlocked: () -> Unit,
     onUnblock: (Long) -> Unit,
     onDeleteAccount: (String) -> Unit,
@@ -649,11 +651,19 @@ fun SettingsScreen(
     var avatarUri by remember(me.id) { mutableStateOf<Uri?>(null) }
     var passwordOpen by remember { mutableStateOf(false) }
     var blockedOpen by remember { mutableStateOf(false) }
+    var verifyPhone by remember(me.id, me.phone) { mutableStateOf(me.phone) }
+    var verifyType by remember { mutableStateOf("id_card") }
+    var verifyFront by remember { mutableStateOf<Uri?>(null) }
+    var verifyBack by remember { mutableStateOf<Uri?>(null) }
+    var verifySelfie by remember { mutableStateOf<Uri?>(null) }
     var deleteOpen by remember { mutableStateOf(false) }
 
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) avatarUri = uri
     }
+    val verifyFrontPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { if (it != null) verifyFront = it }
+    val verifyBackPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { if (it != null) verifyBack = it }
+    val verifySelfiePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { if (it != null) verifySelfie = it }
 
     fun sendLastKnownLocation() {
         val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
@@ -819,6 +829,80 @@ fun SettingsScreen(
         }
 
         error?.let { item { ErrorCard(it) } }
+
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionTitle("Identity Verification")
+                    val status = verification?.optString("status", "not_submitted") ?: "not_submitted"
+                    Text(
+                        when (status) {
+                            "approved" -> "Verified ✓"
+                            "pending" -> "Verification is pending admin review."
+                            "rejected" -> "Verification was rejected. You can submit again."
+                            else -> "Verify identity to unlock media features when required by admin policy."
+                        },
+                        color = if (status == "approved") JellyGreen else JellyMuted,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.5f.sp
+                    )
+                    verification?.optJSONObject("request")?.optString("admin_note", "")?.takeIf { it.isNotBlank() }?.let {
+                        Text("Admin note: $it", color = Color(0xFFB23A55), fontSize = 9.5f.sp)
+                    }
+
+                    if (status != "approved") {
+                        OutlinedTextField(
+                            verifyPhone,
+                            { verifyPhone = it.filter { ch -> ch.isDigit() || ch == '+' }.take(16) },
+                            Modifier.fillMaxWidth(),
+                            label = { Text("Phone number") },
+                            shape = RoundedCornerShape(17.dp),
+                            singleLine = true
+                        )
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            JellyPill("ID Card", verifyType == "id_card", Modifier.weight(1f)) { verifyType = "id_card" }
+                            JellyPill("Passport", verifyType == "passport", Modifier.weight(1f)) { verifyType = "passport" }
+                        }
+                        JellyButton(
+                            if (verifyFront != null) "Front / Passport ✓" else "Front / Passport",
+                            Modifier.fillMaxWidth(),
+                            icon = JellyIcons.Photo
+                        ) { verifyFrontPicker.launch("*/*") }
+                        if (verifyType == "id_card") {
+                            JellyButton(
+                                if (verifyBack != null) "ID Back ✓" else "ID Back",
+                                Modifier.fillMaxWidth(),
+                                icon = JellyIcons.Photo
+                            ) { verifyBackPicker.launch("*/*") }
+                        }
+                        JellyButton(
+                            if (verifySelfie != null) "Selfie ✓" else "Selfie",
+                            Modifier.fillMaxWidth(),
+                            icon = JellyIcons.User
+                        ) { verifySelfiePicker.launch("image/*") }
+
+                        val verifyReady = verifyPhone.matches(Regex("\\+?[0-9]{7,15}")) &&
+                            verifyFront != null && verifySelfie != null &&
+                            (verifyType == "passport" || verifyBack != null)
+                        JellyButton(
+                            if (busy) "Submitting…" else "Submit Verification",
+                            Modifier.fillMaxWidth(),
+                            primary = true,
+                            icon = JellyIcons.Shield,
+                            enabled = verifyReady && !busy
+                        ) {
+                            onSubmitVerification(
+                                verifyPhone,
+                                verifyType,
+                                verifyFront!!,
+                                if (verifyType == "id_card") verifyBack else null,
+                                verifySelfie!!
+                            )
+                        }
+                    }
+                }
+            }
+        }
 
         item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
