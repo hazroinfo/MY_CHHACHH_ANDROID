@@ -421,6 +421,7 @@ class ApiClient(private val context: Context) {
     fun toggleBlockUser(id: Long): JSONObject = post("/api/users/$id/block")
 
     fun adminState(): JSONObject = get("/api/admin/state")
+    fun adminTraffic(): JSONObject = get("/api/admin/traffic")
     fun adminList(section: String, page: Int = 1, query: String = "", status: String = ""): JSONObject {
         val q = java.net.URLEncoder.encode(query, "UTF-8")
         val s = java.net.URLEncoder.encode(status, "UTF-8")
