@@ -77,35 +77,36 @@ fun JellyGlass(
     val actualRadius = radius ?: LiveJellyTheme.cardRadius.dp
     val shape = RoundedCornerShape(actualRadius)
     val opacity = LiveJellyTheme.cardOpacity
+    val base = LiveJellyTheme.cardColor
     var m = modifier
-        .shadow(4.dp, shape, ambientColor = Color(0x124E5B90), spotColor = Color(0x164E5B90))
+        .shadow(LiveJellyTheme.shadow.dp, shape, ambientColor = Color(0x124E5B90), spotColor = Color(0x164E5B90))
         .clip(shape)
         .background(
             Brush.linearGradient(
                 listOf(
-                    Color.White.copy(alpha = opacity),
-                    Color(0xFFF5FBFF).copy(alpha = (opacity - .05f).coerceAtLeast(.30f)),
-                    Color(0xFFF6F1FF).copy(alpha = (opacity - .05f).coerceAtLeast(.30f))
+                    base.copy(alpha = opacity),
+                    base.copy(alpha = (opacity - .05f).coerceAtLeast(.30f)),
+                    LiveJellyTheme.accent2.copy(alpha = .05f)
                 )
             )
         )
-        .border(1.dp, Color.White.copy(.95f), shape)
+        .border(1.dp, LiveJellyTheme.borderColor.copy(alpha = .95f), shape)
     if (onClick != null) m = m.clickable { onClick() }
     Box(m.padding(padding), content = content)
 }
 
 @Composable
 fun JellyPill(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(999.dp)
+    val shape = RoundedCornerShape(LiveJellyTheme.buttonRadius.dp)
     Box(
         modifier
             .clip(shape)
             .clickable { onClick() }
             .background(
                 if (selected) Brush.horizontalGradient(listOf(LiveJellyTheme.accent, LiveJellyTheme.accent2))
-                else Brush.linearGradient(listOf(Color.White, Color(0xFFF1FAFF)))
+                else Brush.linearGradient(listOf(LiveJellyTheme.buttonColor, LiveJellyTheme.buttonColor.copy(alpha = .92f)))
             )
-            .border(1.dp, if (selected) Color.White.copy(.85f) else JellyOutline, shape)
+            .border(1.dp, if (selected) Color.White.copy(.85f) else LiveJellyTheme.borderColor, shape)
             .height(48.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -129,7 +130,7 @@ fun JellyButton(
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(999.dp)
+    val shape = RoundedCornerShape(LiveJellyTheme.buttonRadius.dp)
     val alpha = if (enabled) 1f else .45f
     Row(
         modifier
@@ -137,9 +138,9 @@ fun JellyButton(
             .clickable(enabled = enabled) { onClick() }
             .background(
                 if (primary) Brush.horizontalGradient(listOf(LiveJellyTheme.accent.copy(alpha = alpha), LiveJellyTheme.accent2.copy(alpha = alpha)))
-                else Brush.linearGradient(listOf(Color.White.copy(alpha = alpha), Color(0xFFF0F9FF).copy(alpha = alpha)))
+                else Brush.linearGradient(listOf(LiveJellyTheme.buttonColor.copy(alpha = alpha), LiveJellyTheme.buttonColor.copy(alpha = alpha * .92f)))
             )
-            .border(1.dp, if (enabled) Color.White else JellyOutline, shape)
+            .border(1.dp, if (enabled) LiveJellyTheme.borderColor else LiveJellyTheme.borderColor.copy(alpha = .55f), shape)
             .heightIn(min = LiveJellyTheme.buttonHeight.dp)
             .padding(horizontal = 13.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -171,7 +172,7 @@ fun JellyIconButton(
     Box(
         modifier
             .size(40.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(LiveJellyTheme.buttonRadius.coerceAtMost(18f).dp))
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
