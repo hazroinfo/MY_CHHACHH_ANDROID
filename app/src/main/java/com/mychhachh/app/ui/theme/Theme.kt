@@ -70,6 +70,10 @@ object LiveJellyTheme {
     var shopAvatarSize by mutableFloatStateOf(96f)
     var rainbowBrand by mutableStateOf(true)
     var motion by mutableStateOf(true)
+    var jellyDepth by mutableFloatStateOf(92f)
+    var jellyShine by mutableFloatStateOf(96f)
+    var jellyBorder by mutableFloatStateOf(92f)
+    var jellySaturation by mutableFloatStateOf(140f)
 
     private fun color(raw: String, fallback: Color): Color {
         val v = raw.trim()
@@ -115,6 +119,10 @@ object LiveJellyTheme {
         shopAvatarSize = 96f
         rainbowBrand = true
         motion = true
+        jellyDepth = 92f
+        jellyShine = 96f
+        jellyBorder = 92f
+        jellySaturation = 140f
     }
 
     fun apply(settings: JSONObject?) {
@@ -159,6 +167,10 @@ object LiveJellyTheme {
         shopAvatarSize = settings.optInt("theme_shop_avatar_size", 96).coerceIn(60, 170).toFloat()
         rainbowBrand = settings.optInt("theme_brand_rainbow", 1) != 0
         motion = settings.optInt("theme_motion", 1) != 0
+        jellyDepth = settings.optInt("theme_jelly_depth", 92).coerceIn(0, 100).toFloat()
+        jellyShine = settings.optInt("theme_jelly_shine", 96).coerceIn(0, 100).toFloat()
+        jellyBorder = settings.optInt("theme_jelly_border", 92).coerceIn(0, 100).toFloat()
+        jellySaturation = settings.optInt("theme_jelly_saturation", 140).coerceIn(80, 180).toFloat()
     }
 }
 
