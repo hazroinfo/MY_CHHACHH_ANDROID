@@ -592,16 +592,18 @@ fun MyChhachhApp() {
                             loading = chatLoading,
                             error = chatError,
                             onSearchLocation = { term -> withContext(Dispatchers.IO) { api.geocodePlaces(term) } },
-                            onSend = { txt, photoUri, place ->
+                            onSend = { txt, photoUri, audioFile, place ->
                                 scope.launch {
                                     try {
                                         chatError = null
                                         val m = withContext(Dispatchers.IO) {
                                             val photo = photoUri?.let { api.uploadUri(it, "message-image") }.orEmpty()
+                                            val audio = audioFile?.let { api.upload(it, "audio/mp4", "message-audio") }.orEmpty()
                                             api.sendMessage(
                                                 to = selectedId,
                                                 text = txt,
                                                 photo = photo,
+                                                audio = audio,
                                                 locationLat = place?.lat,
                                                 locationLng = place?.lng
                                             )
@@ -628,10 +630,12 @@ fun MyChhachhApp() {
                                         groupChatError = null
                                         val m = withContext(Dispatchers.IO) {
                                             val photo = photoUri?.let { api.uploadUri(it, "message-image") }.orEmpty()
+                                            val audio = audioFile?.let { api.upload(it, "audio/mp4", "message-audio") }.orEmpty()
                                             api.sendGroupMessage(
                                                 groupId = selectedId,
                                                 text = txt,
                                                 photo = photo,
+                                                audio = audio,
                                                 locationLat = place?.lat,
                                                 locationLng = place?.lng
                                             )
