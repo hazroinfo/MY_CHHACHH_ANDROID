@@ -406,6 +406,7 @@ fun MyChhachhApp() {
                     onWeather = { open(Screen.WEATHER) },
                     onVotes = { open(Screen.VOTES) },
                     onAnnouncements = { open(Screen.ANNOUNCEMENTS) },
+                    settings = features,
                     onNav = {
                         route = it
                         selectedId = 0L
@@ -1109,39 +1110,10 @@ fun MyChhachhApp() {
                 }
             }
 
-            if (currentUser != null && isPrimaryRoute) {
-                JellyGlass(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 5.dp),
-                    radius = 18.dp,
-                    padding = 3.dp,
-                    surfaceColor = LiveJellyTheme.navColor,
-                    surfaceOpacity = LiveJellyTheme.navOpacity
-                ) {
-                    Row(Modifier.fillMaxWidth()) {
-                        NavItem("Home", JellyIcons.Home, route == Screen.HOME, Modifier.weight(1f)) {
-                            route = Screen.HOME; selectedId = 0L; backStack.clear(); menuOpen = false
-                        }
-                        NavItem("People", JellyIcons.People, route == Screen.PEOPLE, Modifier.weight(1f)) {
-                            route = Screen.PEOPLE; selectedId = 0L; backStack.clear(); menuOpen = false
-                        }
-                        NavItem("Shop", JellyIcons.Shop, route == Screen.SHOPS, Modifier.weight(1f)) {
-                            route = Screen.SHOPS; selectedId = 0L; backStack.clear(); menuOpen = false
-                        }
-                        NavItem("Map", JellyIcons.Map, route == Screen.MAP, Modifier.weight(1f)) {
-                            route = Screen.MAP; selectedId = 0L; backStack.clear(); menuOpen = false
-                        }
-                        NavItem("Messages", JellyIcons.Message, route == Screen.MESSAGES, Modifier.weight(1f)) {
-                            route = Screen.MESSAGES; selectedId = 0L; backStack.clear(); menuOpen = false
-                        }
-                    }
-                }
-            }
         }
 
         if (menuOpen && currentUser != null) {
-            SideMenu(currentUser, unread, announcementUnread, onClose = { menuOpen = false }, onOpen = { if (it == Screen.PROFILE) open(it, currentUser.id) else open(it) }, onLogout = {
+            SideMenu(currentUser, unread, announcementUnread, settings = features, onClose = { menuOpen = false }, onOpen = { if (it == Screen.PROFILE) open(it, currentUser.id) else open(it) }, onLogout = {
                 scope.launch { withContext(Dispatchers.IO) { api.logout() }; me = null; menuOpen = false; route = Screen.HOME; selectedId = 0L; backStack.clear(); feedMode = "global"; loadFeed(true) }
             })
         }
@@ -1229,6 +1201,7 @@ private fun AuthHeader(
     weatherText: String,
     onMenu: () -> Unit, onSearch: () -> Unit, onNotifications: () -> Unit, onProfile: () -> Unit,
     onWeather: () -> Unit, onVotes: () -> Unit, onAnnouncements: () -> Unit,
+    settings: JSONObject,
     onNav: (Screen) -> Unit
 ) {
     val primary = route == Screen.HOME || route == Screen.PEOPLE || route == Screen.SHOPS || route == Screen.MAP || route == Screen.MESSAGES
@@ -1247,56 +1220,108 @@ private fun AuthHeader(
         return
     }
 
+    val navOrder = settings.optString("theme_header_items", "home,people,shop,map,messages")
+        .split(",").map { it.trim() }.filter { it.isNotBlank() }
+    val votingEnabled = settings.optInt("voting", 1) != 0
+
     Column(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 5.dp),
+            .clip(RoundedCornerShape(bottomStart = LiveJellyTheme.headerRadius.dp, bottomEnd = LiveJellyTheme.headerRadius.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFFDDF7FF).copy(alpha = .88f),
+                        Color(0xFFE4F4FF).copy(alpha = .73f),
+                        Color(0xFFEEE AFF).copy(alpha = .68f)
+                    )
+                )
+            )
+            .padding(horizontal = 13.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.spacedBy(7.dp)
     ) {
         Row(
             Modifier.fillMaxWidth().height(48.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            JellyIconButton(JellyIcons.Menu, "Menu", onClick = onMenu)
+            Box(
+                Modifier.size(48.dp).clickable { onMenu() },
+                contentAlignment = Alignment.Center
+            ) {
+                JellyIcon(JellyIcons.Menu, size = 39.dp, contentDescription = "Menu")
+            }
+
             HeaderBrand(
                 name = brandName,
-                tagline = "",
-                iconUrl = null,
+                tagline = brandTagline,
+                iconUrl = brandIcon,
                 modifier = Modifier.weight(1f),
-                fontSize = 23
+                fontSize = 30
             )
-            Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
-                JellyIconButton(JellyIcons.Bell, "Notifications", badge = unread, onClick = onNotifications)
+
+            Box(Modifier.size(45.dp).clickable { onNotifications() }, contentAlignment = Alignment.Center) {
+                JellyIcon(JellyIcons.Bell, size = 40.dp, contentDescription = "Notifications")
+                if (unread > 0) CountBadge(unread, Modifier.align(Alignment.TopEnd))
             }
-            Spacer(Modifier.width(4.dp))
-            Box(Modifier.clickable { onProfile() }) { Avatar(user, 38.dp) }
+            Spacer(Modifier.width(5.dp))
+            Box(Modifier.size(47.dp).clickable { onProfile() }, contentAlignment = Alignment.Center) {
+                Avatar(user, 45.dp)
+            }
         }
 
         JellyGlass(
-            Modifier.fillMaxWidth().height(46.dp),
-            radius = 15.dp,
-            padding = 7.dp,
+            Modifier.fillMaxWidth().height(54.dp),
+            radius = 999.dp,
+            padding = 9.dp,
             onClick = onSearch,
             surfaceColor = LiveJellyTheme.inputColor,
             surfaceOpacity = LiveJellyTheme.inputOpacity
         ) {
             Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                JellyIcon(JellyIcons.Search, size = 23.dp)
-                Spacer(Modifier.width(7.dp))
+                JellyIcon(JellyIcons.Search, size = 32.dp, contentDescription = "Search")
+                Spacer(Modifier.width(5.dp))
                 Text(
-                    when (route) {
-                        Screen.PEOPLE -> "Search people..."
-                        Screen.SHOPS -> "Search shops..."
-                        Screen.MAP -> "Search places..."
-                        Screen.MESSAGES -> "Search messages..."
-                        else -> "Search people, posts, shops..."
-                    },
+                    "Search people, posts, places…",
                     Modifier.weight(1f),
-                    color = JellyMuted,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
+                    color = Color(0xFF858EB1),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1
                 )
-                JellyIcon(JellyIcons.Filter, size = 22.dp)
+                JellyIcon(JellyIcons.Filter, size = 32.dp, contentDescription = "Filters")
+            }
+        }
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (votingEnabled) {
+                QuickHeader("Voting", JellyIcons.Vote, Modifier.weight(1f), onVotes)
+            } else {
+                Spacer(Modifier.weight(1f))
+            }
+            QuickHeader(weatherText, JellyIcons.Weather, Modifier.weight(1f), onWeather)
+            Box(Modifier.weight(1f)) {
+                QuickHeader("Announcements", JellyIcons.Announcement, Modifier.fillMaxWidth(), onAnnouncements)
+                if (announcementUnread > 0) CountBadge(announcementUnread, Modifier.align(Alignment.TopEnd).padding(4.dp))
+            }
+        }
+
+        JellyGlass(
+            Modifier.fillMaxWidth(),
+            radius = LiveJellyTheme.navRadius.dp,
+            padding = 4.dp,
+            surfaceColor = LiveJellyTheme.navColor,
+            surfaceOpacity = LiveJellyTheme.navOpacity
+        ) {
+            Row(Modifier.fillMaxWidth()) {
+                navOrder.forEach { key ->
+                    when (key) {
+                        "home" -> NavItem("Home", JellyIcons.Home, route == Screen.HOME, Modifier.weight(1f)) { onNav(Screen.HOME) }
+                        "people" -> NavItem("People", JellyIcons.People, route == Screen.PEOPLE, Modifier.weight(1f)) { onNav(Screen.PEOPLE) }
+                        "shop" -> NavItem("Shop", JellyIcons.Shop, route == Screen.SHOPS, Modifier.weight(1f)) { onNav(Screen.SHOPS) }
+                        "map" -> NavItem("Map", JellyIcons.Map, route == Screen.MAP, Modifier.weight(1f)) { onNav(Screen.MAP) }
+                        "messages" -> NavItem("Messages", JellyIcons.Message, route == Screen.MESSAGES, Modifier.weight(1f)) { onNav(Screen.MESSAGES) }
+                    }
+                }
             }
         }
     }
