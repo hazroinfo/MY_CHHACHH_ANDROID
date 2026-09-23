@@ -340,7 +340,7 @@ fun AnnouncementsScreen(
                         draft,
                         { draft = it.take(3000) },
                         Modifier.fillMaxWidth(),
-                        placeholder = { Text("Write a comment or @mention…") },
+                        placeholder = { Text("Write a comment… Type @ to mention") },
                         minLines = 2,
                         maxLines = 5,
                         shape = RoundedCornerShape(17.dp)
@@ -406,7 +406,7 @@ fun VotesScreen(
                         Spacer(Modifier.width(8.dp))
                         Column {
                             Text("New Challenge", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                            Text("Choose a mutual follower and send a voting invite.", color = JellyMuted, fontSize = 10.sp)
+                            Text("Search a user you follow and who follows you back.", color = JellyMuted, fontSize = 10.sp)
                         }
                     }
                     OutlinedTextField(
@@ -479,7 +479,7 @@ fun VotesScreen(
                         challengeLine,
                         { challengeLine = it.take(500) },
                         Modifier.fillMaxWidth(),
-                        placeholder = { Text("My match line (optional)") },
+                        placeholder = { Text("Optional short line") },
                         maxLines = 3,
                         shape = RoundedCornerShape(18.dp)
                     )
@@ -672,7 +672,7 @@ fun SavedScreen(
     ) {
         if (loading && posts.isEmpty()) item { LoadingBlock() }
         error?.let { item { ErrorCard(it) } }
-        if (!loading && posts.isEmpty() && error == null) item { EmptyCard("No saved posts yet.", JellyIcons.Save) }
+        if (!loading && posts.isEmpty() && error == null) item { EmptyCard("You have not saved any posts or videos yet.", JellyIcons.Save) }
         items(posts, key = { "saved-${it.id}" }) { p ->
             PostCard(p, true, {}, { onProfile(p.user.id) }, onLike, onComment, onShare, onSave)
         }
@@ -702,7 +702,7 @@ fun SearchScreen(
                         query,
                         onQuery,
                         Modifier.weight(1f),
-                        placeholder = { Text("People, shops or posts") },
+                        placeholder = { Text("Search people, shops or posts…") },
                         singleLine = true,
                         shape = RoundedCornerShape(17.dp)
                     )
