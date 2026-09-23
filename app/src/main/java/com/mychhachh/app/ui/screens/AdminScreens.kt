@@ -483,9 +483,377 @@ fun AdminCenterScreen(
                     }
                 }
             }
+
+            "deleted" -> items(rows, key = { "deleted-${it.optLong("id", it.optLong("original_user_id"))}" }) { o ->
+                JellyGlass(Modifier.fillMaxWidth(), padding = 11.dp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        val originalId = o.optLong("original_user_id", o.optLong("user_id"))
+                        Text("Original User #$originalId", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                        Text("Reason: ${o.optString("reason", "deleted")}", color = JellyMuted, fontSize = 9.5f.sp)
+                        Text("Deleted: ${o.optString("deleted_at", o.optString("created_at", ""))}", color = JellyMuted, fontSize = 9.sp)
+                        if (originalId > 0) {
+                            JellyButton("Export Evidence PDF", icon = JellyIcons.Save) {
+                                val url = Uri.parse("https://chhachh.pages.dev/evidence_pdf.php?user_id=$originalId")
+                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url)) }
+                            }
+                        }
+                    }
+                }
+            }
+
+            "records" -> items(rows, key = { "record-${it.optLong("id")}" }) { o ->
+                val u = runCatching { o.toUser() }.getOrNull()
+                if (u != null) {
+                    JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Avatar(u, 48.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Column(Modifier.weight(1f)) {
+                                UserName(u, 12)
+                                Text("@${u.username}", color = JellyMuted, fontSize = 9.sp)
+                                val contact = listOf(u.email, u.phone).filter { it.isNotBlank() }.joinToString(" · ")
+                                if (contact.isNotBlank()) Text(contact, color = JellyMuted, fontSize = 8.5f.sp)
+                                Text(if (o.optBoolean("online", false)) "Online" else "Offline", color = JellyMuted, fontSize = 8.5f.sp)
+                            }
+                            JellyButton("Open Profile", primary = true) { onProfile(u.id) }
+                        }
+                    }
+                }
+            }
+
+            "notices" -> {
+                item {
+                    JellyGlass(Modifier.fillMaxWidth(), padding = 11.dp) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                SectionTitle("Announcements")
+                                Text("Manage voice and community announcements.", color = JellyMuted, fontSize = 9.5f.sp)
+                            }
+                            JellyButton("Open Announcements", primary = true, icon = JellyIcons.Announcement, onClick = onAnnouncements)
+                        }
+                    }
+                }
+                if (notices.isEmpty()) item { EmptyCard("No announcements yet.", JellyIcons.Announcement) }
+                items(notices, key = { "notice-${it.optLong("id")}" }) { o ->
+                    JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text(o.optString("notice_type", "announcement").uppercase(), color = JellyInk, fontWeight = FontWeight.Black, fontSize = 10.sp)
+                            Text(
+                                o.optString("text").ifBlank {
+                                    when {
+                                        o.optString("audio").isNotBlank() -> "Voice announcement"
+                                        o.optString("photo").isNotBlank() -> "Photo announcement"
+                                        else -> "Announcement"
+                                    }
+                                },
+                                color = JellyInk,
+                                fontSize = 10.5f.sp,
+                                maxLines = 5
+                            )
+                            Text(
+                                "${o.optString("created_at", "")} · ${if (o.optInt("active", 1) == 0) "Hidden" else "Visible"}",
+                                color = JellyMuted,
+                                fontSize = 8.5f.sp
+                            )
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                JellyButton(if (o.optInt("active", 1) == 0) "Show" else "Hide", Modifier.weight(1f)) {
+                                    onAction("toggle_admin_notice", o.optLong("id"), JSONObject())
+                                }
+                                JellyButton("Delete", Modifier.weight(1f), icon = JellyIcons.Delete, danger = true) {
+                                    onAction("delete_admin_notice", o.optLong("id"), JSONObject())
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            "features" -> {
+                item {
+                    JellyGlass(Modifier.fillMaxWidth(), padding = 11.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SectionTitle("Feature Controls")
+                            Text("Live backend switches from the V95 website.", color = JellyMuted, fontSize = 9.5f.sp)
+                            val keys = listOf(
+                                "likes", "comments", "shares", "user_profiles", "shops", "user_posts",
+                                "messaging", "follows", "videos", "comment_likes", "comment_replies", "mentions"
+                            )
+                            keys.forEach { key ->
+                                FeatureToggleRow(key, settings.optInt(key, 1) != 0) { value ->
+                                    onAction("feature", 0L, JSONObject().put("key", key).put("value", if (value) 1 else 0))
+                                }
+                            }
+                            JellyButton("Open Complete Theme Builder", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Palette, onClick = onTheme)
+                        }
+                    }
+                }
+            }
+
+            "installer" -> {
+                item {
+                    JellyGlass(Modifier.fillMaxWidth(), padding = 11.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SectionTitle("Feature Installer")
+                            Text(
+                                "Install future My Chhachh feature packages without replacing the core website.",
+                                color = JellyMuted,
+                                fontSize = 9.5f.sp
+                            )
+                            JellyButton("Choose Feature Package", Modifier.fillMaxWidth(), icon = JellyIcons.Plus) {
+                                featurePackagePicker.launch("*/*")
+                            }
+                            OutlinedTextField(
+                                featurePackageText,
+                                { featurePackageText = it },
+                                Modifier.fillMaxWidth(),
+                                label = { Text("Feature package JSON") },
+                                minLines = 5,
+                                maxLines = 12,
+                                shape = RoundedCornerShape(17.dp)
+                            )
+                            JellyButton(
+                                "Check & Install Feature",
+                                Modifier.fillMaxWidth(),
+                                primary = true,
+                                icon = JellyIcons.Plus,
+                                enabled = featurePackageText.trim().isNotBlank()
+                            ) {
+                                onAction("feature_package_install", 0L, JSONObject().put("package_text", featurePackageText.trim()))
+                            }
+                        }
+                    }
+                }
+                if (packages.isEmpty()) item { EmptyCard("No extra features installed yet.", JellyIcons.Gear) }
+                items(packages, key = { "package-${it.optString("id")}" }) { p ->
+                    JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text(p.optString("name", p.optString("id", "Feature")), color = JellyInk, fontWeight = FontWeight.Black, fontSize = 11.5f.sp)
+                            Text("v${p.optString("version", "1.0.0")} · ${if (p.optBoolean("enabled", true)) "ON" else "OFF"}", color = JellyMuted, fontSize = 9.sp)
+                            if (p.optString("description").isNotBlank()) Text(p.optString("description"), color = JellyMuted, fontSize = 9.sp, maxLines = 4)
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                JellyButton(if (p.optBoolean("enabled", true)) "Turn Off" else "Turn On", Modifier.weight(1f)) {
+                                    onAction(
+                                        "feature_package_toggle",
+                                        0L,
+                                        JSONObject().put("feature_id", p.optString("id")).put("enabled", if (p.optBoolean("enabled", true)) 0 else 1)
+                                    )
+                                }
+                                if (p.optInt("history_count", 0) > 0) {
+                                    JellyButton("Restore", Modifier.weight(1f)) {
+                                        onAction("feature_package_rollback", 0L, JSONObject().put("feature_id", p.optString("id")))
+                                    }
+                                }
+                                JellyButton("Remove", Modifier.weight(1f), danger = true) {
+                                    onAction("feature_package_remove", 0L, JSONObject().put("feature_id", p.optString("id")))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            "ads" -> {
+                item {
+                    var enabled by remember(settings.toString()) { mutableStateOf(settings.optInt("google_ads_enabled", 0) != 0) }
+                    var home by remember(settings.toString()) { mutableStateOf(settings.optInt("google_ads_home", 1) != 0) }
+                    var shopList by remember(settings.toString()) { mutableStateOf(settings.optInt("google_ads_shop_list", 1) != 0) }
+                    var shopDetail by remember(settings.toString()) { mutableStateOf(settings.optInt("google_ads_shop_detail", 1) != 0) }
+                    var search by remember(settings.toString()) { mutableStateOf(settings.optInt("google_ads_search", 1) != 0) }
+                    var label by remember(settings.toString()) { mutableStateOf(settings.optInt("google_ads_label", 1) != 0) }
+                    var client by remember(settings.toString()) { mutableStateOf(settings.optString("google_ads_client", "")) }
+                    var slot by remember(settings.toString()) { mutableStateOf(settings.optString("google_ads_slot", "")) }
+                    var interval by remember(settings.toString()) { mutableStateOf(settings.optInt("google_ads_interval", 10).toString()) }
+                    var style by remember(settings.toString()) { mutableStateOf(settings.optString("google_ads_style", "soft")) }
+
+                    JellyGlass(Modifier.fillMaxWidth(), padding = 11.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                            SectionTitle("Ad Manager")
+                            Text("Google ads stay inside selected card placements.", color = JellyMuted, fontSize = 9.5f.sp)
+                            ThemeSwitch("Enable Google ads", enabled) { enabled = it }
+                            ThemeSwitch("Home feed", home) { home = it }
+                            ThemeSwitch("Shop listing", shopList) { shopList = it }
+                            ThemeSwitch("Shop detail", shopDetail) { shopDetail = it }
+                            ThemeSwitch("Search", search) { search = it }
+                            ThemeSwitch("Sponsored label", label) { label = it }
+                            OutlinedTextField(client, { client = it }, Modifier.fillMaxWidth(), label = { Text("AdSense client") }, singleLine = true, shape = RoundedCornerShape(17.dp))
+                            OutlinedTextField(slot, { slot = it }, Modifier.fillMaxWidth(), label = { Text("Ad slot") }, singleLine = true, shape = RoundedCornerShape(17.dp))
+                            OutlinedTextField(interval, { interval = it.filter(Char::isDigit).take(2) }, Modifier.fillMaxWidth(), label = { Text("Posts between ads") }, singleLine = true, shape = RoundedCornerShape(17.dp))
+                            JellyButton("Style: ${style.replaceFirstChar { it.uppercase() }}", Modifier.fillMaxWidth()) {
+                                style = when (style) { "soft" -> "plain"; "plain" -> "minimal"; else -> "soft" }
+                            }
+                            JellyButton("Save Ad Settings", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Check) {
+                                onAction(
+                                    "google_ads",
+                                    0L,
+                                    JSONObject()
+                                        .put("enabled", enabled)
+                                        .put("home", home)
+                                        .put("shop_list", shopList)
+                                        .put("shop_detail", shopDetail)
+                                        .put("search", search)
+                                        .put("label", label)
+                                        .put("client", client.trim())
+                                        .put("slot", slot.trim())
+                                        .put("interval", interval.toIntOrNull()?.coerceIn(3, 50) ?: 10)
+                                        .put("style", style)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            "traffic" -> {
+                item {
+                    val t = traffic?.optJSONObject("traffic") ?: traffic ?: JSONObject()
+                    val today = t.optJSONObject("today") ?: JSONObject()
+                    val yesterday = t.optJSONObject("yesterday") ?: JSONObject()
+                    JellyGlass(Modifier.fillMaxWidth(), padding = 11.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SectionTitle("Professional Traffic Meter")
+                            Text("Real server-side traffic. Admin visits and known bots are excluded.", color = JellyMuted, fontSize = 9.5f.sp)
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                AdminStat("Live Now", t.optInt("live"), Modifier.weight(1f))
+                                AdminStat("Members", t.optInt("live_members"), Modifier.weight(1f))
+                                AdminStat("Guests", t.optInt("live_guests"), Modifier.weight(1f))
+                            }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                AdminStat("Views Today", today.optInt("views"), Modifier.weight(1f))
+                                AdminStat("Visitors", today.optInt("visitors"), Modifier.weight(1f))
+                                AdminStat("Yesterday", yesterday.optInt("views"), Modifier.weight(1f))
+                            }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                AdminStat("7-day Views", t.optInt("last7_views"), Modifier.weight(1f))
+                                AdminStat("30-day Views", t.optInt("last30_views"), Modifier.weight(1f))
+                            }
+                        }
+                    }
+                }
+            }
+
+            "social" -> {
+                item {
+                    var googleClient by remember(settings.toString()) { mutableStateOf(settings.optString("google_client_id", "")) }
+                    var facebookId by remember(settings.toString()) { mutableStateOf(settings.optString("facebook_app_id", "")) }
+                    var facebookSecret by remember { mutableStateOf("") }
+                    var clearSecret by remember { mutableStateOf(false) }
+                    val passOn = settings.optInt("password_login_enabled", 1) != 0
+                    val regOn = settings.optInt("registration_enabled", 1) != 0
+                    JellyGlass(Modifier.fillMaxWidth(), padding = 11.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SectionTitle("Login & Registration Setup")
+                            FeatureToggleRow("Email/password login", passOn) { value ->
+                                onAction("feature", 0L, JSONObject().put("key", "password_login_enabled").put("value", if (value) 1 else 0))
+                            }
+                            FeatureToggleRow("New registrations", regOn) { value ->
+                                onAction("feature", 0L, JSONObject().put("key", "registration_enabled").put("value", if (value) 1 else 0))
+                            }
+                            OutlinedTextField(googleClient, { googleClient = it }, Modifier.fillMaxWidth(), label = { Text("Google Web Client ID") }, singleLine = true, shape = RoundedCornerShape(17.dp))
+                            OutlinedTextField(facebookId, { facebookId = it.filter(Char::isDigit).take(30) }, Modifier.fillMaxWidth(), label = { Text("Facebook App ID") }, singleLine = true, shape = RoundedCornerShape(17.dp))
+                            OutlinedTextField(facebookSecret, { facebookSecret = it }, Modifier.fillMaxWidth(), label = { Text(if (settings.optBoolean("facebook_app_secret_set", false)) "Facebook secret (leave blank to keep)" else "Facebook App Secret") }, singleLine = true, shape = RoundedCornerShape(17.dp))
+                            ThemeSwitch("Clear saved Facebook secret", clearSecret) { clearSecret = it }
+                            JellyButton("Save Login Setup", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Check) {
+                                onAction(
+                                    "social_auth_settings",
+                                    0L,
+                                    JSONObject()
+                                        .put("google_client_id", googleClient.trim())
+                                        .put("facebook_app_id", facebookId.trim())
+                                        .put("facebook_app_secret", facebookSecret)
+                                        .put("clear_facebook_secret", clearSecret)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            "adminprofile" -> {
+                item {
+                    var adminName by remember(me.id, me.name) { mutableStateOf(me.name) }
+                    var adminUsername by remember(me.id, me.username) { mutableStateOf(me.username) }
+                    var adminPhone by remember(me.id, me.phone) { mutableStateOf(me.phone) }
+                    var adminEmail by remember(me.id, me.email) { mutableStateOf(me.email) }
+                    JellyGlass(Modifier.fillMaxWidth(), padding = 11.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SectionTitle("Admin Profile")
+                            OutlinedTextField(adminName, { adminName = it }, Modifier.fillMaxWidth(), label = { Text("Admin name") }, singleLine = true, shape = RoundedCornerShape(17.dp))
+                            OutlinedTextField(adminUsername, { adminUsername = it.lowercase().filter { c -> c.isLetterOrDigit() || c == '_' }.take(30) }, Modifier.fillMaxWidth(), label = { Text("Username") }, singleLine = true, shape = RoundedCornerShape(17.dp))
+                            OutlinedTextField(adminPhone, { adminPhone = it.filter { c -> c.isDigit() || c == '+' }.take(16) }, Modifier.fillMaxWidth(), label = { Text("Phone") }, singleLine = true, shape = RoundedCornerShape(17.dp))
+                            OutlinedTextField(adminEmail, { adminEmail = it }, Modifier.fillMaxWidth(), label = { Text("Email") }, singleLine = true, shape = RoundedCornerShape(17.dp))
+                            JellyButton("Save Admin Profile", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Check) {
+                                onAction(
+                                    "admin_profile",
+                                    0L,
+                                    JSONObject()
+                                        .put("name", adminName.trim())
+                                        .put("username", adminUsername.trim())
+                                        .put("phone", adminPhone.trim())
+                                        .put("email", adminEmail.trim())
+                                )
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    JellyGlass(Modifier.fillMaxWidth(), padding = 11.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SectionTitle("Admin Announcement")
+                            Text("Users can like and comment on it in Announcements.", color = JellyMuted, fontSize = 9.5f.sp)
+                            JellyButton("Type: ${noticeType.replaceFirstChar { it.uppercase() }}", Modifier.fillMaxWidth()) {
+                                noticeType = when (noticeType) {
+                                    "announcement" -> "emergency"
+                                    "emergency" -> "ad"
+                                    "ad" -> "info"
+                                    else -> "announcement"
+                                }
+                            }
+                            OutlinedTextField(noticeText, { noticeText = it.take(5000) }, Modifier.fillMaxWidth(), label = { Text("Announcement text") }, minLines = 3, maxLines = 7, shape = RoundedCornerShape(17.dp))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                JellyButton(if (noticePhoto != null) "Photo ✓" else "Photo", Modifier.weight(1f), icon = JellyIcons.Photo) { noticePhotoPicker.launch("image/*") }
+                                JellyButton(if (noticeAudio != null) "Voice ✓" else "Voice", Modifier.weight(1f), icon = JellyIcons.Announcement) { noticeAudioPicker.launch("audio/*") }
+                            }
+                            JellyButton(
+                                "Publish Announcement",
+                                Modifier.fillMaxWidth(),
+                                primary = true,
+                                icon = JellyIcons.Send,
+                                enabled = noticeText.isNotBlank() || noticePhoto != null || noticeAudio != null
+                            ) {
+                                onPublishAnnouncement(noticeType, noticeText.trim(), noticePhoto, noticeAudio)
+                                noticeText = ""; noticePhoto = null; noticeAudio = null
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    JellyGlass(Modifier.fillMaxWidth(), padding = 11.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SectionTitle("Normal Admin Post")
+                            OutlinedTextField(adminPostText, { adminPostText = it.take(5000) }, Modifier.fillMaxWidth(), label = { Text("Feed post text") }, minLines = 3, maxLines = 7, shape = RoundedCornerShape(17.dp))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                JellyButton(if (adminPostPhoto != null) "Photo ✓" else "Photo", Modifier.weight(1f), icon = JellyIcons.Photo) { adminPhotoPicker.launch("image/*") }
+                                JellyButton(if (adminPostVideo != null) "Video ✓" else "Video", Modifier.weight(1f), icon = JellyIcons.Video) { adminVideoPicker.launch("video/*") }
+                            }
+                            JellyButton(
+                                "Publish Admin Post",
+                                Modifier.fillMaxWidth(),
+                                primary = true,
+                                icon = JellyIcons.Send,
+                                enabled = adminPostText.isNotBlank() || adminPostPhoto != null || adminPostVideo != null
+                            ) {
+                                onPublishAdminPost(adminPostText.trim(), adminPostPhoto, adminPostVideo)
+                                adminPostText = ""; adminPostPhoto = null; adminPostVideo = null
+                            }
+                        }
+                    }
+                }
+            }
         }
 
-        if (!loading && rows.isEmpty() && error == null) {
+        if (!loading && section in pagedSections && rows.isEmpty() && error == null) {
             item { EmptyCard("Nothing to show in this section.", JellyIcons.Shield) }
         }
     }
