@@ -104,7 +104,7 @@ fun HomeScreen(
         }
 
         if (user != null && mode != "shops") item {
-            JellyGlass(Modifier.fillMaxWidth(), padding = 11.dp) {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.Top) {
                         Avatar(user, 40.dp)
@@ -301,7 +301,7 @@ fun HomeScreen(
                                 Spacer(Modifier.width(7.dp))
                                 Column(Modifier.weight(1f)) {
                                     UserName(person, 11)
-                                    Text("@${person.username}", color = JellyMuted, fontSize = 9.sp)
+                                    Text("@${person.username}", color = JellyMuted, fontSize = 8.5f.sp)
                                 }
                             }
                         }
@@ -399,9 +399,9 @@ private fun ComposerTool(icon: Int, label: String, onClick: () -> Unit) {
             .widthIn(min = 64.dp)
             .clip(RoundedCornerShape(14.dp))
             .clickable { onClick() }
-            .padding(vertical = 4.dp, horizontal = 5.dp)
+            .heightIn(min = 56.dp).padding(vertical = 2.dp, horizontal = 3.dp)
     ) {
-        JellyIcon(icon, size = 27.dp)
+        JellyIcon(icon, size = 31.dp)
         Text(label, color = JellyInk, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
     }
 }
