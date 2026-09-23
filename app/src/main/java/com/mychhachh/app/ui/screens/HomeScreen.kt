@@ -139,34 +139,30 @@ fun HomeScreen(
     ) {
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                JellyPill("For You", mode == "global", Modifier.weight(1f)) { onMode("global") }
-                if (user != null) JellyPill("Following", mode == "following", Modifier.weight(1f)) { onMode("following") }
-                JellyPill("Shop Posts", mode == "shops", Modifier.weight(1f)) { onMode("shops") }
+                HomeTabPill("For You", mode == "global", Modifier.weight(1f)) { onMode("global") }
+                if (user != null) HomeTabPill("Following", mode == "following", Modifier.weight(1f)) { onMode("following") }
+                HomeTabPill("Shop Posts", mode == "shops", Modifier.weight(1f)) { onMode("shops") }
             }
         }
 
         if (user != null && mode != "shops") item {
-            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+            JellyGlass(Modifier.fillMaxWidth(), radius = 22.dp, padding = 10.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(verticalAlignment = Alignment.Top) {
-                        Avatar(user, 40.dp)
-                        Spacer(Modifier.width(8.dp))
-                        OutlinedTextField(
-                            value = composing,
-                            onValueChange = { composing = it },
-                            modifier = Modifier.weight(1f),
-                            placeholder = { Text("What's on your mind? Type @ to mention someone", fontSize = 11.sp) },
-                            shape = RoundedCornerShape(22.dp),
-                            minLines = 2,
-                            maxLines = 5
-                        )
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        ComposerTool(JellyIcons.Photo, if (photoUri != null) "Photo ✓" else "Photo") { photoPicker.launch("image/*") }
-                        ComposerTool(JellyIcons.Video, if (videoUri != null) "Video ✓" else "Video") { videoPicker.launch("video/*") }
-                        ComposerTool(JellyIcons.Feeling, if (feeling.isNotBlank()) "Feeling ✓" else "Feeling") { feelingDialog = true }
-                        ComposerTool(JellyIcons.Pin, if (checkin.isNotBlank()) "Check in ✓" else "Check in") { checkinDialog = true }
-                        ComposerTool(JellyIcons.Mention, "Mention") { mentionDialog = true }
+                    OutlinedTextField(
+                        value = composing,
+                        onValueChange = { composing = it },
+                        modifier = Modifier.fillMaxWidth().height(96.dp),
+                        placeholder = { Text("What's on your mind? Type @ to mention someone", fontSize = 11.sp) },
+                        shape = RoundedCornerShape(22.dp),
+                        minLines = 3,
+                        maxLines = 4
+                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        ComposerTool(JellyIcons.Photo, if (photoUri != null) "Photo ✓" else "Photo", Modifier.weight(1f)) { photoPicker.launch("image/*") }
+                        ComposerTool(JellyIcons.Video, if (videoUri != null) "Video ✓" else "Video", Modifier.weight(1f)) { videoPicker.launch("video/*") }
+                        ComposerTool(JellyIcons.Feeling, if (feeling.isNotBlank()) "Feeling ✓" else "Feeling", Modifier.weight(1f)) { feelingDialog = true }
+                        ComposerTool(JellyIcons.Pin, if (checkin.isNotBlank()) "Check in ✓" else "Check in", Modifier.weight(1f)) { checkinDialog = true }
+                        ComposerTool(JellyIcons.Mention, "Mention", Modifier.weight(1f)) { mentionDialog = true }
                     }
                     if (feeling.isNotBlank() || checkin.isNotBlank()) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -180,21 +176,30 @@ fun HomeScreen(
                                 if (photoUri != null) "Photo ready" else "Video ready",
                                 Modifier.weight(1f),
                                 color = JellyMuted,
-                                fontSize = 10.sp,
+                                fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold
                             )
                             TextButton(onClick = { photoUri = null; videoUri = null }) {
-                                Text("Remove", color = JellyInk, fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                                Text("Remove", color = JellyInk, fontWeight = FontWeight.Bold, fontSize = 9.sp)
                             }
                         }
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(9.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         JellyButton(
                             if (privacy == "public") "Everyone" else "Followers",
+                            Modifier.weight(1f).height(48.dp),
                             icon = JellyIcons.Eye
                         ) { privacy = if (privacy == "public") "followers" else "public" }
-                        Spacer(Modifier.weight(1f))
-                        JellyButton("Post", primary = true, icon = JellyIcons.Send) {
+                        JellyButton(
+                            "Post",
+                            Modifier.weight(.72f).height(48.dp),
+                            primary = true,
+                            icon = JellyIcons.Send
+                        ) {
                             if (composing.isNotBlank() || feeling.isNotBlank() || checkin.isNotBlank() || photoUri != null || videoUri != null) {
                                 onCreatePost(composing.trim(), privacy, feeling, checkin, checkinLat, checkinLng, photoUri, videoUri)
                                 composing = ""
@@ -542,17 +547,38 @@ private fun VoteTeaserSide(user: User?, votes: Int?, modifier: Modifier = Modifi
 }
 
 @Composable
-private fun ComposerTool(icon: Int, label: String, onClick: () -> Unit) {
+private fun HomeTabPill(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(18.dp)
+    Box(
+        modifier
+            .height(43.dp)
+            .clip(shape)
+            .clickable { onClick() }
+            .background(
+                if (selected) Brush.horizontalGradient(listOf(Color(0xFFFF5EB7), Color(0xFFBF5DE6)))
+                else Brush.linearGradient(listOf(Color.White.copy(alpha = .72f), Color.White.copy(alpha = .72f)))
+            )
+            .border(1.5.dp, Color.White.copy(alpha = .95f), shape),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, color = if (selected) Color.White else JellyInk, fontWeight = FontWeight.Black, fontSize = 10.5f.sp, maxLines = 1)
+    }
+}
+
+@Composable
+private fun ComposerTool(icon: Int, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .widthIn(min = 64.dp)
+        verticalArrangement = Arrangement.Center,
+        modifier = modifier
+            .height(60.dp)
             .clip(RoundedCornerShape(14.dp))
             .clickable { onClick() }
-            .heightIn(min = 56.dp).padding(vertical = 2.dp, horizontal = 3.dp)
+            .padding(vertical = 5.dp, horizontal = 2.dp)
     ) {
-        JellyIcon(icon, size = 27.dp)
-        Text(label, color = Color(0xFF4C4176), fontSize = 7.5f.sp, fontWeight = FontWeight.Black, maxLines = 1)
+        JellyIcon(icon, size = 25.dp)
+        Spacer(Modifier.height(4.dp))
+        Text(label, color = Color(0xFF4C4176), fontSize = 7.sp, fontWeight = FontWeight.Black, maxLines = 1)
     }
 }
 
@@ -578,7 +604,7 @@ fun PostCard(
     var reportOpen by remember(post.id) { mutableStateOf(false) }
     val context = LocalContext.current
 
-    JellyGlass(Modifier.fillMaxWidth(), radius = 26.dp, padding = 14.dp) {
+    JellyGlass(Modifier.fillMaxWidth(), radius = 22.dp, padding = 14.dp) {
         Column(Modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Avatar(post.user, 42.dp, Modifier.clickable { onProfile() })
@@ -616,12 +642,44 @@ fun PostCard(
                 }
             }
 
+            post.photo?.let { url ->
+                AsyncImage(
+                    url,
+                    null,
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp)
+                        .heightIn(min = 170.dp, max = 520.dp)
+                        .clip(RoundedCornerShape(20.dp)),
+                    contentScale = ContentScale.FillWidth
+                )
+            }
+
+            post.video?.let {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp)
+                        .height(190.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Brush.linearGradient(listOf(Color(0xFFEAF9FF), Color(0xFFF0E9FF))))
+                        .clickable { videoOpen = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        JellyIcon(JellyIcons.Video, size = 48.dp)
+                        Text("Play video", color = JellyInk, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
+                        Text("Opens inside the app", color = JellyMuted, fontSize = 9.sp)
+                    }
+                }
+            }
+
             if (post.voteId > 0L) {
                 JellyGlass(
                     Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp)
-                        .then(if (onVote != null) Modifier.clickable { onVote(post.voteId) } else Modifier),
+                        .padding(vertical = 8.dp)
+                        .then(if (onVote != null) Modifier.clickable { onVote?.invoke(post.voteId) } else Modifier),
                     radius = 18.dp,
                     padding = 10.dp
                 ) {
@@ -645,47 +703,22 @@ fun PostCard(
             if (post.text.isNotBlank()) {
                 Text(
                     post.text,
-                    Modifier.padding(vertical = 9.dp),
+                    Modifier.padding(top = 10.dp),
                     color = JellyInk,
                     fontSize = 14.sp,
                     lineHeight = 20.sp
                 )
             }
 
-            post.photo?.let { url ->
-                AsyncImage(
-                    url,
-                    null,
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 7.dp)
-                        .heightIn(min = 170.dp, max = 520.dp)
-                        .clip(RoundedCornerShape(18.dp)),
-                    contentScale = ContentScale.FillWidth
-                )
-            }
-
-            post.video?.let {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(7.dp)
-                        .height(190.dp)
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(Brush.linearGradient(listOf(Color(0xFFEAF9FF), Color(0xFFF0E9FF))))
-                        .clickable { videoOpen = true },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        JellyIcon(JellyIcons.Video, size = 48.dp)
-                        Text("Play video", color = JellyInk, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
-                        Text("Opens inside the app", color = JellyMuted, fontSize = 9.sp)
-                    }
-                }
-            }
-
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 11.dp)
+                    .height(1.dp)
+                    .background(JellyMuted.copy(alpha = .12f))
+            )
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 9.dp),
+                Modifier.fillMaxWidth().padding(top = 5.dp),
                 horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
                 PostAction(JellyIcons.Heart, if (post.liked) "Liked" else "Like", post.likes, Modifier.weight(1f)) { if (loggedIn) onLike(post) else onLogin() }
@@ -836,14 +869,14 @@ private fun Tag(icon: Int, text: String, onClick: (() -> Unit)? = null) {
 private fun PostAction(icon: Int, label: String, count: Int, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Row(
         modifier
-            .heightIn(min = 44.dp)
+            .heightIn(min = 42.dp)
             .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() }
             .padding(horizontal = 2.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        JellyIcon(icon, size = 30.dp)
+        JellyIcon(icon, size = 25.dp)
         Spacer(Modifier.width(3.dp))
         Text(
             label,
@@ -863,12 +896,12 @@ private fun PostAction(icon: Int, label: String, count: Int, modifier: Modifier 
 private fun PostStat(icon: Int, label: String, count: Int, modifier: Modifier = Modifier) {
     Row(
         modifier
-            .heightIn(min = 44.dp)
+            .heightIn(min = 42.dp)
             .padding(horizontal = 2.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        JellyIcon(icon, size = 30.dp)
+        JellyIcon(icon, size = 25.dp)
         Spacer(Modifier.width(3.dp))
         Text(label, color = Color(0xFF4C4176), fontSize = 9.sp, fontWeight = FontWeight.Black, maxLines = 1)
         if (count > 0) {
