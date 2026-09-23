@@ -479,8 +479,9 @@ fun MyChhachhApp() {
             if (route != Screen.AUTH) {
                 if (currentUser == null) GuestHeader(
                     brandName = features.optString("site_name", "My Chhachh"),
-                    brandTagline = features.optString("site_tagline", "Connect with people for information."),
+                    brandTagline = features.optString("site_tagline", "People • Places • Good Vibes"),
                     brandIcon = if (features.optInt("site_icon_enabled", 1) != 0) mediaUrl(features.optString("site_icon", "")) else null,
+                    settings = features,
                     onLogin = { authMode = "login"; authError = null; route = Screen.AUTH },
                     onRegister = { authMode = "register"; authError = null; route = Screen.AUTH }
                 ) else AuthHeader(
@@ -1403,9 +1404,15 @@ private fun GuestHeader(
     brandName: String,
     brandTagline: String,
     brandIcon: String?,
+    settings: JSONObject,
     onLogin: () -> Unit,
     onRegister: () -> Unit
 ) {
+    val authVisible = settings.optInt("theme_guest_auth_buttons", 1) != 0
+    val showLogin = authVisible && settings.optInt("theme_guest_login_button", 1) != 0
+    val showRegister = authVisible && settings.optInt("theme_guest_register_button", 1) != 0
+    val iconSize = settings.optInt("site_icon_size", 40).coerceIn(20, 96).dp
+
     Box(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 9.dp)) {
         JellyGlass(
             Modifier.fillMaxWidth(),
@@ -1415,10 +1422,21 @@ private fun GuestHeader(
             surfaceOpacity = LiveJellyTheme.headerOpacity
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                HeaderBrand(brandName, brandTagline, brandIcon, Modifier.weight(1f), 28)
-                JellyButton("Login", onClick = onLogin)
-                Spacer(Modifier.width(7.dp))
-                JellyButton("Sign up", primary = true, onClick = onRegister)
+                HeaderBrand(
+                    brandName,
+                    brandTagline,
+                    brandIcon,
+                    Modifier.weight(1f),
+                    28,
+                    iconSize = iconSize
+                )
+                if (showLogin) {
+                    JellyButton("Login", onClick = onLogin)
+                }
+                if (showLogin && showRegister) Spacer(Modifier.width(7.dp))
+                if (showRegister) {
+                    JellyButton("Sign up", primary = true, onClick = onRegister)
+                }
             }
         }
     }
