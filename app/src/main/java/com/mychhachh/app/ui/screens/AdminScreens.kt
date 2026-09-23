@@ -117,7 +117,7 @@ fun AdminCenterScreen(
                                 fontSize = 12.sp
                             )
                             Text(
-                                "${stats.optInt("pending_verifications")} verification · ${stats.optInt("open_reports")} reports",
+                                "${stats.optInt("pending_verifications")} verification requests · ${stats.optInt("open_reports")} open reports",
                                 color = JellyMuted,
                                 fontSize = 9.sp
                             )
@@ -188,13 +188,20 @@ fun AdminCenterScreen(
             item {
                 JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Overview", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                                Text("Live website administration", color = JellyMuted, fontSize = 9.5f.sp)
+                            }
+                            Text("Live data", color = JellyMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                             AdminStat("Users", stats.optInt("total_users"), Modifier.weight(1f))
                             AdminStat("Shops", stats.optInt("total_shops"), Modifier.weight(1f))
-                            AdminStat("Reports", stats.optInt("open_reports"), Modifier.weight(1f))
+                            AdminStat("Open Reports", stats.optInt("open_reports"), Modifier.weight(1f))
                         }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                            AdminStat("Verification", stats.optInt("pending_verifications"), Modifier.weight(1f))
+                            AdminStat("Pending Verifications", stats.optInt("pending_verifications"), Modifier.weight(1f))
                             AdminStat("Posts", stats.optInt("total_posts"), Modifier.weight(1f))
                             AdminStat("Voting", stats.optInt("total_votes"), Modifier.weight(1f))
                         }
@@ -1001,7 +1008,7 @@ fun AdminCenterScreen(
         }
 
         if (!loading && section in pagedSections && rows.isEmpty() && error == null) {
-            item { EmptyCard("Nothing to show in this section.", JellyIcons.Shield) }
+            item { EmptyCard("No records found.", JellyIcons.Shield) }
         }
     }
 
@@ -1016,7 +1023,7 @@ fun AdminCenterScreen(
                     Modifier.fillMaxWidth(),
                     minLines = 4,
                     maxLines = 8,
-                    placeholder = { Text("Write admin reply…") },
+                    placeholder = { Text("Write reply to user...") },
                     shape = RoundedCornerShape(18.dp)
                 )
             },
@@ -1152,7 +1159,7 @@ private fun adminSectionTitle(section: String): String = when (section) {
     "posts" -> "Posts"
     "shops" -> "Shops"
     "votes" -> "Voting"
-    "reports" -> "Reports"
+    "reports" -> "Reports & Support"
     "deleted" -> "Deleted Accounts"
     "activity" -> "Activity"
     "records" -> "User Records"
@@ -1362,6 +1369,7 @@ fun NativeThemeScreen(
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionTitle("Complete Theme Control")
+                    Text("Logo, every jelly icon, all main frames, sizes, spacing, colors, header/menu order and live background.", color = JellyMuted, fontSize = 9.5f.sp)
                     OutlinedTextField(siteName, { siteName = it.take(60) }, Modifier.fillMaxWidth(), label = { Text("Website / App name") }, shape = RoundedCornerShape(17.dp), singleLine = true)
                     OutlinedTextField(tagline, { tagline = it.take(120) }, Modifier.fillMaxWidth(), label = { Text("Tagline") }, shape = RoundedCornerShape(17.dp), singleLine = true)
                     ThemeSwitch("Show logo", iconEnabled) { iconEnabled = it }
@@ -1484,7 +1492,7 @@ fun NativeThemeScreen(
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     SectionTitle("Order & Visibility")
-                    Text("Logo, every jelly icon, all main frames, sizes, spacing, colors, header/menu order and live background.", color = JellyMuted, fontSize = 9.sp)
+                    Text("Show or hide items and move them up or down.", color = JellyMuted, fontSize = 9.sp)
 
                     ThemeOrderEditor(
                         title = "Home order",
