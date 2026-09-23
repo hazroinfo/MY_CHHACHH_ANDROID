@@ -436,21 +436,51 @@ fun AdminCenterScreen(
                 }
             }
 
-            "records" -> items(rows, key = { "record-${it.optLong("id")}" }) { o ->
-                val u = runCatching { o.toUser() }.getOrNull()
-                if (u != null) {
+            "records" -> {
+                item {
                     JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Avatar(u, 48.dp)
-                            Spacer(Modifier.width(8.dp))
                             Column(Modifier.weight(1f)) {
-                                UserName(u, 12)
-                                Text("@${u.username}", color = JellyMuted, fontSize = 9.sp)
-                                val contact = listOf(u.email, u.phone).filter { it.isNotBlank() }.joinToString(" · ")
-                                if (contact.isNotBlank()) Text(contact, color = JellyMuted, fontSize = 8.5f.sp)
-                                Text(if (o.optBoolean("online", false)) "Online" else "Offline", color = JellyMuted, fontSize = 8.5f.sp)
+                                SectionTitle("User Records & PDF")
+                                Text(
+                                    "Search a user and open their profile. User controls and evidence PDF are on the profile.",
+                                    color = JellyMuted,
+                                    fontSize = 9.sp
+                                )
                             }
-                            JellyButton("Open Profile", primary = true) { onProfile(u.id) }
+                            JellyButton("Full Site PDF", icon = JellyIcons.Save) {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(
+                                            Intent.ACTION_VIEW,
+                                            Uri.parse("https://chhachh.pages.dev/full_export_pdf.php")
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                items(rows, key = { "record-${it.optLong("id")}" }) { o ->
+                    val u = runCatching { o.toUser() }.getOrNull()
+                    if (u != null) {
+                        JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Avatar(u, 48.dp)
+                                Spacer(Modifier.width(8.dp))
+                                Column(Modifier.weight(1f)) {
+                                    UserName(u, 12)
+                                    Text("@${u.username}", color = JellyMuted, fontSize = 9.sp)
+                                    val contact = listOf(u.email, u.phone).filter { it.isNotBlank() }.joinToString(" · ")
+                                    if (contact.isNotBlank()) Text(contact, color = JellyMuted, fontSize = 8.5f.sp)
+                                    Text(
+                                        if (o.optBoolean("online", false)) "Online" else "Offline",
+                                        color = JellyMuted,
+                                        fontSize = 8.5f.sp
+                                    )
+                                }
+                                JellyButton("Open Profile & Controls", primary = true) { onProfile(u.id) }
+                            }
                         }
                     }
                 }
