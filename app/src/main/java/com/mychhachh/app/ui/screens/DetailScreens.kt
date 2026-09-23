@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -1478,17 +1477,17 @@ fun SettingsScreen(
 
         if (settingsSection == "language") item {
             val prefs = context.getSharedPreferences("my_chhachh_native", Context.MODE_PRIVATE)
-            var language by remember { mutableStateOf(prefs.getString("language", "en") ?: "en") }
+            val language = AppLanguage.current
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     SectionTitle("Language")
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         JellyPill("English", language == "en", Modifier.weight(1f)) {
-                            language = "en"
+                            AppLanguage.set("en")
                             prefs.edit().putString("language", "en").apply()
                         }
                         JellyPill("اردو", language == "ur", Modifier.weight(1f)) {
-                            language = "ur"
+                            AppLanguage.set("ur")
                             prefs.edit().putString("language", "ur").apply()
                         }
                     }
