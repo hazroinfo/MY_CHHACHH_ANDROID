@@ -1440,7 +1440,7 @@ private fun GuestHeader(
     val showRegister = authVisible && settings.optInt("theme_guest_register_button", 1) != 0
     val iconSize = settings.optInt("site_icon_size", 40).coerceIn(20, 96).dp
 
-    Box(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 9.dp)) {
+    Box(Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 7.dp)) {
         JellyGlass(
             Modifier.fillMaxWidth(),
             radius = LiveJellyTheme.headerRadius.dp,
@@ -1507,18 +1507,18 @@ private fun AuthHeader(
                     )
                 )
             )
-            .padding(start = 13.dp, end = 13.dp, top = 10.dp, bottom = 9.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(start = 7.dp, end = 7.dp, top = 8.dp, bottom = 7.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(
-            Modifier.fillMaxWidth().height(48.dp),
+            Modifier.fillMaxWidth().height(45.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                Modifier.size(48.dp).clickable { onMenu() },
+                Modifier.size(43.dp).clickable { onMenu() },
                 contentAlignment = Alignment.Center
             ) {
-                JellyIcon(JellyIcons.Menu, size = 39.dp, contentDescription = "Menu")
+                JellyIcon(JellyIcons.Menu, size = 35.dp, contentDescription = "Menu")
             }
 
             HeaderBrand(
@@ -1526,22 +1526,22 @@ private fun AuthHeader(
                 tagline = brandTagline,
                 iconUrl = brandIcon,
                 modifier = Modifier.weight(1f),
-                fontSize = 30,
-                iconSize = brandIconSize
+                fontSize = 27,
+                iconSize = brandIconSize.coerceAtMost(44.dp)
             )
 
-            Box(Modifier.size(45.dp).clickable { onNotifications() }, contentAlignment = Alignment.Center) {
-                JellyIcon(JellyIcons.Bell, size = 40.dp, contentDescription = "Notifications")
+            Box(Modifier.size(43.dp).clickable { onNotifications() }, contentAlignment = Alignment.Center) {
+                JellyIcon(JellyIcons.Bell, size = 36.dp, contentDescription = "Notifications")
                 if (unread > 0) CountBadge(unread, Modifier.align(Alignment.TopEnd))
             }
             Spacer(Modifier.width(5.dp))
-            Box(Modifier.size(47.dp).clickable { onProfile() }, contentAlignment = Alignment.Center) {
-                Avatar(user, 45.dp)
+            Box(Modifier.size(43.dp).clickable { onProfile() }, contentAlignment = Alignment.Center) {
+                Avatar(user, 41.dp)
             }
         }
 
         JellyGlass(
-            Modifier.fillMaxWidth().height(58.dp),
+            Modifier.fillMaxWidth().height(54.dp),
             radius = 999.dp,
             padding = 0.dp,
             surfaceColor = LiveJellyTheme.inputColor,
@@ -1555,7 +1555,7 @@ private fun AuthHeader(
                     Modifier.size(42.dp).clickable { onSearchSubmit(searchText) },
                     contentAlignment = Alignment.Center
                 ) {
-                    JellyIcon(JellyIcons.Search, size = 35.dp, contentDescription = "Search")
+                    JellyIcon(JellyIcons.Search, size = 32.dp, contentDescription = "Search")
                 }
                 Spacer(Modifier.width(5.dp))
                 BasicTextField(
@@ -1565,7 +1565,7 @@ private fun AuthHeader(
                     singleLine = true,
                     textStyle = androidx.compose.ui.text.TextStyle(
                         color = JellyInk,
-                        fontSize = 15.sp,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
                     ),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -1590,7 +1590,7 @@ private fun AuthHeader(
                         Modifier.size(42.dp).clickable { onFilter() },
                         contentAlignment = Alignment.Center
                     ) {
-                        JellyIcon(JellyIcons.Filter, size = 35.dp, contentDescription = "Filters")
+                        JellyIcon(JellyIcons.Filter, size = 32.dp, contentDescription = "Filters")
                     }
                 }
             }
@@ -1616,7 +1616,7 @@ private fun AuthHeader(
             surfaceColor = LiveJellyTheme.navColor,
             surfaceOpacity = LiveJellyTheme.navOpacity
         ) {
-            Row(Modifier.fillMaxWidth().padding(start = 7.dp, end = 7.dp, top = 7.dp, bottom = 6.dp)) {
+            Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 5.dp)) {
                 navOrder.forEach { key ->
                     when (key) {
                         "home" -> NavItem("Home", JellyIcons.Home, route == Screen.HOME, Modifier.weight(1f)) { onNav(Screen.HOME) }
@@ -1660,7 +1660,7 @@ private fun HeaderBrand(
                 Text(
                     tagline,
                     color = JellyMuted,
-                    fontSize = 10.sp,
+                    fontSize = 8.5f.sp,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = .1.sp,
                     maxLines = 1
@@ -1689,19 +1689,19 @@ private fun routeTitle(route: Screen): String = when (route) {
 
 @Composable
 private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: () -> Unit) {
-    JellyGlass(modifier.height(92.dp), radius = 24.dp, padding = 0.dp, onClick = onClick) {
+    JellyGlass(modifier.height(76.dp), radius = 21.dp, padding = 0.dp, onClick = onClick) {
         Column(
-            Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 8.dp),
+            Modifier.fillMaxSize().padding(horizontal = 3.dp, vertical = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            JellyIcon(icon, size = if (icon == JellyIcons.Weather) 42.dp else 39.dp)
+            JellyIcon(icon, size = if (icon == JellyIcons.Weather) 34.dp else 31.dp)
             Spacer(Modifier.height(3.dp))
             Text(
                 text,
                 color = Color(0xFF433476),
                 fontWeight = FontWeight.Black,
-                fontSize = 10.sp,
+                fontSize = 8.sp,
                 maxLines = 1
             )
         }
@@ -1712,8 +1712,8 @@ private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: ()
 private fun NavItem(text: String, icon: Int, active: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(
         modifier
-            .height(76.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .height(64.dp)
+            .clip(RoundedCornerShape(18.dp))
             .clickable { onClick() }
             .background(
                 if (active) {
@@ -1730,19 +1730,19 @@ private fun NavItem(text: String, icon: Int, active: Boolean, modifier: Modifier
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        JellyIcon(icon, size = 37.dp, contentDescription = text)
+        JellyIcon(icon, size = 30.dp, contentDescription = text)
         Spacer(Modifier.height(2.dp))
         Text(
             text,
             color = Color(0xFF392B72),
             fontWeight = FontWeight.Black,
-            fontSize = 10.sp,
+            fontSize = 8.4f.sp,
             maxLines = 1
         )
         if (active) {
             Box(
                 Modifier
-                    .width(40.dp)
+                    .width(34.dp)
                     .height(4.dp)
                     .clip(RoundedCornerShape(999.dp))
                     .background(
