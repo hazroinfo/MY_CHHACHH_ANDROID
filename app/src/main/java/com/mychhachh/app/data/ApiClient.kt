@@ -194,6 +194,8 @@ class ApiClient(private val context: Context) {
     }
     fun markAnnouncementsRead() { post("/api/announcements/read") }
     fun toggleAnnouncementLike(id: Long): JSONObject = post("/api/announcements/$id/like")
+    fun createAnnouncement(text: String, photo: String = "", audio: String = "", noticeType: String = "announcement"): JSONObject =
+        post("/api/announcements", JSONObject().put("text", text).put("photo", photo).put("audio", audio).put("notice_type", noticeType))
 
     fun votes(): List<Vote> {
         val d = get("/api/votes?limit=40")
