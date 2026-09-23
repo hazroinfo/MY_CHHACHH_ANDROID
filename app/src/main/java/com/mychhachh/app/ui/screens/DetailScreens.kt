@@ -9,6 +9,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -318,7 +319,6 @@ fun ShopDetailScreen(
     val views = data?.optJSONObject("shop")?.optInt("views", 0) ?: 0
     var editOpen by remember { mutableStateOf(false) }
     var deleteOpen by remember { mutableStateOf(false) }
-    var settingsSection by remember { mutableStateOf("menu") }
 
     fun shareShop(id: Long, name: String) {
         val intent = Intent(Intent.ACTION_SEND)
@@ -659,6 +659,7 @@ fun SettingsScreen(
     var verifyBack by remember { mutableStateOf<Uri?>(null) }
     var verifySelfie by remember { mutableStateOf<Uri?>(null) }
     var deleteOpen by remember { mutableStateOf(false) }
+    var settingsSection by remember { mutableStateOf("menu") }
 
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) avatarUri = uri
