@@ -23,8 +23,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.mychhachh.app.data.CheckinPlace
 import com.mychhachh.app.data.Post
 import com.mychhachh.app.data.User
+import kotlinx.coroutines.launch
 import com.mychhachh.app.ui.components.*
 import com.mychhachh.app.ui.theme.*
 
@@ -46,7 +48,8 @@ fun HomeScreen(
     onSave: (Post) -> Unit,
     onEditPost: (Post, String, String) -> Unit,
     onDeletePost: (Post) -> Unit,
-    onCreatePost: (String, String, String, String, Uri?, Uri?) -> Unit,
+    onSearchCheckin: suspend (String) -> List<CheckinPlace>,
+    onCreatePost: (String, String, String, String, Double?, Double?, Uri?, Uri?) -> Unit,
     onLoadMore: () -> Unit
 ) {
     var composing by remember { mutableStateOf("") }
@@ -55,8 +58,11 @@ fun HomeScreen(
     var videoUri by remember { mutableStateOf<Uri?>(null) }
     var feeling by remember { mutableStateOf("") }
     var checkin by remember { mutableStateOf("") }
+    var checkinLat by remember { mutableStateOf<Double?>(null) }
+    var checkinLng by remember { mutableStateOf<Double?>(null) }
     var feelingDialog by remember { mutableStateOf(false) }
     var checkinDialog by remember { mutableStateOf(false) }
+    val uiScope = rememberCoroutineScope()
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) { photoUri = uri; videoUri = null }
     }
@@ -145,11 +151,13 @@ fun HomeScreen(
                         ) { privacy = if (privacy == "public") "followers" else "public" }
                         Spacer(Modifier.weight(1f))
                         JellyButton("Post", primary = true, icon = JellyIcons.Send) {
-                            if (composing.isNotBlank() || photoUri != null || videoUri != null) {
-                                onCreatePost(composing.trim(), privacy, feeling, checkin, photoUri, videoUri)
+                            if (composing.isNotBlank() || feeling.isNotBlank() || checkin.isNotBlank() || photoUri != null || videoUri != null) {
+                                onCreatePost(composing.trim(), privacy, feeling, checkin, checkinLat, checkinLng, photoUri, videoUri)
                                 composing = ""
                                 feeling = ""
                                 checkin = ""
+                                checkinLat = null
+                                checkinLng = null
                                 photoUri = null
                                 videoUri = null
                             }
@@ -211,26 +219,78 @@ fun HomeScreen(
     }
 
     if (checkinDialog) {
-        var draft by remember { mutableStateOf(checkin) }
+        var query by remember { mutableStateOf(checkin) }
+        var places by remember { mutableStateOf<List<CheckinPlace>>(emptyList()) }
+        var searching by remember { mutableStateOf(false) }
+        var searchError by remember { mutableStateOf<String?>(null) }
+
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { checkinDialog = false },
             title = { Text("Check in", color = JellyInk, fontWeight = FontWeight.Black) },
             text = {
-                OutlinedTextField(
-                    value = draft,
-                    onValueChange = { draft = it },
-                    placeholder = { Text("Village, mohalla, shop or place") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(18.dp)
-                )
-            },
-            confirmButton = {
-                JellyButton("Add", primary = true) {
-                    checkin = draft.trim()
-                    checkinDialog = false
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Choose a real place in Chhachh / Hazro.", color = JellyMuted, fontSize = 10.5f.sp)
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = { Text("Search a place") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(18.dp)
+                    )
+                    JellyButton(
+                        if (searching) "Searching…" else "Find place",
+                        Modifier.fillMaxWidth(),
+                        primary = true,
+                        icon = JellyIcons.Search,
+                        enabled = !searching && query.isNotBlank()
+                    ) {
+                        uiScope.launch {
+                            searching = true
+                            searchError = null
+                            try {
+                                places = onSearchCheckin(query.trim())
+                                if (places.isEmpty()) searchError = "Place could not be found."
+                            } catch (e: Exception) {
+                                places = emptyList()
+                                searchError = e.message ?: "Place could not be found."
+                            } finally {
+                                searching = false
+                            }
+                        }
+                    }
+                    searchError?.let { Text(it, color = Color(0xFFB23A55), fontSize = 10.sp) }
+                    places.forEach { place ->
+                        JellyGlass(
+                            Modifier.fillMaxWidth(),
+                            radius = 16.dp,
+                            padding = 8.dp,
+                            onClick = {
+                                checkin = place.name.split(",").take(3).joinToString(", ").trim()
+                                checkinLat = place.lat
+                                checkinLng = place.lng
+                                checkinDialog = false
+                            }
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                JellyIcon(JellyIcons.Pin, size = 24.dp)
+                                Spacer(Modifier.width(6.dp))
+                                Text(place.name, Modifier.weight(1f), color = JellyInk, fontSize = 10.sp, maxLines = 2)
+                                Text("Select", color = JellyPurple, fontWeight = FontWeight.Black, fontSize = 9.sp)
+                            }
+                        }
+                    }
+                    if (checkin.isNotBlank()) {
+                        JellyButton("Remove check-in", Modifier.fillMaxWidth()) {
+                            checkin = ""
+                            checkinLat = null
+                            checkinLng = null
+                            checkinDialog = false
+                        }
+                    }
                 }
             },
-            dismissButton = { JellyButton("Cancel") { checkinDialog = false } }
+            confirmButton = {},
+            dismissButton = { JellyButton("Close") { checkinDialog = false } }
         )
     }
 
