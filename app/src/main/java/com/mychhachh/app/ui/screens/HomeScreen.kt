@@ -44,13 +44,17 @@ fun HomeScreen(
     onComment: (Post) -> Unit,
     onShare: (Post) -> Unit,
     onSave: (Post) -> Unit,
-    onCreatePost: (String, String, Uri?, Uri?) -> Unit,
+    onCreatePost: (String, String, String, String, Uri?, Uri?) -> Unit,
     onLoadMore: () -> Unit
 ) {
     var composing by remember { mutableStateOf("") }
     var privacy by remember { mutableStateOf("public") }
     var photoUri by remember { mutableStateOf<Uri?>(null) }
     var videoUri by remember { mutableStateOf<Uri?>(null) }
+    var feeling by remember { mutableStateOf("") }
+    var checkin by remember { mutableStateOf("") }
+    var feelingDialog by remember { mutableStateOf(false) }
+    var checkinDialog by remember { mutableStateOf(false) }
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) { photoUri = uri; videoUri = null }
     }
@@ -106,8 +110,16 @@ fun HomeScreen(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         ComposerTool(JellyIcons.Photo, if (photoUri != null) "Photo ✓" else "Photo") { photoPicker.launch("image/*") }
                         ComposerTool(JellyIcons.Video, if (videoUri != null) "Video ✓" else "Video") { videoPicker.launch("video/*") }
+                        ComposerTool(JellyIcons.Feeling, if (feeling.isNotBlank()) "Feeling ✓" else "Feeling") { feelingDialog = true }
+                        ComposerTool(JellyIcons.Pin, if (checkin.isNotBlank()) "Check in ✓" else "Check in") { checkinDialog = true }
                         ComposerTool(JellyIcons.Mention, "Mention") {
                             composing = if (composing.isBlank()) "@" else if (composing.endsWith(" ")) composing + "@" else composing + " @"
+                        }
+                    }
+                    if (feeling.isNotBlank() || checkin.isNotBlank()) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            if (feeling.isNotBlank()) Tag(JellyIcons.Feeling, feeling)
+                            if (checkin.isNotBlank()) Tag(JellyIcons.Pin, checkin)
                         }
                     }
                     if (photoUri != null || videoUri != null) {
@@ -132,8 +144,10 @@ fun HomeScreen(
                         Spacer(Modifier.weight(1f))
                         JellyButton("Post", primary = true, icon = JellyIcons.Send) {
                             if (composing.isNotBlank() || photoUri != null || videoUri != null) {
-                                onCreatePost(composing.trim(), privacy, photoUri, videoUri)
+                                onCreatePost(composing.trim(), privacy, feeling, checkin, photoUri, videoUri)
                                 composing = ""
+                                feeling = ""
+                                checkin = ""
                                 photoUri = null
                                 videoUri = null
                             }
@@ -159,6 +173,54 @@ fun HomeScreen(
             }
         }
     }
+    if (feelingDialog) {
+        var draft by remember { mutableStateOf(feeling) }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { feelingDialog = false },
+            title = { Text("Feeling", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    placeholder = { Text("Happy, excited, thankful…") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(18.dp)
+                )
+            },
+            confirmButton = {
+                JellyButton("Add", primary = true) {
+                    feeling = draft.trim()
+                    feelingDialog = false
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { feelingDialog = false } }
+        )
+    }
+
+    if (checkinDialog) {
+        var draft by remember { mutableStateOf(checkin) }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { checkinDialog = false },
+            title = { Text("Check in", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    placeholder = { Text("Village, mohalla, shop or place") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(18.dp)
+                )
+            },
+            confirmButton = {
+                JellyButton("Add", primary = true) {
+                    checkin = draft.trim()
+                    checkinDialog = false
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { checkinDialog = false } }
+        )
+    }
+
 }
 
 @Composable
