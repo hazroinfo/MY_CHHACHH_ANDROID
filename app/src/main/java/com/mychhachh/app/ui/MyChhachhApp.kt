@@ -370,8 +370,12 @@ fun MyChhachhApp() {
     }
 
     BackHandler(enabled = menuOpen || route != Screen.HOME) { goBack() }
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFFDFF7FF), Color(0xFFF5F0FF), Color(0xFFE7F8FF))))) {
-        Column(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(JellyBg, JellyBg2)))) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+        ) {
             if (route != Screen.AUTH) {
                 if (currentUser == null) GuestHeader(
                     brandName = features.optString("site_name", "My Chhachh"),
@@ -1220,7 +1224,7 @@ private fun AuthHeader(
                     surfaceOpacity = LiveJellyTheme.inputOpacity
                 ) {
                     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                        JellyIcon(JellyIcons.Search, size = 34.dp)
+                        JellyIcon(JellyIcons.Search, size = 30.dp, tint = LiveJellyTheme.muted)
                         Spacer(Modifier.width(7.dp))
                         Text(
                             "Search people, posts, places...",
@@ -1229,7 +1233,7 @@ private fun AuthHeader(
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
                         )
-                        JellyIcon(JellyIcons.Filter, size = 32.dp)
+                        JellyIcon(JellyIcons.Filter, size = 28.dp, tint = LiveJellyTheme.muted)
                     }
                 }
 
@@ -1342,10 +1346,27 @@ private fun NavItem(text: String, icon: Int, active: Boolean, modifier: Modifier
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        JellyIcon(icon, size = 37.dp, contentDescription = text)
+        JellyIcon(
+            icon,
+            size = 31.dp,
+            contentDescription = text,
+            tint = if (active) LiveJellyTheme.activeColor else LiveJellyTheme.iconColor
+        )
         Spacer(Modifier.height(2.dp))
-        Text(text, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 10.sp, maxLines = 1)
-        if (active) Box(Modifier.width(28.dp).height(4.dp).clip(RoundedCornerShape(999.dp)).background(JellyPink))
+        Text(
+            text,
+            color = if (active) LiveJellyTheme.activeColor else JellyInk,
+            fontWeight = FontWeight.Black,
+            fontSize = 10.sp,
+            maxLines = 1
+        )
+        if (active) Box(
+            Modifier
+                .width(28.dp)
+                .height(3.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(LiveJellyTheme.activeColor)
+        )
     }
 }
 
@@ -1370,9 +1391,16 @@ private fun SideMenu(
 ) {
     Box(Modifier.fillMaxSize().background(Color(0x66405070)).clickable { onClose() }) {
         JellyGlass(
-            Modifier.fillMaxHeight().widthIn(max = 330.dp).fillMaxWidth(.84f).clickable(enabled = false) {},
+            Modifier
+                .fillMaxHeight()
+                .widthIn(max = 300.dp)
+                .fillMaxWidth(.80f)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .clickable(enabled = false) {},
             radius = 0.dp,
-            padding = 14.dp
+            padding = 16.dp,
+            surfaceColor = LiveJellyTheme.cardColor,
+            surfaceOpacity = .99f
         ) {
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1392,20 +1420,30 @@ private fun SideMenu(
                     MenuRow("Admin Center", JellyIcons.Shield) { onOpen(Screen.ADMIN) }
                 }
                 Spacer(Modifier.weight(1f))
-                MenuRow("Logout", JellyIcons.Logout, onLogout)
+                MenuRow("Logout", JellyIcons.Logout, danger = true, onClick = onLogout)
             }
         }
     }
 }
 
 @Composable
-private fun MenuRow(text: String, icon: Int, onClick: () -> Unit) {
+private fun MenuRow(text: String, icon: Int, danger: Boolean = false, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(15.dp)).clickable { onClick() }.padding(horizontal = 8.dp, vertical = 8.dp),
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 8.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        JellyIcon(icon, size = 28.dp, contentDescription = text)
-        Spacer(Modifier.width(9.dp))
-        Text(text, color = JellyInk, fontWeight = FontWeight.ExtraBold, fontSize = 12.5f.sp)
+        val rowColor = if (danger) JellyDanger else LiveJellyTheme.iconColor
+        JellyIcon(icon, size = 26.dp, contentDescription = text, tint = rowColor)
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text,
+            color = if (danger) JellyDanger else JellyInk,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 13.sp
+        )
     }
 }
