@@ -35,6 +35,8 @@ private fun jsonObjects(a: JSONArray?): List<JSONObject> {
 fun AdminCenterScreen(
     state: JSONObject?,
     list: JSONObject?,
+    me: User,
+    traffic: JSONObject?,
     section: String,
     query: String,
     loading: Boolean,
@@ -43,7 +45,11 @@ fun AdminCenterScreen(
     onQuery: (String) -> Unit,
     onRefresh: () -> Unit,
     onAction: (String, Long, JSONObject) -> Unit,
-    onProfile: (Long) -> Unit
+    onProfile: (Long) -> Unit,
+    onTheme: () -> Unit,
+    onAnnouncements: () -> Unit,
+    onPublishAnnouncement: (String, String, Uri?, Uri?) -> Unit,
+    onPublishAdminPost: (String, Uri?, Uri?) -> Unit
 ) {
     val stats = state?.optJSONObject("stats") ?: JSONObject()
     val rows = jsonObjects(list?.optJSONArray("items"))
@@ -57,56 +63,114 @@ fun AdminCenterScreen(
     var verificationDecision by remember { mutableStateOf("approved") }
     var verificationNote by remember { mutableStateOf("") }
     var deleteUserTarget by remember { mutableStateOf<Long?>(null) }
-    var menuOnly by remember { mutableStateOf(true) }
+    val settings = state?.optJSONObject("settings") ?: JSONObject()
+    val notices = jsonObjects(state?.optJSONArray("notices"))
+    val packages = jsonObjects(state?.optJSONArray("feature_packages"))
+    val pagedSections = setOf("users", "verification", "posts", "shops", "votes", "reports", "deleted", "activity", "records")
 
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 24.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
-        item { PageTitle("Admin Center", "Live platform controls and activity", JellyIcons.Shield) }
-
         item {
-            JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        AdminStat("Users", stats.optInt("total_users"), Modifier.weight(1f))
-                        AdminStat("Online", stats.optInt("online_users"), Modifier.weight(1f))
-                        AdminStat("Shops", stats.optInt("total_shops"), Modifier.weight(1f))
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        AdminStat("Posts", stats.optInt("total_posts"), Modifier.weight(1f))
-                        AdminStat("Votes", stats.optInt("total_votes"), Modifier.weight(1f))
-                        AdminStat("Alerts", stats.optInt("admin_alerts"), Modifier.weight(1f))
+            PageTitle("Admin Center", "Website administration only. Theme Builder is separate.", JellyIcons.Shield)
+        }
+
+        if (stats.optInt("admin_alerts", 0) > 0) {
+            item {
+                JellyGlass(Modifier.fillMaxWidth(), padding = 11.dp) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        JellyIcon(JellyIcons.Bell, size = 32.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "${stats.optInt("admin_alerts")} items need admin attention",
+                                color = JellyInk,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                "${stats.optInt("pending_verifications")} verification · ${stats.optInt("open_reports")} reports",
+                                color = JellyMuted,
+                                fontSize = 9.sp
+                            )
+                        }
                     }
                 }
             }
         }
 
-        if (menuOnly) {
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 8.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AdminNavGroup(
+                        "People & content",
+                        listOf(
+                            AdminNavItem("overview", "Overview", JellyIcons.Eye),
+                            AdminNavItem("users", "Users", JellyIcons.People),
+                            AdminNavItem("verification", "Verification", JellyIcons.Shield, stats.optInt("pending_verifications")),
+                            AdminNavItem("posts", "Posts", JellyIcons.Photo),
+                            AdminNavItem("shops", "Shops", JellyIcons.Shop),
+                            AdminNavItem("votes", "Voting", JellyIcons.Vote)
+                        ),
+                        section,
+                        onSection
+                    )
+                    AdminNavGroup(
+                        "Safety & records",
+                        listOf(
+                            AdminNavItem("reports", "Reports", JellyIcons.Shield, stats.optInt("open_reports")),
+                            AdminNavItem("deleted", "Deleted", JellyIcons.Delete),
+                            AdminNavItem("activity", "Activity", JellyIcons.Clock),
+                            AdminNavItem("records", "Records", JellyIcons.User)
+                        ),
+                        section,
+                        onSection
+                    )
+                    AdminNavGroup(
+                        "Communication",
+                        listOf(AdminNavItem("notices", "Announcements", JellyIcons.Announcement)),
+                        section,
+                        onSection
+                    )
+                    AdminNavGroup(
+                        "System",
+                        listOf(
+                            AdminNavItem("features", "Features", JellyIcons.Gear),
+                            AdminNavItem("installer", "Installer", JellyIcons.Plus),
+                            AdminNavItem("ads", "Ad Manager", JellyIcons.Star),
+                            AdminNavItem("traffic", "Traffic", JellyIcons.Eye),
+                            AdminNavItem("social", "Login Setup", JellyIcons.People),
+                            AdminNavItem("theme", "Theme Builder", JellyIcons.Palette)
+                        ),
+                        if (section == "theme") "theme" else section
+                    ) { key ->
+                        if (key == "theme") onTheme() else onSection(key)
+                    }
+                    AdminNavGroup(
+                        "Account",
+                        listOf(AdminNavItem("adminprofile", "Admin Profile", JellyIcons.User)),
+                        section,
+                        onSection
+                    )
+                }
+            }
+        }
+
+        if (section == "overview") {
             item {
-                JellyGlass(Modifier.fillMaxWidth(), padding = 7.dp) {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        AdminMenuRow("User Management", "Users, permissions, blocks and warnings", JellyIcons.People) {
-                            onSection("users"); menuOnly = false
+                JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            AdminStat("Users", stats.optInt("total_users"), Modifier.weight(1f))
+                            AdminStat("Shops", stats.optInt("total_shops"), Modifier.weight(1f))
+                            AdminStat("Reports", stats.optInt("open_reports"), Modifier.weight(1f))
                         }
-                        AdminMenuRow("Verification Requests", "Review ID and selfie verification", JellyIcons.Check) {
-                            onSection("verification"); menuOnly = false
-                        }
-                        AdminMenuRow("Posts & Reports", "Moderate reports and platform posts", JellyIcons.Shield) {
-                            onSection("reports"); menuOnly = false
-                        }
-                        AdminMenuRow("Shop Management", "Manage shops and promotions", JellyIcons.Shop) {
-                            onSection("shops"); menuOnly = false
-                        }
-                        AdminMenuRow("Voting", "Manage and adjust voting records", JellyIcons.Vote) {
-                            onSection("votes"); menuOnly = false
-                        }
-                        AdminMenuRow("Activity Logs", "Review user and admin activity", JellyIcons.Clock) {
-                            onSection("activity"); menuOnly = false
-                        }
-                        AdminMenuRow("Posts", "Open all user and shop posts", JellyIcons.Photo) {
-                            onSection("posts"); menuOnly = false
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            AdminStat("Verification", stats.optInt("pending_verifications"), Modifier.weight(1f))
+                            AdminStat("Posts", stats.optInt("total_posts"), Modifier.weight(1f))
+                            AdminStat("Voting", stats.optInt("total_votes"), Modifier.weight(1f))
                         }
                     }
                 }
@@ -114,19 +178,8 @@ fun AdminCenterScreen(
         } else {
             item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    JellyButton("Back", icon = JellyIcons.Arrow) { menuOnly = true }
-                    Spacer(Modifier.width(8.dp))
                     Text(
-                        when (section) {
-                            "users" -> "User Management"
-                            "verification" -> "Verification Requests"
-                            "reports" -> "Reports"
-                            "posts" -> "Posts"
-                            "shops" -> "Shop Management"
-                            "votes" -> "Voting"
-                            "activity" -> "Activity Logs"
-                            else -> "Admin"
-                        },
+                        adminSectionTitle(section),
                         Modifier.weight(1f),
                         color = JellyInk,
                         fontWeight = FontWeight.Black,
@@ -135,22 +188,24 @@ fun AdminCenterScreen(
                     JellyButton("Refresh", icon = JellyIcons.Search, onClick = onRefresh)
                 }
             }
-            item {
-                OutlinedTextField(
-                    query,
-                    onQuery,
-                    Modifier.fillMaxWidth(),
-                    placeholder = { Text("Search this section…") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp)
-                )
+            if (section in pagedSections) {
+                item {
+                    OutlinedTextField(
+                        query,
+                        onQuery,
+                        Modifier.fillMaxWidth(),
+                        placeholder = { Text("Search this section…") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                }
             }
         }
 
-        if (!menuOnly && loading && rows.isEmpty()) item { LoadingBlock() }
-        if (!menuOnly) error?.let { item { ErrorCard(it, onRefresh) } }
+        if (loading && (section !in pagedSections || rows.isEmpty())) item { LoadingBlock() }
+        error?.let { item { ErrorCard(it, onRefresh) } }
 
-        if (!menuOnly) when (section) {
+        when (section) {
             "users" -> items(rows, key = { "admin-user-${it.optLong("id")}" }) { o ->
                 val u = runCatching { o.toUser() }.getOrNull()
                 if (u != null) {
