@@ -925,7 +925,19 @@ fun MyChhachhApp() {
                                 }
                             },
                             onMessage = { id -> open(Screen.CHAT, id) },
-                            onEdit = { open(Screen.SETTINGS) },
+                            onSettings = { open(Screen.SETTINGS) },
+                            onUpdateProfile = { fields ->
+                                scope.launch {
+                                    profileError = null
+                                    try {
+                                        val updated = withContext(Dispatchers.IO) { api.updateProfile(fields) }
+                                        me = updated
+                                        loadProfile(updated.id)
+                                    } catch (e: Exception) {
+                                        profileError = e.message ?: "Profile could not be saved."
+                                    }
+                                }
+                            },
                             onShop = { id -> open(Screen.SHOP_DETAIL, id) },
                             onBlock = { id ->
                                 scope.launch {
