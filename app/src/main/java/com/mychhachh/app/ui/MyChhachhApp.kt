@@ -1548,16 +1548,15 @@ private fun AuthHeader(
             surfaceOpacity = LiveJellyTheme.inputOpacity
         ) {
             Row(
-                Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp),
+                Modifier.fillMaxSize().padding(horizontal = 9.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
-                    Modifier.size(42.dp).clickable { onSearchSubmit(searchText) },
+                    Modifier.size(38.dp).clickable { onSearchSubmit(searchText) },
                     contentAlignment = Alignment.Center
                 ) {
                     JellyIcon(JellyIcons.Search, size = 32.dp, contentDescription = "Search")
                 }
-                Spacer(Modifier.width(5.dp))
                 BasicTextField(
                     value = searchText,
                     onValueChange = onSearchText,
@@ -1576,7 +1575,7 @@ private fun AuthHeader(
                                 Text(
                                     "Search people, posts, places…",
                                     color = Color(0xFF858EB1),
-                                    fontSize = 15.sp,
+                                    fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     maxLines = 1
                                 )
@@ -1587,7 +1586,7 @@ private fun AuthHeader(
                 )
                 if (route != Screen.PEOPLE) {
                     Box(
-                        Modifier.size(42.dp).clickable { onFilter() },
+                        Modifier.size(38.dp).clickable { onFilter() },
                         contentAlignment = Alignment.Center
                     ) {
                         JellyIcon(JellyIcons.Filter, size = 32.dp, contentDescription = "Filters")
@@ -1596,7 +1595,7 @@ private fun AuthHeader(
             }
         }
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             if (votingEnabled) {
                 QuickHeader("Voting", JellyIcons.Vote, Modifier.weight(1f), onVotes)
             } else {
@@ -1611,7 +1610,7 @@ private fun AuthHeader(
 
         JellyGlass(
             Modifier.fillMaxWidth(),
-            radius = LiveJellyTheme.navRadius.dp,
+            radius = 22.dp,
             padding = 0.dp,
             surfaceColor = LiveJellyTheme.navColor,
             surfaceOpacity = LiveJellyTheme.navOpacity
