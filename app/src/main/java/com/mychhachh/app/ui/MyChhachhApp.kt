@@ -68,6 +68,7 @@ fun MyChhachhApp() {
     var peopleLoading by remember { mutableStateOf(false) }
     var peopleError by remember { mutableStateOf<String?>(null) }
     var peopleQuery by remember { mutableStateOf("") }
+    var peopleNextBefore by remember { mutableLongStateOf(0L) }
 
     var shops by remember { mutableStateOf<List<Shop>>(emptyList()) }
     var shopsLoading by remember { mutableStateOf(false) }
@@ -169,8 +170,21 @@ fun MyChhachhApp() {
         }
     }
 
-    fun loadPeople() {
-        scope.launch { peopleLoading = true; peopleError = null; try { people = withContext(Dispatchers.IO) { api.users(peopleQuery).first } } catch (e: Exception) { peopleError = e.message }; peopleLoading = false }
+    fun loadPeople(reset: Boolean = true) {
+        if (peopleLoading) return
+        scope.launch {
+            peopleLoading = true
+            peopleError = null
+            try {
+                val before = if (reset) 0L else peopleNextBefore
+                val result = withContext(Dispatchers.IO) { api.users(peopleQuery, before, 24) }
+                people = if (reset) result.first else people + result.first
+                peopleNextBefore = result.second
+            } catch (e: Exception) {
+                peopleError = e.message
+            }
+            peopleLoading = false
+        }
     }
     fun loadShops() {
         scope.launch { shopsLoading = true; shopsError = null; try { shops = withContext(Dispatchers.IO) { api.shops(shopQuery) } } catch (e: Exception) { shopsError = e.message }; shopsLoading = false }
@@ -224,8 +238,13 @@ fun MyChhachhApp() {
         scope.launch {
             peopleLoading = true
             peopleError = null
-            try { people = withContext(Dispatchers.IO) { api.users(q).first } }
-            catch (e: Exception) { peopleError = e.message }
+            try {
+                val result = withContext(Dispatchers.IO) { api.users(q, 0L, 24) }
+                people = result.first
+                peopleNextBefore = result.second
+            } catch (e: Exception) {
+                peopleError = e.message
+            }
             peopleLoading = false
         }
     }
@@ -665,7 +684,26 @@ fun MyChhachhApp() {
                         },
                         onLoadMore = { loadFeed(false) }
                     )
-                    Screen.PEOPLE -> currentUser?.let { u -> PeopleScreen(u.id, people, peopleLoading, peopleError, peopleQuery, { peopleQuery = it }, ::loadPeople, { open(Screen.PROFILE, it) }, { id -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.followUser(id) } }; loadPeople() } }) }
+                    Screen.PEOPLE -> currentUser?.let { u ->
+                        PeopleScreen(
+                            currentUserId = u.id,
+                            users = people,
+                            loading = peopleLoading,
+                            error = peopleError,
+                            query = peopleQuery,
+                            onQuery = { peopleQuery = it },
+                            onSearch = { loadPeople(true) },
+                            onOpen = { open(Screen.PROFILE, it) },
+                            onFollow = { id ->
+                                scope.launch {
+                                    runCatching { withContext(Dispatchers.IO) { api.followUser(id) } }
+                                    loadPeople(true)
+                                }
+                            },
+                            hasMore = peopleNextBefore > 0L,
+                            onLoadMore = { loadPeople(false) }
+                        )
+                    }
                     Screen.SHOPS -> currentUser?.let { u ->
                         ShopsScreen(
                             meId = u.id,
