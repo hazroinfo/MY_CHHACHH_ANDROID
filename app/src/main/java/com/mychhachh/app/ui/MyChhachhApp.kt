@@ -118,6 +118,7 @@ fun MyChhachhApp() {
     var weatherError by remember { mutableStateOf<String?>(null) }
     var settingsBusy by remember { mutableStateOf(false) }
     var settingsError by remember { mutableStateOf<String?>(null) }
+    var blockedUsers by remember { mutableStateOf<List<User>>(emptyList()) }
 
     var commentPost by remember { mutableStateOf<Post?>(null) }
     var commentText by remember { mutableStateOf("") }
@@ -208,6 +209,12 @@ fun MyChhachhApp() {
     fun loadWeather() {
         scope.launch { weatherLoading = true; weatherError = null; try { weatherData = withContext(Dispatchers.IO) { api.weather() } } catch (e: Exception) { weatherError = e.message }; weatherLoading = false }
     }
+    fun loadBlockedUsers() {
+        scope.launch {
+            try { blockedUsers = withContext(Dispatchers.IO) { api.blockedUsers() } }
+            catch (e: Exception) { settingsError = e.message }
+        }
+    }
 
     fun sharePost(post: Post) {
         scope.launch { runCatching { withContext(Dispatchers.IO) { api.sharePost(post.id) } } }
@@ -246,6 +253,7 @@ fun MyChhachhApp() {
             Screen.CHAT -> if (me != null && selectedId > 0) loadChat(selectedId)
             Screen.GROUP_CHAT -> if (me != null && selectedId > 0) loadGroupChat(selectedId)
             Screen.WEATHER -> loadWeather()
+            Screen.SETTINGS -> if (me != null) loadBlockedUsers()
             else -> Unit
         }
     }
@@ -759,20 +767,87 @@ fun MyChhachhApp() {
                     Screen.MAP -> MapScreen(mapQuery, { mapQuery = it }, mapData, mapLoading, mapError, {
                         if (mapQuery.isNotBlank()) scope.launch { mapLoading = true; mapError = null; try { val d = withContext(Dispatchers.IO) { api.geocode(mapQuery) }; mapData = d.optJSONArray("items")?.optJSONObject(0) ?: d.optJSONObject("item") ?: d } catch (e: Exception) { mapError = e.message }; mapLoading = false }
                     })
-                    Screen.SETTINGS -> currentUser?.let { u -> SettingsScreen(u, settingsBusy, settingsError, { fields, avatarUri ->
-                        scope.launch {
-                            settingsBusy = true; settingsError = null
-                            try {
-                                val updatedFields = JSONObject(fields.toString())
-                                if (avatarUri != null) {
-                                    val avatar = withContext(Dispatchers.IO) { api.uploadUri(avatarUri, "profile-avatar") }
-                                    if (avatar.isNotBlank()) updatedFields.put("avatar", avatar)
+                    Screen.SETTINGS -> currentUser?.let { u ->
+                        SettingsScreen(
+                            me = u,
+                            busy = settingsBusy,
+                            error = settingsError,
+                            blockedUsers = blockedUsers,
+                            onSave = { fields, avatarUri ->
+                                scope.launch {
+                                    settingsBusy = true
+                                    settingsError = null
+                                    try {
+                                        val updatedFields = JSONObject(fields.toString())
+                                        if (avatarUri != null) {
+                                            val avatar = withContext(Dispatchers.IO) { api.uploadUri(avatarUri, "profile-avatar") }
+                                            if (avatar.isNotBlank()) updatedFields.put("avatar", avatar)
+                                        }
+                                        me = withContext(Dispatchers.IO) { api.updateProfile(updatedFields) }
+                                    } catch (e: Exception) {
+                                        settingsError = e.message
+                                    }
+                                    settingsBusy = false
                                 }
-                                me = withContext(Dispatchers.IO) { api.updateProfile(updatedFields) }
-                            } catch (e: Exception) { settingsError = e.message }
-                            settingsBusy = false
-                        }
-                    }, { scope.launch { withContext(Dispatchers.IO) { api.logout() }; me = null; route = Screen.HOME; selectedId = 0L; backStack.clear(); feedMode = "global"; loadFeed(true) } }) }
+                            },
+                            onPrivacy = { fields ->
+                                scope.launch {
+                                    settingsBusy = true
+                                    settingsError = null
+                                    try { me = withContext(Dispatchers.IO) { api.updatePrivacy(fields) } }
+                                    catch (e: Exception) { settingsError = e.message }
+                                    settingsBusy = false
+                                }
+                            },
+                            onLocation = { lat, lng ->
+                                scope.launch {
+                                    try { withContext(Dispatchers.IO) { api.updateLocation(lat, lng) } }
+                                    catch (e: Exception) { settingsError = e.message }
+                                }
+                            },
+                            onPassword = { current, next ->
+                                scope.launch {
+                                    try { withContext(Dispatchers.IO) { api.changePassword(current, next) } }
+                                    catch (e: Exception) { settingsError = e.message }
+                                }
+                            },
+                            onRefreshBlocked = ::loadBlockedUsers,
+                            onUnblock = { id ->
+                                scope.launch {
+                                    try { withContext(Dispatchers.IO) { api.toggleBlockUser(id) } }
+                                    catch (e: Exception) { settingsError = e.message }
+                                    loadBlockedUsers()
+                                }
+                            },
+                            onDeleteAccount = { password ->
+                                scope.launch {
+                                    try {
+                                        withContext(Dispatchers.IO) { api.deleteAccount(password) }
+                                        api.clearSession()
+                                        me = null
+                                        route = Screen.HOME
+                                        selectedId = 0L
+                                        backStack.clear()
+                                        feedMode = "global"
+                                        loadFeed(true)
+                                    } catch (e: Exception) {
+                                        settingsError = e.message
+                                    }
+                                }
+                            },
+                            onLogout = {
+                                scope.launch {
+                                    withContext(Dispatchers.IO) { api.logout() }
+                                    me = null
+                                    route = Screen.HOME
+                                    selectedId = 0L
+                                    backStack.clear()
+                                    feedMode = "global"
+                                    loadFeed(true)
+                                }
+                            }
+                        )
+                    }
                     Screen.WEATHER -> WeatherScreen(weatherData, weatherLoading, weatherError, ::loadWeather)
                 }
             }
