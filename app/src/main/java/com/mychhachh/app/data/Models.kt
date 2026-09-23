@@ -72,6 +72,16 @@ data class CheckinPlace(
     val lng: Double
 )
 
+data class Comment(
+    val id: Long,
+    val user: User,
+    val text: String,
+    val parentId: Long,
+    val likes: Int,
+    val liked: Boolean,
+    val createdAt: String
+)
+
 data class Shop(
     val id: Long,
     val userId: Long,
@@ -179,6 +189,20 @@ fun JSONObject.toShop(): Shop = Shop(
     locationUrl = optString("location_url", optString("map_url", optString("google_maps_url", optString("location_link", "")))),
     followers = optInt("followers", 0), products = optInt("products", 0), followed = optBoolean("following", optBoolean("followed", false))
 )
+
+
+fun JSONObject.toComment(): Comment {
+    val u = optJSONObject("user") ?: JSONObject().put("id", optLong("user_id")).put("name", "User")
+    return Comment(
+        id = optLong("id"),
+        user = u.toUser(),
+        text = optString("text", ""),
+        parentId = optLong("parent_id", 0L),
+        likes = optInt("likes", 0),
+        liked = optBoolean("liked", false),
+        createdAt = optString("created_at", "")
+    )
+}
 
 fun JSONArray.users(): List<User> = (0 until length()).mapNotNull { optJSONObject(it)?.toUser() }
 fun JSONArray.posts(): List<Post> = (0 until length()).mapNotNull { optJSONObject(it)?.toPost() }
