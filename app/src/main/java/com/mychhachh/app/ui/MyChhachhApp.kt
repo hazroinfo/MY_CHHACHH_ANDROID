@@ -245,7 +245,7 @@ fun MyChhachhApp() {
     }
 
     fun sharePost(post: Post) {
-        scope.launch { runCatching { withContext(Dispatchers.IO) { api.sharePost(post.id) } } }
+        scope.launch { runCatching { withContext(Dispatchers.IO) { api.sharePost(post) } } }
         val share = Intent(Intent.ACTION_SEND)
             .setType("text/plain")
             .putExtra(Intent.EXTRA_TEXT, "https://chhachh.pages.dev/post.php?id=${post.id}")
@@ -447,7 +447,7 @@ fun MyChhachhApp() {
                         onMode = { feedMode = it },
                         onLogin = { authMode = "login"; route = Screen.AUTH }, onRegister = { authMode = "register"; route = Screen.AUTH },
                         onProfile = { if (currentUser != null) open(Screen.PROFILE, it) else { authMode = "login"; route = Screen.AUTH } },
-                        onLike = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p.id) } }; loadFeed(true) } },
+                        onLike = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p) } }; loadFeed(true) } },
                         onComment = { p -> commentPost = p },
                         onShare = ::sharePost,
                         onSave = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadFeed(true) } },
@@ -725,7 +725,7 @@ fun MyChhachhApp() {
                             )
                         }
                     }
-                    Screen.SAVED -> SavedScreen(saved, savedLoading, savedError, { open(Screen.PROFILE, it) }, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p.id) } }; loadSaved() } }, { commentPost = it }, ::sharePost, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadSaved() } })
+                    Screen.SAVED -> SavedScreen(saved, savedLoading, savedError, { open(Screen.PROFILE, it) }, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p) } }; loadSaved() } }, { commentPost = it }, ::sharePost, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadSaved() } })
                     Screen.SEARCH -> SearchScreen(searchResult, searchLoading, searchError, searchQuery, { searchQuery = it }, ::doSearch, { if (currentUser != null) open(Screen.PROFILE, it) }, { if (currentUser != null) open(Screen.SHOP_DETAIL, it) })
                     Screen.PROFILE -> currentUser?.let { u ->
                         ProfileScreen(
@@ -757,7 +757,7 @@ fun MyChhachhApp() {
                                 }
                             },
                             onLoadRelations = { id, mode -> withContext(Dispatchers.IO) { api.relationUsers(id, mode) } },
-                            onLike = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p.id) } }; loadProfile(selectedId) } },
+                            onLike = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p) } }; loadProfile(selectedId) } },
                             onComment = { commentPost = it },
                             onShare = ::sharePost,
                             onSave = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadProfile(selectedId) } }
@@ -823,7 +823,7 @@ fun MyChhachhApp() {
                                     }
                                 }
                             },
-                            onLike = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p.id) } }; loadShop(selectedId) } },
+                            onLike = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p) } }; loadShop(selectedId) } },
                             onComment = { commentPost = it },
                             onShare = ::sharePost,
                             onSave = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadShop(selectedId) } }
@@ -1027,7 +1027,7 @@ fun MyChhachhApp() {
                     if (!commentBusy && commentText.isNotBlank()) scope.launch {
                         commentBusy = true
                         try {
-                            withContext(Dispatchers.IO) { api.addComment(post.id, commentText.trim()) }
+                            withContext(Dispatchers.IO) { api.addComment(post, commentText.trim()) }
                             commentText = ""; commentPost = null
                             when (route) {
                                 Screen.HOME -> loadFeed(true)
