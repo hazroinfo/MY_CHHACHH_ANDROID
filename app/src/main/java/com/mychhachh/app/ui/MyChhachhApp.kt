@@ -254,6 +254,27 @@ fun MyChhachhApp() {
         }
     }
 
+    fun applyLiveSettings(update: JSONObject) {
+        val merged = JSONObject(features.toString())
+        val updateKeys = update.keys()
+        while (updateKeys.hasNext()) {
+            val key = updateKeys.next()
+            if (!update.isNull(key)) merged.put(key, update.get(key))
+        }
+        features = merged
+        LiveJellyTheme.apply(merged)
+
+        val state = JSONObject((adminState ?: JSONObject()).toString())
+        val stateSettings = JSONObject((state.optJSONObject("settings") ?: JSONObject()).toString())
+        val stateKeys = update.keys()
+        while (stateKeys.hasNext()) {
+            val key = stateKeys.next()
+            if (!update.isNull(key)) stateSettings.put(key, update.get(key))
+        }
+        state.put("settings", stateSettings)
+        adminState = state
+    }
+
     fun sharePost(post: Post) {
         scope.launch { runCatching { withContext(Dispatchers.IO) { api.sharePost(post) } } }
         val share = Intent(Intent.ACTION_SEND)
@@ -1031,14 +1052,7 @@ fun MyChhachhApp() {
                                     themeError = null
                                     try {
                                         val d = withContext(Dispatchers.IO) { api.saveTheme(fields) }
-                                        val s = d.optJSONObject("settings")
-                                        if (s != null) {
-                                            features = s
-                                            LiveJellyTheme.apply(s)
-                                            val state = adminState ?: JSONObject()
-                                            state.put("settings", s)
-                                            adminState = JSONObject(state.toString())
-                                        }
+                                        d.optJSONObject("settings")?.let(::applyLiveSettings)
                                     } catch (e: Exception) {
                                         themeError = e.message ?: "Theme could not be saved."
                                     }
@@ -1057,14 +1071,7 @@ fun MyChhachhApp() {
                                                 if (icon.isNotBlank()) body.put("site_icon", icon)
                                             }
                                             val d = api.saveBranding(body)
-                                            val s = d.optJSONObject("settings")
-                                            if (s != null) {
-                                                features = s
-                                                LiveJellyTheme.apply(s)
-                                                val state = adminState ?: JSONObject()
-                                                state.put("settings", s)
-                                                adminState = JSONObject(state.toString())
-                                            }
+                                            d.optJSONObject("settings")?.let(::applyLiveSettings)
                                         }
                                     } catch (e: Exception) {
                                         themeError = e.message ?: "Branding could not be saved."
@@ -1138,7 +1145,13 @@ private fun GuestHeader(
     onRegister: () -> Unit
 ) {
     Box(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 9.dp)) {
-        JellyGlass(Modifier.fillMaxWidth(), radius = LiveJellyTheme.headerRadius.dp, padding = 10.dp) {
+        JellyGlass(
+            Modifier.fillMaxWidth(),
+            radius = LiveJellyTheme.headerRadius.dp,
+            padding = 10.dp,
+            surfaceColor = LiveJellyTheme.headerColor,
+            surfaceOpacity = LiveJellyTheme.headerOpacity
+        ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 HeaderBrand(brandName, brandTagline, brandIcon, Modifier.weight(1f), 28)
                 JellyButton("Login", onClick = onLogin)
@@ -1200,9 +1213,11 @@ private fun AuthHeader(
 
                 JellyGlass(
                     Modifier.fillMaxWidth().height(58.dp),
-                    radius = 999.dp,
+                    radius = LiveJellyTheme.inputRadius.dp,
                     padding = 8.dp,
-                    onClick = onSearch
+                    onClick = onSearch,
+                    surfaceColor = LiveJellyTheme.inputColor,
+                    surfaceOpacity = LiveJellyTheme.inputOpacity
                 ) {
                     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                         JellyIcon(JellyIcons.Search, size = 34.dp)
@@ -1227,7 +1242,13 @@ private fun AuthHeader(
                     }
                 }
 
-                JellyGlass(Modifier.fillMaxWidth(), radius = 25.dp, padding = 4.dp) {
+                JellyGlass(
+                    Modifier.fillMaxWidth(),
+                    radius = LiveJellyTheme.navRadius.dp,
+                    padding = 4.dp,
+                    surfaceColor = LiveJellyTheme.navColor,
+                    surfaceOpacity = LiveJellyTheme.navOpacity
+                ) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         NavItem("Home", JellyIcons.Home, route == Screen.HOME, Modifier.weight(1f)) { onNav(Screen.HOME) }
                         NavItem("People", JellyIcons.People, route == Screen.PEOPLE, Modifier.weight(1f)) { onNav(Screen.PEOPLE) }
@@ -1317,7 +1338,7 @@ private fun NavItem(text: String, icon: Int, active: Boolean, modifier: Modifier
             .height(LiveJellyTheme.navHeight.dp)
             .clip(RoundedCornerShape(20.dp))
             .clickable { onClick() }
-            .background(if (active) Color(0x66FFF0F9) else Color.Transparent),
+            .background(if (active) LiveJellyTheme.activeColor.copy(alpha = .12f) else Color.Transparent),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
