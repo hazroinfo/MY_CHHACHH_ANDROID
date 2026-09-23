@@ -121,6 +121,7 @@ fun MyChhachhApp() {
     var settingsError by remember { mutableStateOf<String?>(null) }
     var blockedUsers by remember { mutableStateOf<List<User>>(emptyList()) }
     var verificationState by remember { mutableStateOf<JSONObject?>(null) }
+    var supportTickets by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
 
     var adminState by remember { mutableStateOf<JSONObject?>(null) }
     var adminList by remember { mutableStateOf<JSONObject?>(null) }
@@ -235,6 +236,13 @@ fun MyChhachhApp() {
             catch (e: Exception) { settingsError = e.message }
         }
     }
+
+    fun loadSupport() {
+        scope.launch {
+            try { supportTickets = withContext(Dispatchers.IO) { api.supportTickets() } }
+            catch (e: Exception) { settingsError = e.message }
+        }
+    }
     fun loadAdmin(loadState: Boolean = true) {
         if (me?.isAdmin != true) return
         scope.launch {
@@ -344,6 +352,7 @@ fun MyChhachhApp() {
             Screen.SETTINGS -> if (me != null) {
                 loadBlockedUsers()
                 loadVerification()
+                loadSupport()
             }
             Screen.ADMIN -> if (me?.isAdmin == true) loadAdmin(true)
             Screen.THEME -> if (me?.isAdmin == true) loadAdmin(true)
@@ -933,6 +942,7 @@ fun MyChhachhApp() {
                             error = settingsError,
                             blockedUsers = blockedUsers,
                             verification = verificationState,
+                            supportTickets = supportTickets,
                             onSave = { fields, avatarUri ->
                                 scope.launch {
                                     settingsBusy = true
@@ -996,6 +1006,19 @@ fun MyChhachhApp() {
                                     try { withContext(Dispatchers.IO) { api.toggleBlockUser(id) } }
                                     catch (e: Exception) { settingsError = e.message }
                                     loadBlockedUsers()
+                                }
+                            },
+                            onSubmitSupport = { category, subject, message ->
+                                scope.launch {
+                                    settingsBusy = true
+                                    settingsError = null
+                                    try {
+                                        withContext(Dispatchers.IO) { api.submitSupport(category, subject, message) }
+                                        supportTickets = withContext(Dispatchers.IO) { api.supportTickets() }
+                                    } catch (e: Exception) {
+                                        settingsError = e.message ?: "Support request could not be sent."
+                                    }
+                                    settingsBusy = false
                                 }
                             },
                             onDeleteAccount = { password ->
