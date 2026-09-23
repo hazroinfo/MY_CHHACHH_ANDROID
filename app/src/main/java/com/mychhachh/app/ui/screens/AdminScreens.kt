@@ -521,36 +521,68 @@ fun NativeThemeScreen(
     onSaveTheme: (JSONObject) -> Unit,
     onSaveBrand: (JSONObject, Uri?) -> Unit
 ) {
-    var siteName by remember(settings.toString()) { mutableStateOf(settings.optString("site_name", "My Chhachh")) }
-    var tagline by remember(settings.toString()) { mutableStateOf(settings.optString("site_tagline", "Connect with people for information.")) }
-    var iconEnabled by remember(settings.toString()) { mutableStateOf(settings.optInt("site_icon_enabled", 1) != 0) }
-    var taglineEnabled by remember(settings.toString()) { mutableStateOf(settings.optInt("site_tagline_enabled", 1) != 0) }
+    val stateKey = settings.toString()
+    var siteName by remember(stateKey) { mutableStateOf(settings.optString("site_name", "My Chhachh")) }
+    var tagline by remember(stateKey) { mutableStateOf(settings.optString("site_tagline", "Connect with people for information.")) }
+    var iconEnabled by remember(stateKey) { mutableStateOf(settings.optInt("site_icon_enabled", 1) != 0) }
+    var taglineEnabled by remember(stateKey) { mutableStateOf(settings.optInt("site_tagline_enabled", 1) != 0) }
     var iconUri by remember { mutableStateOf<Uri?>(null) }
     val iconPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { if (it != null) iconUri = it }
 
-    var jelly by remember(settings.toString()) { mutableStateOf(settings.optInt("theme_jelly_enabled", 1) != 0) }
-    var weatherLive by remember(settings.toString()) { mutableStateOf(settings.optInt("theme_weather_live", 1) != 0) }
-    var motion by remember(settings.toString()) { mutableStateOf(settings.optInt("theme_motion", 1) != 0) }
-    var rainbow by remember(settings.toString()) { mutableStateOf(settings.optInt("theme_brand_rainbow", 1) != 0) }
-    var weatherChip by remember(settings.toString()) { mutableStateOf(settings.optInt("theme_weather_chip", 0) != 0) }
-    var cardOpacity by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_card_opacity", 68).toFloat()) }
-    var headerOpacity by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_header_opacity", 70).toFloat()) }
-    var blur by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_blur", 28).toFloat()) }
-    var cardRadius by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_card_radius", 30).toFloat()) }
-    var headerRadius by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_header_radius", 28).toFloat()) }
-    var navHeight by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_nav_height", 64).toFloat()) }
-    var buttonHeight by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_button_height", 44).toFloat()) }
-    var fontScale by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_font_scale", 100).toFloat()) }
-    var profileCover by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_profile_cover_height", 165).toFloat()) }
-    var profileAvatar by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_profile_avatar_size", 96).toFloat()) }
-    var shopCover by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_shop_cover_height", 185).toFloat()) }
-    var shopAvatar by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_shop_avatar_size", 96).toFloat()) }
-    var accent by remember(settings.toString()) { mutableStateOf(settings.optString("theme_accent", "#ff4fb8")) }
-    var accent2 by remember(settings.toString()) { mutableStateOf(settings.optString("theme_accent2", "#6fc8ff")) }
-    var textColor by remember(settings.toString()) { mutableStateOf(settings.optString("theme_text_color", "#0d1a34")) }
-    var mutedColor by remember(settings.toString()) { mutableStateOf(settings.optString("theme_muted_color", "#66738b")) }
-    var headerItems by remember(settings.toString()) { mutableStateOf(settings.optString("theme_header_items", "home,people,shop,map,messages")) }
-    var menuItems by remember(settings.toString()) { mutableStateOf(settings.optString("theme_menu_items", "votes,saved,settings,theme,admin,logout")) }
+    var themeEnabled by remember(stateKey) { mutableStateOf(settings.optInt("theme_enabled", 1) != 0) }
+    var jelly by remember(stateKey) { mutableStateOf(settings.optInt("theme_jelly_enabled", 1) != 0) }
+    var weatherLive by remember(stateKey) { mutableStateOf(settings.optInt("theme_weather_live", 1) != 0) }
+    var motion by remember(stateKey) { mutableStateOf(settings.optInt("theme_motion", 1) != 0) }
+    var rainbow by remember(stateKey) { mutableStateOf(settings.optInt("theme_brand_rainbow", 1) != 0) }
+    var weatherChip by remember(stateKey) { mutableStateOf(settings.optInt("theme_weather_chip", 0) != 0) }
+    var timeMode by remember(stateKey) { mutableStateOf(settings.optString("theme_time_mode", "auto").ifBlank { "auto" }) }
+    var manualWeather by remember(stateKey) { mutableStateOf(settings.optString("theme_manual_weather", "clear").ifBlank { "clear" }) }
+
+    var cardOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_card_opacity", 78).toFloat()) }
+    var headerOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_header_opacity", 78).toFloat()) }
+    var navOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_nav_opacity", 78).toFloat()) }
+    var inputOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_input_opacity", 90).toFloat()) }
+    var blur by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_blur", 28).toFloat()) }
+    var cardRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_card_radius", 30).toFloat()) }
+    var headerRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_header_radius", 28).toFloat()) }
+    var navRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_nav_radius", 25).toFloat()) }
+    var buttonRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_button_radius", 24).toFloat()) }
+    var inputRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_input_radius", 17).toFloat()) }
+    var shadow by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_shadow", 4).toFloat()) }
+    var fontScale by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_font_scale", 100).toFloat()) }
+    var pageWidth by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_page_width", 980).toFloat()) }
+    var cardPadding by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_card_padding", 13).toFloat()) }
+    var sectionGap by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_section_gap", 9).toFloat()) }
+    var navHeight by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_nav_height", 64).toFloat()) }
+    var buttonHeight by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_button_height", 44).toFloat()) }
+    var profileCover by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_profile_cover_height", 165).toFloat()) }
+    var profileAvatar by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_profile_avatar_size", 96).toFloat()) }
+    var shopCover by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_shop_cover_height", 185).toFloat()) }
+    var shopAvatar by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_shop_avatar_size", 96).toFloat()) }
+
+    var headerColor by remember(stateKey) { mutableStateOf(settings.optString("theme_header_color", "#ffffff")) }
+    var headerText by remember(stateKey) { mutableStateOf(settings.optString("theme_header_text", "#0d1a34")) }
+    var navColor by remember(stateKey) { mutableStateOf(settings.optString("theme_nav_color", "#ffffff")) }
+    var iconColor by remember(stateKey) { mutableStateOf(settings.optString("theme_icon_color", "#302467")) }
+    var activeColor by remember(stateKey) { mutableStateOf(settings.optString("theme_active_color", "#ff4faf")) }
+    var textColor by remember(stateKey) { mutableStateOf(settings.optString("theme_text_color", "#302467")) }
+    var mutedColor by remember(stateKey) { mutableStateOf(settings.optString("theme_muted_color", "#727b9e")) }
+    var cardColor by remember(stateKey) { mutableStateOf(settings.optString("theme_card_color", "#fdfeff")) }
+    var borderColor by remember(stateKey) { mutableStateOf(settings.optString("theme_border_color", "#dce6f6")) }
+    var buttonColor by remember(stateKey) { mutableStateOf(settings.optString("theme_button_color", "#ffffff")) }
+    var inputColor by remember(stateKey) { mutableStateOf(settings.optString("theme_input_color", "#ffffff")) }
+    var accent by remember(stateKey) { mutableStateOf(settings.optString("theme_accent", "#ff4faf")) }
+    var accent2 by remember(stateKey) { mutableStateOf(settings.optString("theme_accent2", "#9070f8")) }
+
+    var bgClear by remember(stateKey) { mutableStateOf(settings.optString("theme_bg_clear", "")) }
+    var bgClouds by remember(stateKey) { mutableStateOf(settings.optString("theme_bg_clouds", "")) }
+    var bgRain by remember(stateKey) { mutableStateOf(settings.optString("theme_bg_rain", "")) }
+    var bgFog by remember(stateKey) { mutableStateOf(settings.optString("theme_bg_fog", "")) }
+    var bgStorm by remember(stateKey) { mutableStateOf(settings.optString("theme_bg_storm", "")) }
+    var bgNight by remember(stateKey) { mutableStateOf(settings.optString("theme_bg_night", "")) }
+    var homeOrder by remember(stateKey) { mutableStateOf(settings.optString("theme_home_order", "notice,tabs,composer")) }
+    var headerItems by remember(stateKey) { mutableStateOf(settings.optString("theme_header_items", "home,people,shop,map,messages")) }
+    var menuItems by remember(stateKey) { mutableStateOf(settings.optString("theme_menu_items", "votes,saved,settings,theme,admin,logout")) }
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -575,8 +607,8 @@ fun NativeThemeScreen(
                             JSONObject()
                                 .put("site_name", siteName.trim())
                                 .put("site_tagline", tagline.trim())
-                                .put("site_icon_enabled", iconEnabled)
-                                .put("site_tagline_enabled", taglineEnabled)
+                                .put("site_icon_enabled", if (iconEnabled) 1 else 0)
+                                .put("site_tagline_enabled", if (taglineEnabled) 1 else 0)
                                 .put("site_icon_fit", "contain")
                                 .put("site_icon_header_blend", true)
                                 .put("site_icon_auto_transparent", true)
@@ -592,21 +624,53 @@ fun NativeThemeScreen(
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     SectionTitle("Theme Engine")
+                    ThemeSwitch("Enable theme", themeEnabled) { themeEnabled = it }
                     ThemeSwitch("Jelly theme", jelly) { jelly = it }
-                    ThemeSwitch("Live weather", weatherLive) { weatherLive = it }
-                    ThemeSwitch("Motion", motion) { motion = it }
-                    ThemeSwitch("Rainbow brand", rainbow) { rainbow = it }
+                    ThemeSwitch("Live Chhachh weather", weatherLive) { weatherLive = it }
+                    ThemeSwitch("Natural motion", motion) { motion = it }
+                    ThemeSwitch("Rainbow My Chhachh", rainbow) { rainbow = it }
                     ThemeSwitch("Weather chip", weatherChip) { weatherChip = it }
-                    ThemeSlider("Card opacity", cardOpacity, 35f..100f) { cardOpacity = it }
-                    ThemeSlider("Header opacity", headerOpacity, 35f..100f) { headerOpacity = it }
-                    ThemeSlider("Blur", blur, 0f..50f) { blur = it }
-                    ThemeSlider("Card radius", cardRadius, 0f..60f) { cardRadius = it }
-                    ThemeSlider("Header radius", headerRadius, 0f..60f) { headerRadius = it }
-                    ThemeSlider("Navigation height", navHeight, 44f..100f) { navHeight = it }
-                    ThemeSlider("Button height", buttonHeight, 32f..72f) { buttonHeight = it }
-                    ThemeSlider("Font scale", fontScale, 90f..115f) { fontScale = it }
-                    ThemeSlider("Profile cover", profileCover, 90f..300f) { profileCover = it }
-                    ThemeSlider("Profile avatar", profileAvatar, 56f..160f) { profileAvatar = it }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        JellyButton("Time: ${timeMode.uppercase()}", Modifier.weight(1f)) {
+                            timeMode = when (timeMode) { "auto" -> "day"; "day" -> "night"; else -> "auto" }
+                        }
+                        JellyButton("Weather: ${manualWeather.replaceFirstChar { it.uppercase() }}", Modifier.weight(1f)) {
+                            manualWeather = when (manualWeather) {
+                                "clear" -> "clouds"
+                                "clouds" -> "rain"
+                                "rain" -> "fog"
+                                "fog" -> "storm"
+                                else -> "clear"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    SectionTitle("Opacity, Shape & Layout")
+                    ThemeSlider("Card opacity", cardOpacity, 45f..100f) { cardOpacity = it }
+                    ThemeSlider("Header opacity", headerOpacity, 45f..100f) { headerOpacity = it }
+                    ThemeSlider("Navigation opacity", navOpacity, 45f..100f) { navOpacity = it }
+                    ThemeSlider("Input opacity", inputOpacity, 45f..100f) { inputOpacity = it }
+                    ThemeSlider("Glass blur", blur, 0f..40f) { blur = it }
+                    ThemeSlider("Card radius", cardRadius, 8f..36f) { cardRadius = it }
+                    ThemeSlider("Header radius", headerRadius, 0f..42f) { headerRadius = it }
+                    ThemeSlider("Navigation radius", navRadius, 6f..32f) { navRadius = it }
+                    ThemeSlider("Button radius", buttonRadius, 6f..32f) { buttonRadius = it }
+                    ThemeSlider("Input radius", inputRadius, 6f..40f) { inputRadius = it }
+                    ThemeSlider("Shadow", shadow, 0f..30f) { shadow = it }
+                    ThemeSlider("Font scale", fontScale, 85f..120f) { fontScale = it }
+                    ThemeSlider("Content width", pageWidth, 760f..1200f) { pageWidth = it }
+                    ThemeSlider("Card padding", cardPadding, 10f..32f) { cardPadding = it }
+                    ThemeSlider("Section spacing", sectionGap, 6f..30f) { sectionGap = it }
+                    ThemeSlider("Navigation height", navHeight, 48f..78f) { navHeight = it }
+                    ThemeSlider("Button height", buttonHeight, 34f..60f) { buttonHeight = it }
+                    ThemeSlider("Profile cover", profileCover, 120f..220f) { profileCover = it }
+                    ThemeSlider("Profile avatar", profileAvatar, 70f..120f) { profileAvatar = it }
                     ThemeSlider("Shop cover", shopCover, 100f..320f) { shopCover = it }
                     ThemeSlider("Shop avatar", shopAvatar, 60f..170f) { shopAvatar = it }
                 }
@@ -616,13 +680,46 @@ fun NativeThemeScreen(
         item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    SectionTitle("Colors & Layout")
-                    OutlinedTextField(accent, { accent = it.take(7) }, Modifier.fillMaxWidth(), label = { Text("Accent #RRGGBB") }, shape = RoundedCornerShape(17.dp), singleLine = true)
-                    OutlinedTextField(accent2, { accent2 = it.take(7) }, Modifier.fillMaxWidth(), label = { Text("Accent 2 #RRGGBB") }, shape = RoundedCornerShape(17.dp), singleLine = true)
-                    OutlinedTextField(textColor, { textColor = it.take(7) }, Modifier.fillMaxWidth(), label = { Text("Text #RRGGBB") }, shape = RoundedCornerShape(17.dp), singleLine = true)
-                    OutlinedTextField(mutedColor, { mutedColor = it.take(7) }, Modifier.fillMaxWidth(), label = { Text("Muted #RRGGBB") }, shape = RoundedCornerShape(17.dp), singleLine = true)
-                    OutlinedTextField(headerItems, { headerItems = it }, Modifier.fillMaxWidth(), label = { Text("Header items order") }, supportingText = { Text("home,people,shop,map,messages") }, shape = RoundedCornerShape(17.dp))
-                    OutlinedTextField(menuItems, { menuItems = it }, Modifier.fillMaxWidth(), label = { Text("Menu items order") }, supportingText = { Text("saved,settings,theme,admin,logout etc.") }, shape = RoundedCornerShape(17.dp))
+                    SectionTitle("Colors")
+                    ThemeColorField("Header", headerColor) { headerColor = it }
+                    ThemeColorField("Header text", headerText) { headerText = it }
+                    ThemeColorField("Navigation", navColor) { navColor = it }
+                    ThemeColorField("Icon", iconColor) { iconColor = it }
+                    ThemeColorField("Active icon", activeColor) { activeColor = it }
+                    ThemeColorField("Main text", textColor) { textColor = it }
+                    ThemeColorField("Muted text", mutedColor) { mutedColor = it }
+                    ThemeColorField("Card", cardColor) { cardColor = it }
+                    ThemeColorField("Borders", borderColor) { borderColor = it }
+                    ThemeColorField("Buttons", buttonColor) { buttonColor = it }
+                    ThemeColorField("Inputs", inputColor) { inputColor = it }
+                    ThemeColorField("Accent 1", accent) { accent = it }
+                    ThemeColorField("Accent 2", accent2) { accent2 = it }
+                }
+            }
+        }
+
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    SectionTitle("Weather Background URLs")
+                    Text("Leave blank to use the built-in natural backgrounds.", color = JellyMuted, fontSize = 9.5f.sp)
+                    ThemeTextField("Clear day", bgClear) { bgClear = it }
+                    ThemeTextField("Cloudy", bgClouds) { bgClouds = it }
+                    ThemeTextField("Rain", bgRain) { bgRain = it }
+                    ThemeTextField("Fog", bgFog) { bgFog = it }
+                    ThemeTextField("Storm", bgStorm) { bgStorm = it }
+                    ThemeTextField("Night", bgNight) { bgNight = it }
+                }
+            }
+        }
+
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    SectionTitle("Order & Visibility")
+                    OutlinedTextField(homeOrder, { homeOrder = it }, Modifier.fillMaxWidth(), label = { Text("Home order") }, supportingText = { Text("notice,tabs,composer") }, shape = RoundedCornerShape(17.dp))
+                    OutlinedTextField(headerItems, { headerItems = it }, Modifier.fillMaxWidth(), label = { Text("Native header items order") }, supportingText = { Text("home,people,shop,map,messages") }, shape = RoundedCornerShape(17.dp))
+                    OutlinedTextField(menuItems, { menuItems = it }, Modifier.fillMaxWidth(), label = { Text("Native menu items order") }, supportingText = { Text("votes,saved,settings,theme,admin,logout") }, shape = RoundedCornerShape(17.dp))
                 }
             }
         }
@@ -633,34 +730,85 @@ fun NativeThemeScreen(
             JellyButton("Save Theme", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Palette, enabled = !busy) {
                 onSaveTheme(
                     JSONObject()
-                        .put("theme_enabled", true)
-                        .put("theme_jelly_enabled", jelly)
-                        .put("theme_weather_live", weatherLive)
-                        .put("theme_motion", motion)
-                        .put("theme_brand_rainbow", rainbow)
-                        .put("theme_weather_chip", weatherChip)
+                        .put("theme_enabled", if (themeEnabled) 1 else 0)
+                        .put("theme_jelly_enabled", if (jelly) 1 else 0)
+                        .put("theme_weather_live", if (weatherLive) 1 else 0)
+                        .put("theme_motion", if (motion) 1 else 0)
+                        .put("theme_brand_rainbow", if (rainbow) 1 else 0)
+                        .put("theme_weather_chip", if (weatherChip) 1 else 0)
+                        .put("theme_time_mode", timeMode)
+                        .put("theme_manual_weather", manualWeather)
                         .put("theme_card_opacity", cardOpacity.roundToInt())
                         .put("theme_header_opacity", headerOpacity.roundToInt())
+                        .put("theme_nav_opacity", navOpacity.roundToInt())
+                        .put("theme_input_opacity", inputOpacity.roundToInt())
                         .put("theme_blur", blur.roundToInt())
                         .put("theme_card_radius", cardRadius.roundToInt())
                         .put("theme_header_radius", headerRadius.roundToInt())
+                        .put("theme_nav_radius", navRadius.roundToInt())
+                        .put("theme_button_radius", buttonRadius.roundToInt())
+                        .put("theme_input_radius", inputRadius.roundToInt())
+                        .put("theme_shadow", shadow.roundToInt())
+                        .put("theme_font_scale", fontScale.roundToInt())
+                        .put("theme_page_width", pageWidth.roundToInt())
+                        .put("theme_card_padding", cardPadding.roundToInt())
+                        .put("theme_section_gap", sectionGap.roundToInt())
                         .put("theme_nav_height", navHeight.roundToInt())
                         .put("theme_button_height", buttonHeight.roundToInt())
-                        .put("theme_font_scale", fontScale.roundToInt())
                         .put("theme_profile_cover_height", profileCover.roundToInt())
                         .put("theme_profile_avatar_size", profileAvatar.roundToInt())
                         .put("theme_shop_cover_height", shopCover.roundToInt())
                         .put("theme_shop_avatar_size", shopAvatar.roundToInt())
-                        .put("theme_accent", accent)
-                        .put("theme_accent2", accent2)
+                        .put("theme_header_color", headerColor)
+                        .put("theme_header_text", headerText)
+                        .put("theme_nav_color", navColor)
+                        .put("theme_icon_color", iconColor)
+                        .put("theme_active_color", activeColor)
                         .put("theme_text_color", textColor)
                         .put("theme_muted_color", mutedColor)
-                        .put("theme_header_items", headerItems)
-                        .put("theme_menu_items", menuItems)
+                        .put("theme_card_color", cardColor)
+                        .put("theme_border_color", borderColor)
+                        .put("theme_button_color", buttonColor)
+                        .put("theme_input_color", inputColor)
+                        .put("theme_accent", accent)
+                        .put("theme_accent2", accent2)
+                        .put("theme_bg_clear", bgClear.trim())
+                        .put("theme_bg_clouds", bgClouds.trim())
+                        .put("theme_bg_rain", bgRain.trim())
+                        .put("theme_bg_fog", bgFog.trim())
+                        .put("theme_bg_storm", bgStorm.trim())
+                        .put("theme_bg_night", bgNight.trim())
+                        .put("theme_home_order", homeOrder.trim())
+                        .put("theme_header_items", headerItems.trim())
+                        .put("theme_menu_items", menuItems.trim())
                 )
             }
         }
     }
+}
+
+@Composable
+private fun ThemeColorField(label: String, value: String, onValue: (String) -> Unit) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = { onValue(it.take(7)) },
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text("$label #RRGGBB") },
+        singleLine = true,
+        shape = RoundedCornerShape(17.dp)
+    )
+}
+
+@Composable
+private fun ThemeTextField(label: String, value: String, onValue: (String) -> Unit) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValue,
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text(label) },
+        singleLine = true,
+        shape = RoundedCornerShape(17.dp)
+    )
 }
 
 @Composable
