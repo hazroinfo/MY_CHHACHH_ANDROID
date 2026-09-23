@@ -57,6 +57,7 @@ fun AdminCenterScreen(
     var verificationDecision by remember { mutableStateOf("approved") }
     var verificationNote by remember { mutableStateOf("") }
     var deleteUserTarget by remember { mutableStateOf<Long?>(null) }
+    var menuOnly by remember { mutableStateOf(true) }
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -82,43 +83,74 @@ fun AdminCenterScreen(
             }
         }
 
-        item {
-            JellyGlass(Modifier.fillMaxWidth(), padding = 9.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        query,
-                        onQuery,
-                        Modifier.fillMaxWidth(),
-                        placeholder = { Text("Search this section…") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(18.dp)
-                    )
-                    val sections = listOf(
-                        "users" to "Users",
-                        "verification" to "Verification",
-                        "reports" to "Reports",
-                        "posts" to "Posts",
-                        "shops" to "Shops",
-                        "votes" to "Voting",
-                        "activity" to "Activity"
-                    )
-                    sections.chunked(2).forEach { row ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            row.forEach { (key, label) ->
-                                JellyPill(label, section == key, Modifier.weight(1f)) { onSection(key) }
-                            }
-                            repeat(2 - row.size) { Spacer(Modifier.weight(1f)) }
+        if (menuOnly) {
+            item {
+                JellyGlass(Modifier.fillMaxWidth(), padding = 7.dp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        AdminMenuRow("User Management", "Users, permissions, blocks and warnings", JellyIcons.People) {
+                            onSection("users"); menuOnly = false
+                        }
+                        AdminMenuRow("Verification Requests", "Review ID and selfie verification", JellyIcons.Check) {
+                            onSection("verification"); menuOnly = false
+                        }
+                        AdminMenuRow("Posts & Reports", "Moderate reports and platform posts", JellyIcons.Shield) {
+                            onSection("reports"); menuOnly = false
+                        }
+                        AdminMenuRow("Shop Management", "Manage shops and promotions", JellyIcons.Shop) {
+                            onSection("shops"); menuOnly = false
+                        }
+                        AdminMenuRow("Voting", "Manage and adjust voting records", JellyIcons.Vote) {
+                            onSection("votes"); menuOnly = false
+                        }
+                        AdminMenuRow("Activity Logs", "Review user and admin activity", JellyIcons.Clock) {
+                            onSection("activity"); menuOnly = false
+                        }
+                        AdminMenuRow("Posts", "Open all user and shop posts", JellyIcons.Photo) {
+                            onSection("posts"); menuOnly = false
                         }
                     }
-                    JellyButton("Refresh", Modifier.fillMaxWidth(), icon = JellyIcons.Search, onClick = onRefresh)
                 }
+            }
+        } else {
+            item {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    JellyButton("Back", icon = JellyIcons.Arrow) { menuOnly = true }
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        when (section) {
+                            "users" -> "User Management"
+                            "verification" -> "Verification Requests"
+                            "reports" -> "Reports"
+                            "posts" -> "Posts"
+                            "shops" -> "Shop Management"
+                            "votes" -> "Voting"
+                            "activity" -> "Activity Logs"
+                            else -> "Admin"
+                        },
+                        Modifier.weight(1f),
+                        color = JellyInk,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 17.sp
+                    )
+                    JellyButton("Refresh", icon = JellyIcons.Search, onClick = onRefresh)
+                }
+            }
+            item {
+                OutlinedTextField(
+                    query,
+                    onQuery,
+                    Modifier.fillMaxWidth(),
+                    placeholder = { Text("Search this section…") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp)
+                )
             }
         }
 
-        if (loading && rows.isEmpty()) item { LoadingBlock() }
-        error?.let { item { ErrorCard(it, onRefresh) } }
+        if (!menuOnly && loading && rows.isEmpty()) item { LoadingBlock() }
+        if (!menuOnly) error?.let { item { ErrorCard(it, onRefresh) } }
 
-        when (section) {
+        if (!menuOnly) when (section) {
             "users" -> items(rows, key = { "admin-user-${it.optLong("id")}" }) { o ->
                 val u = runCatching { o.toUser() }.getOrNull()
                 if (u != null) {
@@ -511,6 +543,33 @@ fun AdminCenterScreen(
             },
             dismissButton = { JellyButton("Cancel") { deleteUserTarget = null } }
         )
+    }
+}
+
+@Composable
+private fun AdminMenuRow(
+    title: String,
+    subtitle: String,
+    icon: Int,
+    onClick: () -> Unit
+) {
+    JellyGlass(
+        Modifier.fillMaxWidth(),
+        radius = 14.dp,
+        padding = 10.dp,
+        onClick = onClick,
+        surfaceColor = LiveJellyTheme.cardColor,
+        surfaceOpacity = .98f
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            JellyIcon(icon, size = 27.dp)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, color = JellyInk, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text(subtitle, color = JellyMuted, fontSize = 9.sp, maxLines = 1)
+            }
+            Text("›", color = JellyMuted, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
