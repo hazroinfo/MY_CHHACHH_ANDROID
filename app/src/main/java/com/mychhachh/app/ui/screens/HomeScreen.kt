@@ -96,22 +96,6 @@ fun HomeScreen(
             }
         }
 
-        if (user == null) {
-            item {
-                JellyGlass(Modifier.fillMaxWidth(), padding = 14.dp) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Join My Chhachh", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 15.sp)
-                            Text("Login to post, follow, comment and save.", color = JellyMuted, fontSize = 11.sp)
-                        }
-                        JellyButton("Login", onClick = onLogin)
-                        Spacer(Modifier.width(6.dp))
-                        JellyButton("Sign up", primary = true, onClick = onRegister)
-                    }
-                }
-            }
-        }
-
         if (user != null && mode != "shops") item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
