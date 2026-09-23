@@ -1540,12 +1540,26 @@ private fun AuthHeader(
             }
         }
 
-        JellyGlass(
-            Modifier.fillMaxWidth().height(54.dp),
-            radius = 999.dp,
-            padding = 0.dp,
-            surfaceColor = LiveJellyTheme.inputColor,
-            surfaceOpacity = LiveJellyTheme.inputOpacity
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(54.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            Color.White.copy(alpha = .92f),
+                            Color(0xFFE2F7FF).copy(alpha = .79f)
+                        )
+                    )
+                )
+                .border(1.5.dp, Color.White.copy(alpha = .98f), RoundedCornerShape(999.dp))
+                .shadow(
+                    5.dp,
+                    RoundedCornerShape(999.dp),
+                    ambientColor = Color(0x12517391),
+                    spotColor = Color(0x12517391)
+                )
         ) {
             Row(
                 Modifier.fillMaxSize().padding(horizontal = 9.dp, vertical = 6.dp),
@@ -1608,12 +1622,26 @@ private fun AuthHeader(
             }
         }
 
-        JellyGlass(
-            Modifier.fillMaxWidth(),
-            radius = 22.dp,
-            padding = 0.dp,
-            surfaceColor = LiveJellyTheme.navColor,
-            surfaceOpacity = LiveJellyTheme.navOpacity
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(22.dp))
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            Color.White.copy(alpha = .80f),
+                            Color(0xFFDDF6FF).copy(alpha = .67f),
+                            Color(0xFFF0E8FF).copy(alpha = .61f)
+                        )
+                    )
+                )
+                .border(2.dp, Color.White, RoundedCornerShape(22.dp))
+                .shadow(
+                    10.dp,
+                    RoundedCornerShape(22.dp),
+                    ambientColor = Color(0x1F2D5789),
+                    spotColor = Color(0x1F2D5789)
+                )
         ) {
             Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 5.dp)) {
                 navOrder.forEach { key ->
@@ -1688,7 +1716,42 @@ private fun routeTitle(route: Screen): String = when (route) {
 
 @Composable
 private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: () -> Unit) {
-    JellyGlass(modifier.height(76.dp), radius = 21.dp, padding = 0.dp, onClick = onClick) {
+    val shape = RoundedCornerShape(21.dp)
+    Box(
+        modifier
+            .height(76.dp)
+            .clip(shape)
+            .clickable { onClick() }
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        Color.White.copy(alpha = .82f),
+                        Color(0xFFDDF7FF).copy(alpha = .72f),
+                        Color(0xFFF8E1F8).copy(alpha = .62f)
+                    )
+                )
+            )
+            .border(2.dp, Color.White.copy(alpha = .96f), shape)
+            .shadow(
+                7.dp,
+                shape,
+                ambientColor = Color(0x1F2E588C),
+                spotColor = Color(0x1F2E588C)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth(.72f)
+                .fillMaxHeight(.26f)
+                .align(Alignment.TopCenter)
+                .clip(RoundedCornerShape(999.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.White.copy(alpha = .76f), Color.Transparent)
+                    )
+                )
+        )
         Column(
             Modifier.fillMaxSize().padding(horizontal = 3.dp, vertical = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
