@@ -289,7 +289,7 @@ fun MyChhachhApp() {
     LaunchedEffect(Unit) {
         try {
             val b = withContext(Dispatchers.IO) { api.bootstrap() }
-            me = b.user; unread = b.unread; announcementUnread = b.announcementUnread; features = b.features
+            me = b.user; unread = b.unread; announcementUnread = b.announcementUnread; features = b.features; LiveJellyTheme.apply(b.features)
         } catch (_: Exception) { me = null }
         booting = false
         loadFeed(true)
@@ -396,7 +396,7 @@ fun MyChhachhApp() {
                                     val u = withContext(Dispatchers.IO) { api.login(identity, password) }
                                     me = u
                                     val b = withContext(Dispatchers.IO) { api.bootstrap() }
-                                    unread = b.unread; announcementUnread = b.announcementUnread; features = b.features
+                                    unread = b.unread; announcementUnread = b.announcementUnread; features = b.features; LiveJellyTheme.apply(b.features)
                                     route = Screen.HOME; selectedId = 0L; backStack.clear(); feedMode = "global"; loadFeed(true)
                                 } catch (e: ApiException) {
                                     if (e.payload?.optBoolean("verify_required", false) == true) {
@@ -437,7 +437,7 @@ fun MyChhachhApp() {
                                     val u = withContext(Dispatchers.IO) { api.verifyEmail(pendingUserId, code) }
                                     me = u; pendingUserId = 0; pendingEmail = ""
                                     val b = withContext(Dispatchers.IO) { api.bootstrap() }
-                                    unread = b.unread; announcementUnread = b.announcementUnread; features = b.features
+                                    unread = b.unread; announcementUnread = b.announcementUnread; features = b.features; LiveJellyTheme.apply(b.features)
                                     route = Screen.HOME; selectedId = 0L; backStack.clear(); feedMode = "global"; loadFeed(true)
                                 } catch (e: Exception) { authError = e.message ?: "Verification failed." }
                                 authBusy = false
@@ -1034,6 +1034,7 @@ fun MyChhachhApp() {
                                         val s = d.optJSONObject("settings")
                                         if (s != null) {
                                             features = s
+                                            LiveJellyTheme.apply(s)
                                             val state = adminState ?: JSONObject()
                                             state.put("settings", s)
                                             adminState = JSONObject(state.toString())
@@ -1059,6 +1060,7 @@ fun MyChhachhApp() {
                                             val s = d.optJSONObject("settings")
                                             if (s != null) {
                                                 features = s
+                                                LiveJellyTheme.apply(s)
                                                 val state = adminState ?: JSONObject()
                                                 state.put("settings", s)
                                                 adminState = JSONObject(state.toString())
@@ -1136,7 +1138,7 @@ private fun GuestHeader(
     onRegister: () -> Unit
 ) {
     Box(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 9.dp)) {
-        JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp, padding = 10.dp) {
+        JellyGlass(Modifier.fillMaxWidth(), radius = LiveJellyTheme.headerRadius.dp, padding = 10.dp) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 HeaderBrand(brandName, brandTagline, brandIcon, Modifier.weight(1f), 28)
                 JellyButton("Login", onClick = onLogin)
@@ -1178,7 +1180,7 @@ private fun AuthHeader(
     }
 
     Box(Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 6.dp)) {
-        JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp, padding = 10.dp) {
+        JellyGlass(Modifier.fillMaxWidth(), radius = LiveJellyTheme.headerRadius.dp, padding = 10.dp) {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(Modifier.fillMaxWidth().height(56.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(
@@ -1314,7 +1316,7 @@ private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: ()
 private fun NavItem(text: String, icon: Int, active: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(
         modifier
-            .height(76.dp)
+            .height(LiveJellyTheme.navHeight.dp)
             .clip(RoundedCornerShape(20.dp))
             .clickable { onClick() }
             .background(if (active) Color(0x66FFF0F9) else Color.Transparent),
