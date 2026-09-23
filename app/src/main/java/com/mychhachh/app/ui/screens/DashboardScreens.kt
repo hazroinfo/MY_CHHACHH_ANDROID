@@ -854,7 +854,7 @@ fun WeatherScreen(data: JSONObject?, loading: Boolean, error: String?, onRefresh
                                 Text(weatherLabel(c.optInt("weather_code", -1)), color = JellyInk, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 Text("Feels like ${c.optDouble("apparent_temperature", 0.0).toInt()}°", color = JellyMuted, fontSize = 11.sp)
                             }
-                            JellyIcon(JellyIcons.Pin, size = 48.dp)
+                            JellyIcon(JellyIcons.Weather, size = 48.dp)
                         }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             WeatherMetric("Humidity", "${c.optInt("relative_humidity_2m", 0)}%", Modifier.weight(1f))
