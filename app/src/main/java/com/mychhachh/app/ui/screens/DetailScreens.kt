@@ -97,7 +97,7 @@ fun ProfileScreen(
                         Box(
                             Modifier
                                 .fillMaxWidth()
-                                .height(LiveJellyTheme.profileCoverHeight.dp)
+                                .height(minOf(LiveJellyTheme.profileCoverHeight, 145f).dp)
                                 .clip(
                                     RoundedCornerShape(
                                         topStart = LiveJellyTheme.cardRadius.dp,
@@ -174,11 +174,18 @@ fun ProfileScreen(
 
                         val followers = data.optLong("followers", -1)
                         val following = data.optLong("following_count", -1)
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp)
+                                .height(1.dp)
+                                .background(JellyMuted.copy(alpha = .12f))
+                        )
                         Row(
-                            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            StatChip(
+                            ProfileCount(
                                 if (followers >= 0) followers.toString() else "—",
                                 "Followers",
                                 Modifier.weight(1f)
@@ -192,7 +199,7 @@ fun ProfileScreen(
                                     }
                                 }
                             }
-                            StatChip(
+                            ProfileCount(
                                 if (following >= 0) following.toString() else "—",
                                 "Following",
                                 Modifier.weight(1f)
@@ -206,7 +213,7 @@ fun ProfileScreen(
                                     }
                                 }
                             }
-                            StatChip(posts.size.toString(), "Posts", Modifier.weight(1f))
+                            ProfileCount(posts.size.toString(), "Posts", Modifier.weight(1f))
                         }
 
                         if (u.bio.isNotBlank()) {
@@ -859,15 +866,53 @@ private fun StatChip(
 }
 
 @Composable
-private fun ShopInfoRow(label: String, value: String, icon: Int) {
-    Row(
-        Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+private fun ProfileCount(
+    number: String,
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
+) {
+    Column(
+        modifier
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
+            .padding(vertical = 3.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        JellyIcon(icon, size = 20.dp)
-        Spacer(Modifier.width(7.dp))
-        Text(label, color = JellyMuted, fontSize = 9.sp, modifier = Modifier.width(72.dp))
-        Text(value, color = JellyInk, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+        Text(number, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 13.sp)
+        Text(label, color = JellyMuted, fontSize = 8.5f.sp)
+    }
+}
+
+@Composable
+private fun ShopInfoCard(
+    label: String,
+    value: String,
+    icon: Int,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
+) {
+    JellyGlass(
+        modifier.then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
+        radius = 17.dp,
+        padding = 9.dp
+    ) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 52.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            JellyIcon(icon, size = 24.dp)
+            Spacer(Modifier.width(7.dp))
+            Column(Modifier.weight(1f)) {
+                Text(label, color = JellyMuted, fontSize = 8.5f.sp)
+                Text(
+                    value,
+                    color = JellyInk,
+                    fontSize = 10.5f.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 14.sp
+                )
+            }
+        }
     }
 }
 
@@ -1007,19 +1052,21 @@ fun ShopDetailScreen(
                                 }
                             }
 
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                StatChip(posts.size.toString(), "Products", Modifier.weight(1f))
-                                StatChip(followers.toString(), "Followers", Modifier.weight(1f)) {
-                                    if (own) {
-                                        followersOpen = true
-                                        shopScope.launch {
-                                            shopFollowersLoading = true
-                                            shopFollowers = runCatching { onLoadFollowers(s.id) }.getOrDefault(emptyList())
-                                            shopFollowersLoading = false
+                            JellyGlass(Modifier.fillMaxWidth(), radius = 20.dp, padding = 9.dp) {
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    ProfileCount(posts.size.toString(), "Products", Modifier.weight(1f))
+                                    ProfileCount(followers.toString(), "Followers", Modifier.weight(1f)) {
+                                        if (own) {
+                                            followersOpen = true
+                                            shopScope.launch {
+                                                shopFollowersLoading = true
+                                                shopFollowers = runCatching { onLoadFollowers(s.id) }.getOrDefault(emptyList())
+                                                shopFollowersLoading = false
+                                            }
                                         }
                                     }
+                                    ProfileCount(views.toString(), "Views", Modifier.weight(1f))
                                 }
-                                StatChip(views.toString(), "Views", Modifier.weight(1f))
                             }
 
                             val businessRows = listOf(
@@ -1047,18 +1094,27 @@ fun ShopDetailScreen(
                                             }
                                             JellyIcon(JellyIcons.Info, size = 24.dp)
                                         }
-                                        businessRows.forEach { (label, value, icon) ->
-                                            ShopInfoRow(label, value, icon)
+                                        businessRows.chunked(2).forEach { row ->
+                                            Row(
+                                                Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                                            ) {
+                                                row.forEach { (label, value, icon) ->
+                                                    ShopInfoCard(label, value, icon, Modifier.weight(1f))
+                                                }
+                                                if (row.size == 1) Spacer(Modifier.weight(1f))
+                                            }
                                         }
                                         if (s.locationUrl.isNotBlank()) {
-                                            Box(
-                                                Modifier.fillMaxWidth().clickable {
-                                                    runCatching {
-                                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(s.locationUrl)))
-                                                    }
-                                                }
+                                            ShopInfoCard(
+                                                "Map location",
+                                                "Open in Google Maps",
+                                                JellyIcons.Map,
+                                                Modifier.fillMaxWidth()
                                             ) {
-                                                ShopInfoRow("Map location", "Open in Google Maps", JellyIcons.Map)
+                                                runCatching {
+                                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(s.locationUrl)))
+                                                }
                                             }
                                         }
                                         if (s.description.isNotBlank()) {
