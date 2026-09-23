@@ -165,15 +165,34 @@ class ApiClient(private val context: Context) {
         val a = d.optJSONArray("items") ?: JSONArray()
         val items = (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { o -> Message(
             id=o.optLong("id"), senderId=o.optLong("user_id", o.optLong("sender_id")), receiverId=o.optLong("target_id", o.optLong("receiver_id")),
-            text=o.optString("text", ""), photo=mediaUrl(o.optString("photo", "")), audio=mediaUrl(o.optString("audio", "")), createdAt=o.optString("created_at", "")
+            text=o.optString("text", o.optString("message", "")),
+            photo=mediaUrl(o.optString("photo", "")),
+            audio=mediaUrl(o.optString("audio", "")),
+            createdAt=o.optString("created_at", ""),
+            locationLat=o.optString("location_lat", "").toDoubleOrNull(),
+            locationLng=o.optString("location_lng", "").toDoubleOrNull()
         )}}
         return u to items
     }
 
-    fun sendMessage(to: Long, text: String): Message {
-        val d = post("/api/messages", JSONObject().put("receiver_id", to).put("text", text))
-        val o = d.optJSONObject("message") ?: JSONObject()
-        return Message(o.optLong("id"), o.optLong("user_id", o.optLong("sender_id")), o.optLong("target_id", to), o.optString("text", text), mediaUrl(o.optString("photo", "")), mediaUrl(o.optString("audio", "")), o.optString("created_at", ""))
+    fun sendMessage(to: Long, text: String, photo: String = "", locationLat: Double? = null, locationLng: Double? = null): Message {
+        val body = JSONObject().put("receiver_id", to).put("message", text).put("text", text).put("photo", photo)
+        if (locationLat != null && locationLng != null) {
+            body.put("location_lat", locationLat).put("location_lng", locationLng)
+        }
+        val d = post("/api/messages", body)
+        val o = d.optJSONObject("message") ?: d.optJSONObject("item") ?: JSONObject()
+        return Message(
+            id=o.optLong("id"),
+            senderId=o.optLong("user_id", o.optLong("sender_id")),
+            receiverId=o.optLong("target_id", o.optLong("receiver_id", to)),
+            text=o.optString("text", o.optString("message", text)),
+            photo=mediaUrl(o.optString("photo", photo)),
+            audio=mediaUrl(o.optString("audio", "")),
+            createdAt=o.optString("created_at", ""),
+            locationLat=o.optString("location_lat", "").toDoubleOrNull() ?: locationLat,
+            locationLng=o.optString("location_lng", "").toDoubleOrNull() ?: locationLng
+        )
     }
 
     fun notifications(): Pair<List<Notice>, Int> {
