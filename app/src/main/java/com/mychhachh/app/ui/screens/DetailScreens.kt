@@ -910,7 +910,7 @@ fun SettingsScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionTitle("Account")
                     JellyButton("Logout", Modifier.fillMaxWidth(), icon = JellyIcons.Logout, onClick = onLogout)
-                    JellyButton("Delete Account", Modifier.fillMaxWidth(), icon = JellyIcons.Delete) { deleteOpen = true }
+                    JellyButton("Delete Account", Modifier.fillMaxWidth(), icon = JellyIcons.Delete, danger = true) { deleteOpen = true }
                 }
             }
         }
@@ -977,7 +977,7 @@ fun SettingsScreen(
                 }
             },
             confirmButton = {
-                JellyButton("Delete Account", primary = true, icon = JellyIcons.Delete, enabled = password.isNotBlank()) {
+                JellyButton("Delete Account", icon = JellyIcons.Delete, enabled = password.isNotBlank(), danger = true) {
                     onDeleteAccount(password)
                     deleteOpen = false
                 }
