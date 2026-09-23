@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -56,13 +57,15 @@ fun JellyIcon(
     @DrawableRes icon: Int,
     modifier: Modifier = Modifier,
     size: Dp = 32.dp,
-    contentDescription: String? = null
+    contentDescription: String? = null,
+    tint: Color? = null
 ) {
     androidx.compose.foundation.Image(
         painter = painterResource(icon),
         contentDescription = contentDescription,
         modifier = modifier.size(size),
-        contentScale = ContentScale.Fit
+        contentScale = ContentScale.Fit,
+        colorFilter = ColorFilter.tint(tint ?: LiveJellyTheme.iconColor)
     )
 }
 
@@ -81,18 +84,10 @@ fun JellyGlass(
     val opacity = surfaceOpacity ?: LiveJellyTheme.cardOpacity
     val base = surfaceColor ?: LiveJellyTheme.cardColor
     var m = modifier
-        .shadow(LiveJellyTheme.shadow.dp, shape, ambientColor = Color(0x124E5B90), spotColor = Color(0x164E5B90))
+        .shadow(LiveJellyTheme.shadow.dp, shape, ambientColor = Color(0x12203355), spotColor = Color(0x14203355))
         .clip(shape)
-        .background(
-            Brush.linearGradient(
-                listOf(
-                    base.copy(alpha = opacity),
-                    base.copy(alpha = (opacity - .05f).coerceAtLeast(.30f)),
-                    LiveJellyTheme.accent2.copy(alpha = .05f)
-                )
-            )
-        )
-        .border(1.dp, LiveJellyTheme.borderColor.copy(alpha = .95f), shape)
+        .background(base.copy(alpha = opacity))
+        .border(1.dp, LiveJellyTheme.borderColor.copy(alpha = .98f), shape)
     if (onClick != null) m = m.clickable { onClick() }
     Box(m.padding(padding), content = content)
 }
@@ -105,10 +100,10 @@ fun JellyPill(text: String, selected: Boolean, modifier: Modifier = Modifier, on
             .clip(shape)
             .clickable { onClick() }
             .background(
-                if (selected) Brush.horizontalGradient(listOf(LiveJellyTheme.accent, LiveJellyTheme.accent2))
-                else Brush.linearGradient(listOf(LiveJellyTheme.buttonColor, LiveJellyTheme.buttonColor.copy(alpha = .92f)))
+                if (selected) Brush.horizontalGradient(listOf(LiveJellyTheme.buttonColor, LiveJellyTheme.accent, LiveJellyTheme.accent2))
+                else Brush.linearGradient(listOf(LiveJellyTheme.cardColor, LiveJellyTheme.cardColor))
             )
-            .border(1.dp, if (selected) Color.White.copy(.85f) else LiveJellyTheme.borderColor, shape)
+            .border(1.dp, if (selected) LiveJellyTheme.buttonColor else LiveJellyTheme.borderColor, shape)
             .height(48.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -130,6 +125,7 @@ fun JellyButton(
     primary: Boolean = false,
     @DrawableRes icon: Int? = null,
     enabled: Boolean = true,
+    danger: Boolean = false,
     onClick: () -> Unit
 ) {
     val shape = RoundedCornerShape(LiveJellyTheme.buttonRadius.dp)
@@ -139,22 +135,55 @@ fun JellyButton(
             .clip(shape)
             .clickable(enabled = enabled) { onClick() }
             .background(
-                if (primary) Brush.horizontalGradient(listOf(LiveJellyTheme.accent.copy(alpha = alpha), LiveJellyTheme.accent2.copy(alpha = alpha)))
-                else Brush.linearGradient(listOf(LiveJellyTheme.buttonColor.copy(alpha = alpha), LiveJellyTheme.buttonColor.copy(alpha = alpha * .92f)))
+                if (primary) Brush.horizontalGradient(
+                    listOf(
+                        LiveJellyTheme.buttonColor.copy(alpha = alpha),
+                        LiveJellyTheme.accent.copy(alpha = alpha),
+                        LiveJellyTheme.accent2.copy(alpha = alpha)
+                    )
+                )
+                else Brush.linearGradient(
+                    listOf(
+                        LiveJellyTheme.cardColor.copy(alpha = alpha),
+                        LiveJellyTheme.cardColor.copy(alpha = alpha)
+                    )
+                )
             )
-            .border(1.dp, if (enabled) LiveJellyTheme.borderColor else LiveJellyTheme.borderColor.copy(alpha = .55f), shape)
+            .border(
+                1.dp,
+                when {
+                    !enabled -> LiveJellyTheme.borderColor.copy(alpha = .55f)
+                    primary -> LiveJellyTheme.buttonColor
+                    else -> LiveJellyTheme.borderColor
+                },
+                shape
+            )
             .heightIn(min = LiveJellyTheme.buttonHeight.dp)
             .padding(horizontal = 13.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
         icon?.let {
-            JellyIcon(it, size = 22.dp)
+            JellyIcon(
+                it,
+                size = 22.dp,
+                tint = when {
+                    primary -> Color.White
+                    danger -> JellyDanger
+                    else -> LiveJellyTheme.iconColor
+                }
+            )
             Spacer(Modifier.width(5.dp))
         }
         Text(
             text,
-            color = (if (primary) Color.White else JellyInk).copy(alpha = alpha),
+            color = (
+                when {
+                    primary -> Color.White
+                    danger -> JellyDanger
+                    else -> JellyInk
+                }
+            ).copy(alpha = alpha),
             fontWeight = FontWeight.ExtraBold,
             fontSize = (11f * LiveJellyTheme.fontScale).sp,
             maxLines = 1,
