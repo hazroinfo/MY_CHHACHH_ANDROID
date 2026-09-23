@@ -979,7 +979,36 @@ fun MyChhachhApp() {
                         }
                     }
                     Screen.SAVED -> SavedScreen(saved, savedLoading, savedError, { open(Screen.PROFILE, it) }, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p) } }; loadSaved() } }, { openDiscussion(it) }, ::sharePost, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadSaved() } })
-                    Screen.SEARCH -> SearchScreen(searchResult, searchLoading, searchError, searchQuery, { searchQuery = it }, { doSearch() }, { if (currentUser != null) open(Screen.PROFILE, it) }, { if (currentUser != null) open(Screen.SHOP_DETAIL, it) })
+                    Screen.SEARCH -> SearchScreen(
+                        result = searchResult,
+                        loading = searchLoading,
+                        error = searchError,
+                        query = searchQuery,
+                        loggedIn = currentUser != null,
+                        onQuery = { searchQuery = it },
+                        onSearch = { doSearch() },
+                        onLogin = { authMode = "login"; route = Screen.AUTH },
+                        onProfile = { if (currentUser != null) open(Screen.PROFILE, it) else { authMode = "login"; route = Screen.AUTH } },
+                        onShop = { if (currentUser != null) open(Screen.SHOP_DETAIL, it) else { authMode = "login"; route = Screen.AUTH } },
+                        onLike = { p ->
+                            if (currentUser == null) {
+                                authMode = "login"; route = Screen.AUTH
+                            } else scope.launch {
+                                runCatching { withContext(Dispatchers.IO) { api.likePost(p) } }
+                                doSearch(searchQuery)
+                            }
+                        },
+                        onComment = { p -> if (currentUser != null) openDiscussion(p) else { authMode = "login"; route = Screen.AUTH } },
+                        onShare = ::sharePost,
+                        onSave = { p ->
+                            if (currentUser == null) {
+                                authMode = "login"; route = Screen.AUTH
+                            } else scope.launch {
+                                runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }
+                                doSearch(searchQuery)
+                            }
+                        }
+                    )
                     Screen.PROFILE -> currentUser?.let { u ->
                         ProfileScreen(
                             data = profileData,
