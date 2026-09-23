@@ -93,56 +93,98 @@ fun ProfileScreen(
         error?.let { item { ErrorCard(it) } }
         user?.let { u ->
             item {
-                JellyGlass(Modifier.fillMaxWidth()) {
+                JellyGlass(Modifier.fillMaxWidth(), padding = 0.dp) {
                     Column(Modifier.fillMaxWidth()) {
                         Box(
                             Modifier
                                 .fillMaxWidth()
-                                .height(LiveJellyTheme.profileCoverHeight.coerceAtMost(165f).dp)
-                                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                                .background(Brush.horizontalGradient(listOf(Color(0xFFE3F8FF), Color(0xFFF0E8FF))))
+                                .height(LiveJellyTheme.profileCoverHeight.dp)
+                                .clip(
+                                    RoundedCornerShape(
+                                        topStart = LiveJellyTheme.cardRadius.dp,
+                                        topEnd = LiveJellyTheme.cardRadius.dp,
+                                        bottomStart = 18.dp,
+                                        bottomEnd = 18.dp
+                                    )
+                                )
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(
+                                            Color(0x5955D8FF),
+                                            Color(0x4D9A78FF),
+                                            Color(0x45FF78C4)
+                                        )
+                                    )
+                                )
                         ) {
                             if (!u.cover.isNullOrBlank()) {
-                                AsyncImage(u.cover, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                                AsyncImage(
+                                    u.cover,
+                                    null,
+                                    Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .fillMaxHeight(.54f)
+                                    .align(Alignment.BottomCenter)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            listOf(Color.Transparent, Color(0x33112347))
+                                        )
+                                    )
+                            )
+                        }
+
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Box(
+                                Modifier
+                                    .width(LiveJellyTheme.profileAvatarSize.coerceAtMost(90f).dp)
+                                    .offset(y = (-44).dp)
+                            ) {
+                                Avatar(u, LiveJellyTheme.profileAvatarSize.coerceAtMost(90f).dp)
+                            }
+                            Spacer(Modifier.width(9.dp))
+                            Column(
+                                Modifier.weight(1f).padding(top = 9.dp)
+                            ) {
+                                UserName(u, 23)
+                                if (u.username.isNotBlank()) {
+                                    Text(
+                                        "@${u.username}",
+                                        color = JellyMuted,
+                                        fontSize = 11.sp,
+                                        modifier = Modifier.padding(top = 3.dp)
+                                    )
+                                }
+                                Text(
+                                    if (data.optBoolean("online", false)) "Online now"
+                                    else data.optString("last_seen", "").takeIf { it.isNotBlank() }?.let { "Last seen: ${shortTime(it)}" }
+                                        ?: "Last seen: Not available",
+                                    color = JellyMuted,
+                                    fontSize = 9.5f.sp,
+                                    modifier = Modifier.padding(top = 3.dp)
+                                )
                             }
                         }
 
-                        Column(
-                            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        val followers = data.optLong("followers", -1)
+                        val following = data.optLong("following_count", -1)
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Row(
-                                Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.Top
+                            StatChip(
+                                if (followers >= 0) followers.toString() else "—",
+                                "Followers",
+                                Modifier.weight(1f)
                             ) {
-                                Avatar(u, LiveJellyTheme.profileAvatarSize.coerceAtMost(90f).dp)
-                                Spacer(Modifier.width(10.dp))
-                                Column(Modifier.weight(1f).padding(top = 7.dp)) {
-                                    UserName(u, 20)
-                                    if (u.username.isNotBlank()) {
-                                        Text("@${u.username}", color = JellyMuted, fontSize = 11.sp)
-                                    }
-                                    Text(
-                                        if (data?.optBoolean("online", false) == true) "Online now"
-                                        else data?.optString("last_seen", "")?.takeIf { it.isNotBlank() }?.let { "Last seen: ${shortTime(it)}" } ?: "Last seen: Not available",
-                                        color = JellyMuted,
-                                        fontSize = 9.5f.sp,
-                                        modifier = Modifier.padding(top = 2.dp)
-                                    )
-                                }
-                            }
-
-                            val followers = data?.optLong("followers", -1) ?: -1
-                            val following = data?.optLong("following_count", -1) ?: -1
-                            Row(
-                                Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(7.dp)
-                            ) {
-                                StatChip(
-                                    if (followers >= 0) followers.toString() else "—",
-                                    "Followers",
-                                    Modifier.weight(1f)
-                                ) {
+                                if (followers >= 0) {
                                     relationMode = "followers"
                                     scope.launch {
                                         relationLoading = true
@@ -150,11 +192,13 @@ fun ProfileScreen(
                                         relationLoading = false
                                     }
                                 }
-                                StatChip(
-                                    if (following >= 0) following.toString() else "—",
-                                    "Following",
-                                    Modifier.weight(1f)
-                                ) {
+                            }
+                            StatChip(
+                                if (following >= 0) following.toString() else "—",
+                                "Following",
+                                Modifier.weight(1f)
+                            ) {
+                                if (following >= 0) {
                                     relationMode = "following"
                                     scope.launch {
                                         relationLoading = true
@@ -162,140 +206,192 @@ fun ProfileScreen(
                                         relationLoading = false
                                     }
                                 }
-                                StatChip(posts.size.toString(), "Posts", Modifier.weight(1f))
                             }
+                            StatChip(posts.size.toString(), "Posts", Modifier.weight(1f))
+                        }
 
-                            if (u.bio.isNotBlank()) {
+                        if (u.bio.isNotBlank()) {
+                            Text(
+                                u.bio,
+                                color = JellyInk,
+                                fontSize = 12.5f.sp,
+                                lineHeight = 18.sp,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                            )
+                        }
+
+                        val socials = listOf(
+                            "Facebook" to u.socialFacebook,
+                            "Instagram" to u.socialInstagram,
+                            "YouTube" to u.socialYoutube,
+                            "Website" to u.socialWebsite
+                        ).filter { it.second.isNotBlank() }
+                        if (socials.isNotEmpty()) {
+                            socials.chunked(2).forEach { row ->
+                                Row(
+                                    Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 3.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                                ) {
+                                    row.forEach { (label, url) ->
+                                        JellyButton(label, Modifier.weight(1f)) { openUrl(url) }
+                                    }
+                                    if (row.size == 1) Spacer(Modifier.weight(1f))
+                                }
+                            }
+                        }
+
+                        val aboutItems = listOf(
+                            Triple("Current city", u.city, JellyIcons.City),
+                            Triple("Village", u.village, JellyIcons.Village),
+                            Triple("Mohalla / Area", u.area, JellyIcons.Mohalla),
+                            Triple("From", u.hometown, JellyIcons.Hometown),
+                            Triple("Gender", u.gender.replace('_', ' '), JellyIcons.Gender),
+                            Triple("Relationship", u.relationshipStatus.replace('_', ' '), JellyIcons.Heart),
+                            Triple("Work", u.work, JellyIcons.Work),
+                            Triple("School / college", u.school, JellyIcons.School),
+                            Triple("Email", u.email, JellyIcons.Mail),
+                            Triple("Phone", u.phone, JellyIcons.Phone)
+                        ).filter { it.second.isNotBlank() }
+
+                        if (aboutItems.isNotEmpty()) {
+                            Column(
+                                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text("About", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 15.sp)
                                 Text(
-                                    u.bio,
-                                    color = JellyInk,
-                                    fontSize = 13.sp,
-                                    lineHeight = 19.sp,
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                                    "${aboutItems.size} details · balanced profile information",
+                                    color = JellyMuted,
+                                    fontSize = 9.sp
                                 )
-                            }
-
-                            val socials = listOf(
-                                Triple("Facebook", u.socialFacebook, JellyIcons.People),
-                                Triple("Instagram", u.socialInstagram, JellyIcons.Photo),
-                                Triple("YouTube", u.socialYoutube, JellyIcons.Video),
-                                Triple("Website", u.socialWebsite, JellyIcons.Address)
-                            ).filter { it.second.isNotBlank() }
-                            if (socials.isNotEmpty()) {
-                                socials.chunked(2).forEach { row ->
+                                aboutItems.chunked(2).forEach { row ->
                                     Row(
                                         Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(7.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
-                                        row.forEach { (label, url, icon) ->
-                                            JellyButton(label, Modifier.weight(1f), icon = icon) { openUrl(url) }
+                                        row.forEach { (label, value, icon) ->
+                                            ProfileAboutCard(
+                                                label = label,
+                                                value = value,
+                                                icon = icon,
+                                                modifier = Modifier.weight(1f)
+                                            )
                                         }
                                         if (row.size == 1) Spacer(Modifier.weight(1f))
                                     }
                                 }
                             }
+                        }
 
-                            SectionTitle("About")
-                            val about = buildList {
-                                if (u.hometown.isNotBlank()) add(Triple("Hometown", u.hometown, JellyIcons.Hometown))
-                                if (u.work.isNotBlank()) add(Triple("Work", u.work, JellyIcons.Work))
-                                if (u.school.isNotBlank()) add(Triple("School", u.school, JellyIcons.School))
-                                if (u.gender.isNotBlank()) add(Triple("Gender", u.gender.replace('_', ' '), JellyIcons.Gender))
-                                if (u.relationshipStatus.isNotBlank()) add(Triple("Relationship", u.relationshipStatus.replace('_', ' '), JellyIcons.Heart))
-                                val place = listOf(u.area, u.village, u.city).filter { it.isNotBlank() }.joinToString(" · ")
-                                if (place.isNotBlank()) add(Triple("Location", place, JellyIcons.Pin))
-                            }
-                            about.chunked(2).forEach { row ->
-                                Row(
-                                    Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            ProfileAboutCard(
+                                "Verification",
+                                if (u.verified) "Complete" else "Not verified",
+                                JellyIcons.Shield,
+                                Modifier.weight(1f)
+                            )
+                            if (u.id != meId) {
+                                JellyGlass(
+                                    Modifier.weight(1f),
+                                    radius = 18.dp,
+                                    padding = 7.dp,
+                                    onClick = { reportOpen = true }
                                 ) {
-                                    row.forEach { (label, value, icon) ->
-                                        ProfileInfoTile(label, value, icon, Modifier.weight(1f))
-                                    }
-                                    if (row.size == 1) Spacer(Modifier.weight(1f))
-                                }
-                            }
-
-                            val quick = buildList {
-                                if (u.email.isNotBlank()) add(Triple("Email", u.email, JellyIcons.Mail))
-                                if (u.phone.isNotBlank()) add(Triple("Phone", u.phone, JellyIcons.Phone))
-                            }
-                            quick.chunked(2).forEach { row ->
-                                Row(
-                                    Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(7.dp)
-                                ) {
-                                    row.forEach { (label, value, icon) ->
-                                        ProfileInfoTile(
-                                            label = label,
-                                            value = value,
-                                            icon = icon,
-                                            modifier = Modifier.weight(1f),
-                                            onClick = if (label == "Phone") {
-                                                {
-                                                    runCatching {
-                                                        context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$value")))
-                                                    }
-                                                }
-                                            } else null
-                                        )
-                                    }
-                                    if (row.size == 1) Spacer(Modifier.weight(1f))
-                                }
-                            }
-
-                            if (u.locationLat != null && u.locationLng != null) {
-                                JellyButton("Open Current Location", Modifier.fillMaxWidth(), icon = JellyIcons.Map) {
-                                    val uri = Uri.parse("geo:${u.locationLat},${u.locationLng}?q=${u.locationLat},${u.locationLng}")
-                                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
-                                }
-                            }
-
-                            if (shop != null) {
-                                JellyButton("View Shop", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Shop) {
-                                    onShop(shop.id)
-                                }
-                            }
-
-                            if (u.id == meId) {
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                    JellyButton("Edit Profile", Modifier.weight(1f), primary = true, icon = JellyIcons.Edit) {
-                                        editProfileOpen = true
-                                    }
-                                    JellyButton("Account & Privacy", Modifier.weight(1f), icon = JellyIcons.Gear, onClick = onSettings)
-                                }
-                            } else if (isAdmin) {
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                    JellyButton("Message", Modifier.weight(1f), icon = JellyIcons.Message) { onMessage(u.id) }
-                                    JellyButton("Share", Modifier.weight(1f), icon = JellyIcons.Share) {
-                                        val intent = Intent(Intent.ACTION_SEND)
-                                            .setType("text/plain")
-                                            .putExtra(Intent.EXTRA_TEXT, "https://chhachh.pages.dev/profile.php?id=${u.id}")
-                                        runCatching { context.startActivity(Intent.createChooser(intent, "Share profile")) }
+                                    Row(
+                                        Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        JellyIcon(JellyIcons.Shield, size = 25.dp)
+                                        Spacer(Modifier.width(7.dp))
+                                        Column {
+                                            Text("Safety", color = JellyMuted, fontSize = 9.sp)
+                                            Text("Report profile", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 10.5f.sp)
+                                        }
                                     }
                                 }
                             } else {
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                    JellyButton(
-                                        if (data?.optBoolean("following", false) == true) "Following" else "Follow",
-                                        Modifier.weight(1f),
-                                        primary = data?.optBoolean("following", false) != true,
-                                        icon = JellyIcons.Follow
-                                    ) { onFollow(u.id) }
-                                    JellyButton("Message", Modifier.weight(1f), icon = JellyIcons.Message) { onMessage(u.id) }
-                                }
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                    JellyButton(
-                                        if (data?.optBoolean("blocked", false) == true) "Unblock" else "Block",
-                                        Modifier.weight(1f),
-                                        icon = JellyIcons.Shield
-                                    ) { onBlock(u.id) }
-                                    JellyButton("Report", Modifier.weight(1f), icon = JellyIcons.Shield) { reportOpen = true }
-                                }
+                                Spacer(Modifier.weight(1f))
                             }
                         }
+
+                        if (u.id == meId) {
+                            Column(
+                                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(7.dp)
+                            ) {
+                                JellyButton(
+                                    "Edit Profile",
+                                    Modifier.fillMaxWidth(),
+                                    primary = true,
+                                    icon = JellyIcons.Edit
+                                ) { editProfileOpen = true }
+                                JellyButton(
+                                    "Account & Privacy Settings",
+                                    Modifier.fillMaxWidth(),
+                                    icon = JellyIcons.Gear,
+                                    onClick = onSettings
+                                )
+                            }
+                        } else if (isAdmin) {
+                            Row(
+                                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                            ) {
+                                JellyButton("Message", Modifier.weight(1f), icon = JellyIcons.Message) { onMessage(u.id) }
+                                JellyButton("Share", Modifier.weight(1f), icon = JellyIcons.Share) {
+                                    val intent = Intent(Intent.ACTION_SEND)
+                                        .setType("text/plain")
+                                        .putExtra(Intent.EXTRA_TEXT, "https://chhachh.pages.dev/profile.php?id=${u.id}")
+                                    runCatching { context.startActivity(Intent.createChooser(intent, "Share profile")) }
+                                }
+                            }
+                        } else {
+                            Row(
+                                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                            ) {
+                                JellyButton(
+                                    if (data.optBoolean("following", false)) "Following" else "Follow",
+                                    Modifier.weight(1f),
+                                    primary = !data.optBoolean("following", false),
+                                    icon = JellyIcons.Follow
+                                ) { onFollow(u.id) }
+                                JellyButton("Message", Modifier.weight(1f), icon = JellyIcons.Message) { onMessage(u.id) }
+                            }
+                            Row(
+                                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                            ) {
+                                JellyButton("Share", Modifier.weight(1f), icon = JellyIcons.Share) {
+                                    val intent = Intent(Intent.ACTION_SEND)
+                                        .setType("text/plain")
+                                        .putExtra(Intent.EXTRA_TEXT, "https://chhachh.pages.dev/profile.php?id=${u.id}")
+                                    runCatching { context.startActivity(Intent.createChooser(intent, "Share profile")) }
+                                }
+                                JellyButton(
+                                    if (data.optBoolean("blocked", false)) "Unblock" else "Block",
+                                    Modifier.weight(1f),
+                                    icon = JellyIcons.Shield,
+                                    danger = true
+                                ) { onBlock(u.id) }
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
                     }
+                }
+            }
+
+            if (shop != null) {
+                item {
+                    JellyButton(
+                        "Shop · ${shop.name}",
+                        Modifier.fillMaxWidth(),
+                        primary = true,
+                        icon = JellyIcons.Shop
+                    ) { onShop(shop.id) }
                 }
             }
 
@@ -695,6 +791,34 @@ private fun ProfileInfoTile(
                     fontSize = 10.5f.sp,
                     fontWeight = FontWeight.Bold,
                     lineHeight = 14.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileAboutCard(
+    label: String,
+    value: String,
+    icon: Int,
+    modifier: Modifier = Modifier
+) {
+    JellyGlass(modifier, radius = 18.dp, padding = 7.dp) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 52.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            JellyIcon(icon, size = 25.dp)
+            Spacer(Modifier.width(7.dp))
+            Column(Modifier.weight(1f)) {
+                Text(label, color = JellyMuted, fontSize = 9.sp)
+                Text(
+                    value,
+                    color = JellyInk,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 10.5f.sp,
+                    lineHeight = 13.sp
                 )
             }
         }
