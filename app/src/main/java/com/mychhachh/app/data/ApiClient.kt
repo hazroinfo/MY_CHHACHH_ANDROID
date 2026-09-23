@@ -217,6 +217,9 @@ class ApiClient(private val context: Context) {
     fun likePost(id: Long): JSONObject = post("/api/posts/$id/like")
     fun sharePost(id: Long): JSONObject = post("/api/posts/$id/share")
     fun savePost(id: Long): JSONObject = post("/api/posts/$id/save")
+    fun updatePost(id: Long, text: String, privacy: String): JSONObject =
+        patch("/api/posts/$id", JSONObject().put("text", text).put("privacy", privacy))
+    fun deletePost(id: Long): JSONObject = delete("/api/posts/$id")
     fun createPost(text: String, privacy: String = "public", checkin: String = "", feeling: String = "", photo: String = "", video: String = ""): JSONObject =
         post("/api/posts", JSONObject().put("text", text).put("privacy", privacy).put("checkin", checkin).put("feeling", feeling).put("photo", photo).put("video", video))
 
