@@ -232,90 +232,24 @@ fun AdminCenterScreen(
                 val u = runCatching { o.toUser() }.getOrNull()
                 if (u != null) {
                     JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
-                        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Avatar(u, 48.dp)
-                                Spacer(Modifier.width(8.dp))
-                                Column(Modifier.weight(1f)) {
-                                    UserName(u, 13)
-                                    Text("@${u.username}", color = JellyMuted, fontSize = 9.5f.sp)
-                                    val contact = listOf(u.email, u.phone).filter { it.isNotBlank() }.joinToString(" · ")
-                                    if (contact.isNotBlank()) Text(contact, color = JellyMuted, fontSize = 8.5f.sp)
-                                    Text(
-                                        if (o.optBoolean("online", false)) "Online" else "Offline",
-                                        color = if (o.optBoolean("online", false)) JellyGreen else JellyMuted,
-                                        fontSize = 8.5f.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                                JellyButton("Profile") { onProfile(u.id) }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Avatar(u, 46.dp)
+                            Spacer(Modifier.width(9.dp))
+                            Column(Modifier.weight(1f)) {
+                                UserName(u, 12)
+                                Text("@${u.username}", color = JellyMuted, fontSize = 9.sp)
+                                val contact = listOf(u.email, u.phone).filter { it.isNotBlank() }.joinToString(" · ")
+                                if (contact.isNotBlank()) Text(contact, color = JellyMuted, fontSize = 8.5f.sp, maxLines = 1)
+                                val loc = listOf(u.area, u.village, u.city).filter { it.isNotBlank() }.joinToString(" · ")
+                                if (loc.isNotBlank()) Text(loc, color = JellyMuted, fontSize = 8.2f.sp, maxLines = 1)
+                                Text(
+                                    if (o.optBoolean("online", false)) "Online" else "Offline",
+                                    color = if (o.optBoolean("online", false)) JellyGreen else JellyMuted,
+                                    fontSize = 8.5f.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                JellyButton(
-                                    if (u.verified) "Remove Tick" else "Blue Tick",
-                                    Modifier.weight(1f),
-                                    icon = JellyIcons.Check
-                                ) { onAction("user_setting", u.id, JSONObject().put("key", "verified")) }
-                                JellyButton(
-                                    if (o.optBoolean("blocked", false)) "Unblock" else "Block",
-                                    Modifier.weight(1f),
-                                    icon = JellyIcons.Shield
-                                ) { onAction("toggle_user", u.id, JSONObject()) }
-                            }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                JellyButton("Warning", Modifier.weight(1f), icon = JellyIcons.Bell) {
-                                    warningTarget = u.id
-                                    warningText = ""
-                                }
-                                JellyButton(
-                                    if (o.optBoolean("promoted", false)) "Stop Promotion" else "Promote",
-                                    Modifier.weight(1f),
-                                    icon = JellyIcons.Star
-                                ) {
-                                    onAction("promote_user", u.id, JSONObject())
-                                }
-                            }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                JellyButton("Comments", Modifier.weight(1f)) {
-                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_comments"))
-                                }
-                                JellyButton("Likes", Modifier.weight(1f)) {
-                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_likes"))
-                                }
-                            }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                JellyButton("Messages", Modifier.weight(1f)) {
-                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_messages"))
-                                }
-                                JellyButton("Posts", Modifier.weight(1f)) {
-                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_posts"))
-                                }
-                            }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                JellyButton("Photo", Modifier.weight(1f), icon = JellyIcons.Photo) {
-                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_photo_upload"))
-                                }
-                                JellyButton("Video", Modifier.weight(1f), icon = JellyIcons.Video) {
-                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_video_upload"))
-                                }
-                            }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                JellyButton("Follows", Modifier.weight(1f), icon = JellyIcons.Follow) {
-                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_follows"))
-                                }
-                                JellyButton("Publish as User", Modifier.weight(1f), icon = JellyIcons.Edit) {
-                                    userPostTarget = u.id
-                                    userPostText = ""
-                                }
-                            }
-                            JellyButton(
-                                "Delete Account",
-                                Modifier.fillMaxWidth(),
-                                icon = JellyIcons.Delete,
-                                danger = true
-                            ) {
-                                deleteUserTarget = u.id
-                            }
+                            JellyButton("Open Profile", primary = true) { onProfile(u.id) }
                         }
                     }
                 }
