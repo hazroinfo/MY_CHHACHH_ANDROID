@@ -397,6 +397,7 @@ fun MyChhachhApp() {
             }
             Screen.PEOPLE -> if (me != null) loadPeople()
             Screen.SHOPS -> if (me != null) loadShops()
+            Screen.MAP -> if (me != null && shops.isEmpty()) loadShops()
             Screen.MESSAGES -> if (me != null) {
                 loadMessages()
                 if (shops.isEmpty()) loadShops()
@@ -1020,9 +1021,14 @@ fun MyChhachhApp() {
                             onSave = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadShop(selectedId) } }
                         )
                     }
-                    Screen.MAP -> MapScreen(mapQuery, { mapQuery = it }, mapData, mapLoading, mapError, {
-                        if (mapQuery.isNotBlank()) scope.launch { mapLoading = true; mapError = null; try { val d = withContext(Dispatchers.IO) { api.geocode(mapQuery) }; mapData = d.optJSONArray("items")?.optJSONObject(0) ?: d.optJSONObject("item") ?: d } catch (e: Exception) { mapError = e.message }; mapLoading = false }
-                    })
+                    Screen.MAP -> MapScreen(
+                        shops = shops,
+                        onGeocode = { term -> withContext(Dispatchers.IO) { api.geocode(term) } },
+                        onRoute = { fromLat, fromLng, toLat, toLng ->
+                            withContext(Dispatchers.IO) { api.mapRoute(fromLat, fromLng, toLat, toLng) }
+                        },
+                        onOpenShop = { open(Screen.SHOP_DETAIL, it) }
+                    )
                     Screen.SETTINGS -> currentUser?.let { u ->
                         SettingsScreen(
                             me = u,
