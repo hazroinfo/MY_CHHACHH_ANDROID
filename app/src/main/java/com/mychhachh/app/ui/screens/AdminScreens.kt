@@ -266,7 +266,60 @@ fun AdminCenterScreen(
                 }
             }
 
-            "verification" -> items(rows, key = { "verify-${it.optLong("id")}" }) { o ->
+            "verification" -> {
+                item {
+                    var postPhoto by remember(settings.toString()) { mutableStateOf(settings.optInt("verification_unverified_post_photo", 0) != 0) }
+                    var postVideo by remember(settings.toString()) { mutableStateOf(settings.optInt("verification_unverified_post_video", 0) != 0) }
+                    var shopPhoto by remember(settings.toString()) { mutableStateOf(settings.optInt("verification_unverified_shop_photo", 0) != 0) }
+                    var shopVideo by remember(settings.toString()) { mutableStateOf(settings.optInt("verification_unverified_shop_video", 0) != 0) }
+                    var messagePhoto by remember(settings.toString()) { mutableStateOf(settings.optInt("verification_unverified_message_photo", 0) != 0) }
+                    var announcementPhoto by remember(settings.toString()) { mutableStateOf(settings.optInt("verification_unverified_announcement_photo", 0) != 0) }
+                    var autoTick by remember(settings.toString()) { mutableStateOf(settings.optInt("verification_auto_blue_tick", 0) != 0) }
+                    var photoAfter by remember(settings.toString()) { mutableStateOf(settings.optInt("verification_enable_photo_after_approval", 1) != 0) }
+                    var videoAfter by remember(settings.toString()) { mutableStateOf(settings.optInt("verification_enable_video_after_approval", 1) != 0) }
+
+                    JellyGlass(Modifier.fillMaxWidth(), padding = 11.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                            SectionTitle("Verification Access Rules")
+                            Text(
+                                "Choose exactly what an unverified user may upload. These are live backend rules; per-user Admin controls still apply.",
+                                color = JellyMuted,
+                                fontSize = 9.5f.sp
+                            )
+                            VerificationRuleRow("Feed photos without verification", "Allow normal post photos before identity approval.", postPhoto) { postPhoto = it }
+                            VerificationRuleRow("Feed videos without verification", "Allow normal post videos before identity approval.", postVideo) { postVideo = it }
+                            VerificationRuleRow("Shop photos without verification", "Allow shop-post photos before identity approval.", shopPhoto) { shopPhoto = it }
+                            VerificationRuleRow("Shop videos without verification", "Allow shop-post videos before identity approval.", shopVideo) { shopVideo = it }
+                            VerificationRuleRow("Message photos without verification", "Allow photo attachments in messages before identity approval.", messagePhoto) { messagePhoto = it }
+                            VerificationRuleRow("Announcement photos without verification", "Allow announcement photos before identity approval.", announcementPhoto) { announcementPhoto = it }
+                            VerificationRuleRow("Give Blue Tick automatically after approval", "", autoTick) { autoTick = it }
+                            VerificationRuleRow("Enable photo upload after approval", "", photoAfter) { photoAfter = it }
+                            VerificationRuleRow("Enable video upload after approval", "", videoAfter) { videoAfter = it }
+                            Text(
+                                "Example: to require verification only for video, keep video-without-verification OFF and Enable video upload after approval ON.",
+                                color = JellyMuted,
+                                fontSize = 8.5f.sp
+                            )
+                            JellyButton("Save Verification Rules", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Check) {
+                                onAction(
+                                    "verification_policy",
+                                    0L,
+                                    JSONObject()
+                                        .put("verification_unverified_post_photo", postPhoto)
+                                        .put("verification_unverified_post_video", postVideo)
+                                        .put("verification_unverified_shop_photo", shopPhoto)
+                                        .put("verification_unverified_shop_video", shopVideo)
+                                        .put("verification_unverified_message_photo", messagePhoto)
+                                        .put("verification_unverified_announcement_photo", announcementPhoto)
+                                        .put("verification_auto_blue_tick", autoTick)
+                                        .put("verification_enable_photo_after_approval", photoAfter)
+                                        .put("verification_enable_video_after_approval", videoAfter)
+                                )
+                            }
+                        }
+                    }
+                }
+                items(rows, key = { "verify-${it.optLong("id")}" }) { o ->
                 val u = o.optJSONObject("user")?.let { runCatching { it.toUser() }.getOrNull() }
                 JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
                     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -296,8 +349,23 @@ fun AdminCenterScreen(
                     }
                 }
             }
+            }
 
-            "reports" -> items(rows, key = { "report-${it.optLong("id")}" }) { o ->
+            "reports" -> {
+                item {
+                    JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
+                        Column {
+                            SectionTitle("Reports & Support")
+                            Text(
+                                "User reports and Help & Support requests arrive here for review and reply.",
+                                color = JellyMuted,
+                                fontSize = 9.5f.sp
+                            )
+                        }
+                    }
+                }
+                if (rows.isEmpty() && !loading) item { EmptyCard("No reports or support requests.", JellyIcons.Shield) }
+                items(rows, key = { "report-${it.optLong("id")}" }) { o ->
                 val reporter = o.optJSONObject("reporter")?.let { runCatching { it.toUser() }.getOrNull() }
                 JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -321,10 +389,10 @@ fun AdminCenterScreen(
                         }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (reporterId > 0) {
-                                JellyButton("Reporter", Modifier.weight(1f), icon = JellyIcons.User) { onProfile(reporterId) }
+                                JellyButton("Open Reporter Profile", Modifier.weight(1f), icon = JellyIcons.User) { onProfile(reporterId) }
                             }
                             if (targetType == "profile" && targetId > 0) {
-                                JellyButton("Reported Profile", Modifier.weight(1f), icon = JellyIcons.Shield) { onProfile(targetId) }
+                                JellyButton("Open Reported Profile", Modifier.weight(1f), icon = JellyIcons.Shield) { onProfile(targetId) }
                             }
                         }
                         JellyButton("Reply", Modifier.fillMaxWidth(), icon = JellyIcons.Reply) {
@@ -333,6 +401,7 @@ fun AdminCenterScreen(
                         }
                     }
                 }
+            }
             }
 
             "posts" -> items(rows, key = { "admin-post-${it.optLong("id")}" }) { o ->
@@ -377,36 +446,95 @@ fun AdminCenterScreen(
                 }
             }
 
-            "votes" -> items(rows, key = { "admin-vote-${it.optLong("id")}" }) { o ->
-                JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
-                    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Text("Voting #${o.optLong("id")} · ${o.optString("status", "")}", color = JellyInk, fontWeight = FontWeight.Black)
-                        val left = o.optInt("left_votes", o.optInt("votes1", 0))
-                        val right = o.optInt("right_votes", o.optInt("votes2", 0))
-                        Text("Left: $left   ·   Right: $right", color = JellyMuted, fontSize = 10.sp)
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            JellyButton("L +1", Modifier.weight(1f)) {
-                                onAction("vote_adjust", o.optLong("id"), JSONObject().put("side", "left").put("delta", 1))
+            "votes" -> {
+                item {
+                    val waiting = rows.count { it.optString("status") == "waiting" }
+                    val ready = rows.count { it.optString("status") == "ready" }
+                    val live = rows.count { it.optString("status") == "active" }
+                    val finished = rows.size - waiting - ready - live
+                    val showLiveCounts = settings.optInt("voting_show_live_counts", 0) != 0
+                    JellyGlass(Modifier.fillMaxWidth(), padding = 11.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    SectionTitle("Voting Arena Control")
+                                    Text("Manage challenges, waiting rooms, live matches and completed results.", color = JellyMuted, fontSize = 9.5f.sp)
+                                }
+                                Text("${rows.size} total", color = JellyMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                             }
-                            JellyButton("L -1", Modifier.weight(1f)) {
-                                onAction("vote_adjust", o.optLong("id"), JSONObject().put("side", "left").put("delta", -1))
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("Show vote counts during live voting", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 10.5f.sp)
+                                    Text(
+                                        if (showLiveCounts) "ON — visitors can see live totals before the timer ends."
+                                        else "OFF — counts stay hidden until the final result.",
+                                        color = JellyMuted,
+                                        fontSize = 8.5f.sp
+                                    )
+                                }
+                                JellyButton(if (showLiveCounts) "Turn OFF" else "Turn ON", primary = !showLiveCounts, danger = showLiveCounts) {
+                                    onAction(
+                                        "feature",
+                                        0L,
+                                        JSONObject().put("key", "voting_show_live_counts").put("value", if (showLiveCounts) 0 else 1)
+                                    )
+                                }
                             }
-                            JellyButton("R +1", Modifier.weight(1f)) {
-                                onAction("vote_adjust", o.optLong("id"), JSONObject().put("side", "right").put("delta", 1))
-                            }
-                            JellyButton("R -1", Modifier.weight(1f)) {
-                                onAction("vote_adjust", o.optLong("id"), JSONObject().put("side", "right").put("delta", -1))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                AdminStat("Waiting", waiting, Modifier.weight(1f))
+                                AdminStat("Ready", ready, Modifier.weight(1f))
+                                AdminStat("Live", live, Modifier.weight(1f))
+                                AdminStat("Finished", finished, Modifier.weight(1f))
                             }
                         }
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                            JellyButton("End", Modifier.weight(1f)) {
-                                onAction("vote_end", o.optLong("id"), JSONObject())
+                    }
+                }
+
+                items(rows, key = { "admin-vote-${it.optLong("id")}" }) { o ->
+                    var adjustAmount by remember(o.optLong("id")) { mutableStateOf("1") }
+                    val amount = (adjustAmount.toIntOrNull() ?: 1).coerceIn(1, 100000)
+                    JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                            Text("Voting #${o.optLong("id")} · ${o.optString("status", "")}", color = JellyInk, fontWeight = FontWeight.Black)
+                            val left = o.optInt("left_votes", o.optInt("votes1", 0))
+                            val right = o.optInt("right_votes", o.optInt("votes2", 0))
+                            Text("Left: $left   ·   Right: $right", color = JellyMuted, fontSize = 10.sp)
+                            Text("Admin vote adjustment", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 10.5f.sp)
+                            Text("Add or reduce votes for either candidate. Every change is saved in the admin activity log.", color = JellyMuted, fontSize = 8.5f.sp)
+                            OutlinedTextField(
+                                adjustAmount,
+                                { adjustAmount = it.filter(Char::isDigit).take(6) },
+                                Modifier.fillMaxWidth(),
+                                label = { Text("Amount") },
+                                singleLine = true,
+                                shape = RoundedCornerShape(15.dp)
+                            )
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                JellyButton("Left Add", Modifier.weight(1f), icon = JellyIcons.Plus) {
+                                    onAction("vote_adjust", o.optLong("id"), JSONObject().put("side", "left").put("delta", amount))
+                                }
+                                JellyButton("Left Reduce", Modifier.weight(1f), icon = JellyIcons.Delete) {
+                                    onAction("vote_adjust", o.optLong("id"), JSONObject().put("side", "left").put("delta", -amount))
+                                }
                             }
-                            JellyButton("Cancel", Modifier.weight(1f)) {
-                                onAction("vote_cancel", o.optLong("id"), JSONObject())
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                JellyButton("Right Add", Modifier.weight(1f), icon = JellyIcons.Plus) {
+                                    onAction("vote_adjust", o.optLong("id"), JSONObject().put("side", "right").put("delta", amount))
+                                }
+                                JellyButton("Right Reduce", Modifier.weight(1f), icon = JellyIcons.Delete) {
+                                    onAction("vote_adjust", o.optLong("id"), JSONObject().put("side", "right").put("delta", -amount))
+                                }
                             }
-                            JellyButton("Delete", Modifier.weight(1f), icon = JellyIcons.Delete, danger = true) {
-                                onAction("vote_delete", o.optLong("id"), JSONObject())
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                JellyButton("End now", Modifier.weight(1f), icon = JellyIcons.Check) {
+                                    onAction("vote_end", o.optLong("id"), JSONObject())
+                                }
+                                JellyButton("Cancel match", Modifier.weight(1f), icon = JellyIcons.Close) {
+                                    onAction("vote_cancel", o.optLong("id"), JSONObject())
+                                }
+                                JellyButton("Delete record", Modifier.weight(1f), icon = JellyIcons.Delete, danger = true) {
+                                    onAction("vote_delete", o.optLong("id"), JSONObject())
+                                }
                             }
                         }
                     }
@@ -1231,6 +1359,27 @@ private fun AdminNavGroup(
                 repeat(3 - rowItems.size) { Spacer(Modifier.weight(1f)) }
             }
         }
+    }
+}
+
+@Composable
+private fun VerificationRuleRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onChecked: (Boolean) -> Unit
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        JellyIcon(JellyIcons.Shield, size = 25.dp)
+        Spacer(Modifier.width(7.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 10.sp)
+            if (subtitle.isNotBlank()) Text(subtitle, color = JellyMuted, fontSize = 8.2f.sp)
+        }
+        Switch(checked = checked, onCheckedChange = onChecked)
     }
 }
 
