@@ -386,6 +386,17 @@ class ApiClient(private val context: Context) {
     fun updatePrivacy(fields: JSONObject): User = patch("/api/privacy", fields).optJSONObject("user")?.toUser() ?: profileMe()
     fun changePassword(currentPassword: String, newPassword: String): JSONObject =
         post("/api/password", JSONObject().put("current_password", currentPassword).put("new_password", newPassword))
+    fun verificationStatus(): JSONObject = get("/api/verification")
+    fun submitVerification(phone: String, documentType: String, front: String, back: String, selfie: String): JSONObject =
+        post(
+            "/api/verification",
+            JSONObject()
+                .put("phone", phone)
+                .put("document_type", documentType)
+                .put("front", front)
+                .put("back", back)
+                .put("selfie", selfie)
+        )
     fun updateLocation(latitude: Double, longitude: Double): JSONObject =
         post("/api/location", JSONObject().put("latitude", latitude).put("longitude", longitude))
     fun deleteAccount(password: String): JSONObject =
