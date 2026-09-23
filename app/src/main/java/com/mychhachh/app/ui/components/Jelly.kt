@@ -88,12 +88,16 @@ fun JellyGlass(
     val shape = RoundedCornerShape(actualRadius)
     val opacity = surfaceOpacity ?: LiveJellyTheme.cardOpacity
     val base = surfaceColor ?: LiveJellyTheme.cardColor
+    val depth = (LiveJellyTheme.jellyDepth / 100f).coerceIn(0f, 1f)
+    val shine = (LiveJellyTheme.jellyShine / 100f).coerceIn(0f, 1f)
+    val borderStrength = (LiveJellyTheme.jellyBorder / 100f).coerceIn(0f, 1f)
+    val shadowDp = (4f + LiveJellyTheme.shadow * depth).dp
     var m = modifier
         .shadow(
-            13.dp,
+            shadowDp,
             shape,
-            ambientColor = Color(0x29455F89),
-            spotColor = Color(0x29455F89)
+            ambientColor = Color(0x29455F89).copy(alpha = .06f + .14f * depth),
+            spotColor = Color(0x29455F89).copy(alpha = .06f + .14f * depth)
         )
         .clip(shape)
         .background(
@@ -102,14 +106,14 @@ fun JellyGlass(
             } else {
                 Brush.linearGradient(
                     listOf(
-                        Color.White.copy(alpha = .88f),
-                        Color(0xFFDEF7FF).copy(alpha = .72f),
-                        Color(0xFFF9E7F9).copy(alpha = .61f)
+                        Color.White.copy(alpha = .62f + .30f * shine),
+                        Color(0xFFDEF7FF).copy(alpha = .54f + .22f * shine),
+                        Color(0xFFF9E7F9).copy(alpha = .47f + .18f * shine)
                     )
                 )
             }
         )
-        .border(2.dp, Color.White.copy(alpha = .94f), shape)
+        .border((1f + borderStrength).dp, Color.White.copy(alpha = .48f + .50f * borderStrength), shape)
     if (onClick != null) m = m.clickable { onClick() }
     Box(m.padding(padding), content = content)
 }
