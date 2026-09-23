@@ -48,7 +48,8 @@ fun ProfileScreen(
     meId: Long,
     onFollow: (Long) -> Unit,
     onMessage: (Long) -> Unit,
-    onEdit: () -> Unit,
+    onSettings: () -> Unit,
+    onUpdateProfile: (JSONObject) -> Unit,
     onShop: (Long) -> Unit,
     onBlock: (Long) -> Unit,
     onReport: (Long, String) -> Unit,
@@ -69,6 +70,7 @@ fun ProfileScreen(
     var relationMode by remember { mutableStateOf<String?>(null) }
     var relationUsers by remember { mutableStateOf<List<User>>(emptyList()) }
     var relationLoading by remember { mutableStateOf(false) }
+    var editProfileOpen by remember { mutableStateOf(false) }
     var reportOpen by remember { mutableStateOf(false) }
     var adminWarningOpen by remember { mutableStateOf(false) }
     var adminWarningText by remember { mutableStateOf("") }
@@ -203,8 +205,10 @@ fun ProfileScreen(
                             Spacer(Modifier.height(10.dp))
                             if (u.id == meId) {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                    JellyButton("Edit Profile", Modifier.weight(1f), primary = true, icon = JellyIcons.Edit, onClick = onEdit)
-                                    JellyButton("Settings", Modifier.weight(1f), icon = JellyIcons.Gear, onClick = onEdit)
+                                    JellyButton("Edit Profile", Modifier.weight(1f), primary = true, icon = JellyIcons.Edit) {
+                                        editProfileOpen = true
+                                    }
+                                    JellyButton("Account & Privacy Settings", Modifier.weight(1f), icon = JellyIcons.Gear, onClick = onSettings)
                                 }
                             } else if (isAdmin) {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -290,6 +294,17 @@ fun ProfileScreen(
                 }
             }
         }
+    }
+
+    if (editProfileOpen && user != null) {
+        ProfileEditDialog(
+            user = user,
+            onDismiss = { editProfileOpen = false },
+            onSave = { fields ->
+                onUpdateProfile(fields)
+                editProfileOpen = false
+            }
+        )
     }
 
     if (adminWarningOpen && user != null) {
@@ -383,6 +398,133 @@ fun ProfileScreen(
             dismissButton = { JellyButton("Close") { relationMode = null } }
         )
     }
+}
+
+@Composable
+private fun ProfileEditDialog(
+    user: User,
+    onDismiss: () -> Unit,
+    onSave: (JSONObject) -> Unit
+) {
+    var name by remember(user.id) { mutableStateOf(user.name) }
+    var username by remember(user.id) { mutableStateOf(user.username) }
+    var phone by remember(user.id) { mutableStateOf(user.phone) }
+    var email by remember(user.id) { mutableStateOf(user.email) }
+    var bio by remember(user.id) { mutableStateOf(user.bio) }
+    var gender by remember(user.id) { mutableStateOf(user.gender) }
+    var relationship by remember(user.id) { mutableStateOf(user.relationshipStatus) }
+    var work by remember(user.id) { mutableStateOf(user.work) }
+    var school by remember(user.id) { mutableStateOf(user.school) }
+    var city by remember(user.id) { mutableStateOf(user.city) }
+    var hometown by remember(user.id) { mutableStateOf(user.hometown) }
+    var village by remember(user.id) { mutableStateOf(user.village) }
+    var area by remember(user.id) { mutableStateOf(user.area) }
+    var facebook by remember(user.id) { mutableStateOf(user.socialFacebook) }
+    var instagram by remember(user.id) { mutableStateOf(user.socialInstagram) }
+    var youtube by remember(user.id) { mutableStateOf(user.socialYoutube) }
+    var website by remember(user.id) { mutableStateOf(user.socialWebsite) }
+
+    val usernameOk = username.matches(Regex("[a-z0-9_]{3,30}"))
+    val emailOk = email.isBlank() || email.matches(Regex("[^@\\s]+@[^@\\s]+\\.[^@\\s]+"))
+    val phoneOk = phone.isBlank() || phone.matches(Regex("\\+?[0-9]{7,15}"))
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit profile", color = JellyInk, fontWeight = FontWeight.Black) },
+        text = {
+            LazyColumn(
+                Modifier.fillMaxWidth().heightIn(max = 560.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item { SectionTitle("Basic details") }
+                item { OutlinedTextField(name, { name = it.take(80) }, Modifier.fillMaxWidth(), label = { Text("Name") }, singleLine = true, shape = RoundedCornerShape(16.dp)) }
+                item { OutlinedTextField(username, { username = it.lowercase().filter { ch -> ch.isLetterOrDigit() || ch == '_' }.take(30) }, Modifier.fillMaxWidth(), label = { Text("Username (a-z, 0-9, _)") }, singleLine = true, isError = username.isNotBlank() && !usernameOk, shape = RoundedCornerShape(16.dp)) }
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        OutlinedTextField(phone, { phone = it.filter { ch -> ch.isDigit() || ch == '+' }.take(16) }, Modifier.weight(1f), label = { Text("Phone number") }, singleLine = true, isError = phone.isNotBlank() && !phoneOk, shape = RoundedCornerShape(16.dp))
+                        OutlinedTextField(email, { email = it.take(120) }, Modifier.weight(1f), label = { Text("Email") }, singleLine = true, isError = email.isNotBlank() && !emailOk, shape = RoundedCornerShape(16.dp))
+                    }
+                }
+                item { OutlinedTextField(bio, { bio = it.take(1000) }, Modifier.fillMaxWidth(), label = { Text("Short bio") }, minLines = 3, maxLines = 6, shape = RoundedCornerShape(16.dp)) }
+
+                item { SectionTitle("Personal details · Optional") }
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        JellyButton(
+                            "Gender: " + when (gender) {
+                                "male" -> "Male"; "female" -> "Female"; "prefer_not_say" -> "Prefer not to say"; else -> "Not set"
+                            },
+                            Modifier.weight(1f)
+                        ) {
+                            gender = when (gender) { "" -> "male"; "male" -> "female"; "female" -> "prefer_not_say"; else -> "" }
+                        }
+                        JellyButton(
+                            "Relationship: " + when (relationship) {
+                                "single" -> "Single"; "married" -> "Married"; "engaged" -> "Engaged"; "prefer_not_say" -> "Prefer not to say"; else -> "Not set"
+                            },
+                            Modifier.weight(1f)
+                        ) {
+                            relationship = when (relationship) { "" -> "single"; "single" -> "married"; "married" -> "engaged"; "engaged" -> "prefer_not_say"; else -> "" }
+                        }
+                    }
+                }
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        OutlinedTextField(work, { work = it.take(120) }, Modifier.weight(1f), label = { Text("Work / profession") }, singleLine = true, shape = RoundedCornerShape(16.dp))
+                        OutlinedTextField(school, { school = it.take(120) }, Modifier.weight(1f), label = { Text("School / college") }, singleLine = true, shape = RoundedCornerShape(16.dp))
+                    }
+                }
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        OutlinedTextField(city, { city = it.take(100) }, Modifier.weight(1f), label = { Text("Current city") }, singleLine = true, shape = RoundedCornerShape(16.dp))
+                        OutlinedTextField(hometown, { hometown = it.take(100) }, Modifier.weight(1f), label = { Text("From / hometown") }, singleLine = true, shape = RoundedCornerShape(16.dp))
+                    }
+                }
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        OutlinedTextField(village, { village = it.take(100) }, Modifier.weight(1f), label = { Text("Village") }, singleLine = true, shape = RoundedCornerShape(16.dp))
+                        OutlinedTextField(area, { area = it.take(100) }, Modifier.weight(1f), label = { Text("Mohalla / area") }, singleLine = true, shape = RoundedCornerShape(16.dp))
+                    }
+                }
+
+                item { SectionTitle("Social links") }
+                item { OutlinedTextField(facebook, { facebook = it.take(500) }, Modifier.fillMaxWidth(), label = { Text("Facebook link") }, singleLine = true, shape = RoundedCornerShape(16.dp)) }
+                item { OutlinedTextField(instagram, { instagram = it.take(500) }, Modifier.fillMaxWidth(), label = { Text("Instagram link") }, singleLine = true, shape = RoundedCornerShape(16.dp)) }
+                item { OutlinedTextField(youtube, { youtube = it.take(500) }, Modifier.fillMaxWidth(), label = { Text("YouTube link") }, singleLine = true, shape = RoundedCornerShape(16.dp)) }
+                item { OutlinedTextField(website, { website = it.take(500) }, Modifier.fillMaxWidth(), label = { Text("Website") }, singleLine = true, shape = RoundedCornerShape(16.dp)) }
+            }
+        },
+        confirmButton = {
+            JellyButton(
+                "Save Profile",
+                primary = true,
+                icon = JellyIcons.Check,
+                enabled = name.trim().length >= 2 && usernameOk && phoneOk && emailOk
+            ) {
+                onSave(
+                    JSONObject()
+                        .put("name", name.trim())
+                        .put("username", username.trim())
+                        .put("phone", phone.trim())
+                        .put("email", email.trim())
+                        .put("bio", bio.trim())
+                        .put("gender", gender)
+                        .put("relationship_status", relationship)
+                        .put("work", work.trim())
+                        .put("school", school.trim())
+                        .put("city", city.trim())
+                        .put("hometown", hometown.trim())
+                        .put("village", village.trim())
+                        .put("area", area.trim())
+                        .put("social_facebook", facebook.trim())
+                        .put("social_instagram", instagram.trim())
+                        .put("social_youtube", youtube.trim())
+                        .put("social_website", website.trim())
+                )
+            }
+        },
+        dismissButton = { JellyButton("Cancel", onClick = onDismiss) }
+    )
 }
 
 @Composable
