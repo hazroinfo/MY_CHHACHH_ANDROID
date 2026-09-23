@@ -78,30 +78,48 @@ fun NotificationsScreen(
     ) {
         item { PageTitle("Notifications", "Stay updated with your Chhachh community", JellyIcons.Bell) }
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                JellyPill("All", filter == "all", Modifier.weight(1f)) { filter = "all" }
-                JellyPill("Mentions", filter == "mentions", Modifier.weight(1f)) { filter = "mentions" }
-                JellyPill("Shops", filter == "shops", Modifier.weight(1f)) { filter = "shops" }
-                JellyPill("Follow", filter == "follow", Modifier.weight(1f)) { filter = "follow" }
+            JellyGlass(Modifier.fillMaxWidth(), radius = 999.dp, padding = 4.dp) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    JellyPill("All", filter == "all", Modifier.weight(1f)) { filter = "all" }
+                    JellyPill("Mentions", filter == "mentions", Modifier.weight(1f)) { filter = "mentions" }
+                    JellyPill("Shops", filter == "shops", Modifier.weight(1f)) { filter = "shops" }
+                    JellyPill("Follow", filter == "follow", Modifier.weight(1f)) { filter = "follow" }
+                }
             }
         }
         if (loading && items.isEmpty()) item { LoadingBlock() }
         error?.let { item { ErrorCard(it) } }
         if (!loading && visible.isEmpty() && error == null) item { EmptyCard("No notifications in this filter.", JellyIcons.Bell) }
         items(visible, key = { "notice-${it.id}" }) { n ->
-            JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            JellyGlass(Modifier.fillMaxWidth(), radius = 18.dp, padding = 0.dp) {
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 8.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (!n.read) {
+                        Box(
+                            Modifier
+                                .width(3.dp)
+                                .height(42.dp)
+                                .clip(RoundedCornerShape(99.dp))
+                                .background(LiveJellyTheme.activeColor)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                    }
                     n.actor?.let {
                         Avatar(it, LiveJellyTheme.notificationAvatarSize.dp, Modifier.clickable { onProfile(it.id) })
-                    } ?: JellyIcon(JellyIcons.Bell, size = 36.dp)
+                    } ?: Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
+                        JellyIcon(JellyIcons.Bell, size = 34.dp)
+                    }
                     Spacer(Modifier.width(8.dp))
                     Column(Modifier.weight(1f)) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             n.actor?.let { UserName(it, 13) }
+                                ?: Text(n.type.ifBlank { "Notification" }, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 12.sp)
                             Spacer(Modifier.weight(1f))
                             Text(shortTime(n.createdAt), color = JellyMuted, fontSize = 8.5f.sp)
                         }
-                        Text(n.text, color = JellyInk, fontSize = 11.sp, lineHeight = 16.sp)
+                        if (n.text.isNotBlank()) Text(n.text, color = JellyInk, fontSize = 11.sp, lineHeight = 16.sp)
                     }
                     Spacer(Modifier.width(5.dp))
                     JellyIcon(JellyIcons.Arrow, size = 20.dp)
@@ -274,18 +292,41 @@ fun AnnouncementsScreen(
                             }
                         }
                     }
+                    Row(Modifier.fillMaxWidth()) {
+                        JellyGlass(radius = 999.dp, padding = 6.dp) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                JellyIcon(
+                                    if (a.type.lowercase() in listOf("emergency", "info", "ad")) JellyIcons.Shield else JellyIcons.Announcement,
+                                    size = 18.dp
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    when (a.type.lowercase()) {
+                                        "emergency" -> "Emergency News"
+                                        "info" -> "Information"
+                                        "ad" -> "Admin Notice"
+                                        else -> "Announcement"
+                                    },
+                                    color = JellyInk,
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 8.5f.sp
+                                )
+                            }
+                        }
+                    }
                     if (a.text.isNotBlank()) Text(a.text, color = JellyInk, fontSize = 13.5f.sp, lineHeight = 19.sp)
                     a.photo?.let {
                         AsyncImage(it, null, Modifier.fillMaxWidth().heightIn(max = 420.dp).clip(RoundedCornerShape(17.dp)))
                     }
                     a.audio?.let { InlineAudioPlayer(it) }
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         JellyButton(
                             "${if (a.liked) "Liked" else "Like"} ${a.likes}",
+                            Modifier.weight(1f).height(44.dp),
                             primary = a.liked,
                             icon = JellyIcons.Heart
                         ) { onLike(a.id) }
-                        JellyButton("Comments ${a.comments}", icon = JellyIcons.Comment) {
+                        JellyButton("Comments ${a.comments}", Modifier.weight(1f).height(44.dp), icon = JellyIcons.Comment) {
                             commentAnnouncement = a
                             commentsLoading = true
                             commentsError = null
