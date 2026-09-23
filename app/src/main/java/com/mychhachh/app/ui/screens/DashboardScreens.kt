@@ -51,22 +51,41 @@ fun NotificationsScreen(
     onMarkRead: () -> Unit,
     onProfile: (Long) -> Unit
 ) {
+    var filter by remember { mutableStateOf("all") }
+
+    LaunchedEffect(Unit) { onMarkRead() }
+
+    fun category(n: Notice): String {
+        val t = n.type.lowercase()
+        val txt = n.text.lowercase()
+        return when {
+            t.contains("shop") || txt.contains("shop") -> "shops"
+            t.contains("follow") || txt.contains("follow") -> "follow"
+            t.contains("mention") || t.contains("comment") || txt.contains("mention") -> "mentions"
+            else -> "all"
+        }
+    }
+
+    val visible = items.filter { filter == "all" || category(it) == filter }
+
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        if (items.isNotEmpty()) {
-            item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    JellyButton("Mark all read", icon = JellyIcons.Check, onClick = onMarkRead)
-                }
+        item { PageTitle("Notifications", "Stay updated with your Chhachh community", JellyIcons.Bell) }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                JellyPill("All", filter == "all", Modifier.weight(1f)) { filter = "all" }
+                JellyPill("Mentions", filter == "mentions", Modifier.weight(1f)) { filter = "mentions" }
+                JellyPill("Shops", filter == "shops", Modifier.weight(1f)) { filter = "shops" }
+                JellyPill("Follow", filter == "follow", Modifier.weight(1f)) { filter = "follow" }
             }
         }
         if (loading && items.isEmpty()) item { LoadingBlock() }
         error?.let { item { ErrorCard(it) } }
-        if (!loading && items.isEmpty() && error == null) item { EmptyCard("No notifications yet.", JellyIcons.Bell) }
-        items(items, key = { "notice-${it.id}" }) { n ->
+        if (!loading && visible.isEmpty() && error == null) item { EmptyCard("No notifications in this filter.", JellyIcons.Bell) }
+        items(visible, key = { "notice-${it.id}" }) { n ->
             JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     n.actor?.let {
@@ -74,13 +93,25 @@ fun NotificationsScreen(
                     } ?: JellyIcon(JellyIcons.Bell, size = 36.dp)
                     Spacer(Modifier.width(8.dp))
                     Column(Modifier.weight(1f)) {
-                        n.actor?.let { UserName(it, 13) }
-                        Text(n.text, color = JellyInk, fontSize = 11.5f.sp, lineHeight = 16.sp)
-                        Text(shortTime(n.createdAt), color = JellyMuted, fontSize = 9.sp)
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            n.actor?.let { UserName(it, 13) }
+                            Spacer(Modifier.weight(1f))
+                            Text(shortTime(n.createdAt), color = JellyMuted, fontSize = 8.5f.sp)
+                        }
+                        Text(n.text, color = JellyInk, fontSize = 11.sp, lineHeight = 16.sp)
                     }
-                    if (!n.read) Box(Modifier.size(9.dp).clip(RoundedCornerShape(99.dp)).background(JellyPink))
+                    Spacer(Modifier.width(5.dp))
+                    JellyIcon(JellyIcons.Arrow, size = 20.dp)
                 }
             }
+        }
+        item {
+            Text(
+                "People · Knowledge · Communities · A Brighter Tomorrow",
+                Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                color = JellyMuted,
+                fontSize = 8.5f.sp
+            )
         }
     }
 }
