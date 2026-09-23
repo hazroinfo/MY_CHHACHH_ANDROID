@@ -1179,74 +1179,132 @@ fun SearchScreen(
     loading: Boolean,
     error: String?,
     query: String,
+    loggedIn: Boolean,
     onQuery: (String) -> Unit,
     onSearch: () -> Unit,
+    onLogin: () -> Unit,
     onProfile: (Long) -> Unit,
-    onShop: (Long) -> Unit
+    onShop: (Long) -> Unit,
+    onLike: (Post) -> Unit,
+    onComment: (Post) -> Unit,
+    onShare: (Post) -> Unit,
+    onSave: (Post) -> Unit
 ) {
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(LiveJellyTheme.framePadding.dp, 8.dp, LiveJellyTheme.framePadding.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        item { PageTitle("Search", "Fast search across My Chhachh", JellyIcons.Search) }
         item {
-            JellyGlass(Modifier.fillMaxWidth(), padding = 9.dp) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        query,
-                        onQuery,
-                        Modifier.weight(1f),
-                        placeholder = { Text("Search people, shops or posts…") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(17.dp)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    JellyButton("Search", icon = JellyIcons.Search, onClick = onSearch)
+            JellyGlass(Modifier.fillMaxWidth(), radius = 22.dp, padding = 8.dp) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    JellyGlass(
+                        Modifier.weight(1f).height(50.dp),
+                        radius = 20.dp,
+                        padding = 0.dp,
+                        surfaceColor = LiveJellyTheme.inputColor,
+                        surfaceOpacity = LiveJellyTheme.inputOpacity
+                    ) {
+                        Row(
+                            Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            JellyIcon(JellyIcons.Search, size = 27.dp)
+                            Spacer(Modifier.width(6.dp))
+                            androidx.compose.foundation.text.BasicTextField(
+                                value = query,
+                                onValueChange = onQuery,
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    color = JellyInk,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                decorationBox = { inner ->
+                                    Box(contentAlignment = Alignment.CenterStart) {
+                                        if (query.isBlank()) {
+                                            Text("Search people, shops or posts…", color = JellyMuted, fontSize = 10.5f.sp, maxLines = 1)
+                                        }
+                                        inner()
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    JellyButton("Search", Modifier.height(50.dp), primary = true, icon = JellyIcons.Search, onClick = onSearch)
                 }
             }
         }
+
+        if (query.isBlank() && !loading) {
+            item {
+                JellyGlass(Modifier.fillMaxWidth(), radius = 22.dp, padding = 14.dp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Start typing to search", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                        Text("Search People, Shops or Posts across My Chhachh.", color = JellyMuted, fontSize = 9.5f.sp)
+                    }
+                }
+            }
+        }
+
         if (loading) item { LoadingBlock() }
         error?.let { item { ErrorCard(it, onSearch) } }
+
         if (result.users.isNotEmpty()) item { SectionTitle("People") }
         items(result.users, key = { "su-${it.id}" }) { u ->
-            JellyGlass(Modifier.fillMaxWidth(), padding = 9.dp, onClick = { onProfile(u.id) }) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Avatar(u, 42.dp)
-                    Spacer(Modifier.width(8.dp))
-                    Column {
+            JellyGlass(Modifier.fillMaxWidth(), radius = 18.dp, padding = 9.dp, onClick = { onProfile(u.id) }) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Avatar(u, 46.dp)
+                    Spacer(Modifier.width(9.dp))
+                    Column(Modifier.weight(1f)) {
                         UserName(u, 13)
-                        Text("@${u.username}", color = JellyMuted, fontSize = 9.5f.sp)
+                        if (u.username.isNotBlank()) Text("@${u.username}", color = JellyMuted, fontSize = 9.5f.sp)
                     }
+                    JellyIcon(JellyIcons.Arrow, size = 20.dp)
                 }
             }
         }
+
         if (result.shops.isNotEmpty()) item { SectionTitle("Shops") }
         items(result.shops, key = { "ss-${it.id}" }) { s ->
-            JellyGlass(Modifier.fillMaxWidth(), padding = 9.dp, onClick = { onShop(s.id) }) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    JellyIcon(JellyIcons.Shop, size = 38.dp)
-                    Spacer(Modifier.width(8.dp))
-                    Column {
-                        Text(s.name, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 13.sp)
-                        Text("@${s.username}", color = JellyMuted, fontSize = 9.5f.sp)
+            JellyGlass(Modifier.fillMaxWidth(), radius = 18.dp, padding = 9.dp, onClick = { onShop(s.id) }) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(46.dp).clip(RoundedCornerShape(99.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (!s.photo.isNullOrBlank()) {
+                            AsyncImage(s.photo, s.name, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                        } else {
+                            JellyIcon(JellyIcons.Shop, size = 34.dp)
+                        }
                     }
+                    Spacer(Modifier.width(9.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(s.name, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 13.sp, maxLines = 1)
+                        if (s.username.isNotBlank()) Text("@${s.username}", color = JellyMuted, fontSize = 9.5f.sp, maxLines = 1)
+                    }
+                    Text("View", color = JellyPurple, fontWeight = FontWeight.Black, fontSize = 9.sp)
                 }
             }
         }
+
         if (result.posts.isNotEmpty()) item { SectionTitle("Posts") }
         items(result.posts, key = { "sp-${it.id}" }) { p ->
-            JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Row(Modifier.clickable { onProfile(p.user.id) }, verticalAlignment = Alignment.CenterVertically) {
-                        Avatar(p.user, 34.dp)
-                        Spacer(Modifier.width(7.dp))
-                        UserName(p.user, 12)
-                    }
-                    if (p.text.isNotBlank()) Text(p.text.take(260), color = JellyInk, fontSize = 11.5f.sp, lineHeight = 16.sp)
-                    p.photo?.let { AsyncImage(it, null, Modifier.fillMaxWidth().heightIn(max = 220.dp).clip(RoundedCornerShape(15.dp))) }
-                }
-            }
+            PostCard(
+                post = p,
+                loggedIn = loggedIn,
+                onLogin = onLogin,
+                onProfile = { onProfile(p.user.id) },
+                onLike = onLike,
+                onComment = onComment,
+                onShare = onShare,
+                onSave = onSave
+            )
         }
+
         if (!loading && query.isNotBlank() && result.users.isEmpty() && result.shops.isEmpty() && result.posts.isEmpty() && error == null) {
             item { EmptyCard("No results found.", JellyIcons.Search) }
         }
