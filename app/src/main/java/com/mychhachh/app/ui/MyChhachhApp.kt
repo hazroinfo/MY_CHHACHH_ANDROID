@@ -566,7 +566,7 @@ private fun AuthHeader(
 
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     QuickHeader("Voting", JellyIcons.Vote, Modifier.weight(1f), onVotes)
-                    QuickHeader(weatherText, JellyIcons.Pin, Modifier.weight(1f), onWeather)
+                    QuickHeader(weatherText, JellyIcons.Weather, Modifier.weight(1f), onWeather)
                     Box(Modifier.weight(1f)) {
                         QuickHeader("Announcements", JellyIcons.Announcement, Modifier.fillMaxWidth(), onAnnouncements)
                         if (announcementUnread > 0) CountBadge(announcementUnread, Modifier.align(Alignment.TopEnd))
