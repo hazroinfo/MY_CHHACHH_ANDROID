@@ -414,7 +414,7 @@ private fun ComposerTool(icon: Int, label: String, onClick: () -> Unit) {
             .heightIn(min = 56.dp).padding(vertical = 2.dp, horizontal = 3.dp)
     ) {
         JellyIcon(icon, size = 27.dp)
-        Text(label, color = JellyInk, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+        Text(label, color = Color(0xFF4C4176), fontSize = 7.5f.sp, fontWeight = FontWeight.Black, maxLines = 1)
     }
 }
 
@@ -669,40 +669,46 @@ private fun Tag(icon: Int, text: String, onClick: (() -> Unit)? = null) {
 
 @Composable
 private fun PostAction(icon: Int, label: String, count: Int, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    JellyGlass(modifier.height(55.dp), radius = 18.dp, padding = 3.dp, onClick = onClick) {
-        Column(
-            Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            JellyIcon(icon, size = 23.dp)
-            Text(
-                if (count > 0) "$label $count" else label,
-                color = JellyInk,
-                fontSize = 7.7f.sp,
-                fontWeight = FontWeight.Black,
-                maxLines = 1
-            )
+    Row(
+        modifier
+            .heightIn(min = 44.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 2.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        JellyIcon(icon, size = 30.dp)
+        Spacer(Modifier.width(3.dp))
+        Text(
+            label,
+            color = Color(0xFF4C4176),
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Black,
+            maxLines = 1
+        )
+        if (count > 0) {
+            Spacer(Modifier.width(2.dp))
+            Text(count.toString(), color = Color(0xFF4C4176), fontSize = 8.5f.sp, fontWeight = FontWeight.Black)
         }
     }
 }
 
 @Composable
 private fun PostStat(icon: Int, label: String, count: Int, modifier: Modifier = Modifier) {
-    JellyGlass(modifier.height(55.dp), radius = 18.dp, padding = 3.dp) {
-        Column(
-            Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            JellyIcon(icon, size = 23.dp)
-            Text(
-                if (count > 0) "$label $count" else label,
-                color = JellyInk,
-                fontSize = 7.7f.sp,
-                fontWeight = FontWeight.Black,
-                maxLines = 1
-            )
+    Row(
+        modifier
+            .heightIn(min = 44.dp)
+            .padding(horizontal = 2.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        JellyIcon(icon, size = 30.dp)
+        Spacer(Modifier.width(3.dp))
+        Text(label, color = Color(0xFF4C4176), fontSize = 9.sp, fontWeight = FontWeight.Black, maxLines = 1)
+        if (count > 0) {
+            Spacer(Modifier.width(2.dp))
+            Text(count.toString(), color = Color(0xFF4C4176), fontSize = 8.5f.sp, fontWeight = FontWeight.Black)
         }
     }
 }
