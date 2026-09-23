@@ -1030,6 +1030,7 @@ fun MyChhachhApp() {
                                     loadShop(id)
                                 }
                             },
+                            onLoadFollowers = { id -> withContext(Dispatchers.IO) { api.shopFollowers(id) } },
                             onProfile = { open(Screen.PROFILE, it) },
                             onMessage = { open(Screen.CHAT, it) },
                             onUpdate = { id, fields, photoUri, coverUri ->
