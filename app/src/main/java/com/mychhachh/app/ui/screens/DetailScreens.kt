@@ -860,6 +860,7 @@ fun ShopDetailScreen(
     error: String?,
     meId: Long,
     onFollow: (Long) -> Unit,
+    onLoadFollowers: suspend (Long) -> List<User>,
     onProfile: (Long) -> Unit,
     onMessage: (Long) -> Unit,
     onUpdate: (Long, JSONObject, Uri?, Uri?) -> Unit,
@@ -877,6 +878,10 @@ fun ShopDetailScreen(
     val views = data?.optJSONObject("shop")?.optInt("views", 0) ?: 0
     var editOpen by remember { mutableStateOf(false) }
     var deleteOpen by remember { mutableStateOf(false) }
+    var followersOpen by remember { mutableStateOf(false) }
+    var shopFollowers by remember { mutableStateOf<List<User>>(emptyList()) }
+    var shopFollowersLoading by remember { mutableStateOf(false) }
+    val shopScope = rememberCoroutineScope()
 
     fun shareShop(id: Long, name: String) {
         val intent = Intent(Intent.ACTION_SEND)
@@ -986,7 +991,16 @@ fun ShopDetailScreen(
 
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 StatChip(posts.size.toString(), "Products", Modifier.weight(1f))
-                                StatChip(followers.toString(), "Followers", Modifier.weight(1f))
+                                StatChip(followers.toString(), "Followers", Modifier.weight(1f)) {
+                                    if (own) {
+                                        followersOpen = true
+                                        shopScope.launch {
+                                            shopFollowersLoading = true
+                                            shopFollowers = runCatching { onLoadFollowers(s.id) }.getOrDefault(emptyList())
+                                            shopFollowersLoading = false
+                                        }
+                                    }
+                                }
                                 StatChip(views.toString(), "Views", Modifier.weight(1f))
                             }
 
@@ -1114,6 +1128,47 @@ fun ShopDetailScreen(
                         dismissButton = { JellyButton("Cancel") { deleteOpen = false } }
                     )
                 }
+            }
+        }
+
+        if (followersOpen) {
+            item {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { followersOpen = false },
+                    title = { Text("Shop Followers", color = JellyInk, fontWeight = FontWeight.Black) },
+                    text = {
+                        LazyColumn(
+                            Modifier.heightIn(max = 420.dp),
+                            verticalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            if (shopFollowersLoading) item { LoadingBlock() }
+                            if (!shopFollowersLoading && shopFollowers.isEmpty()) {
+                                item { Text("No followers yet.", color = JellyMuted, fontSize = 10.5f.sp) }
+                            }
+                            items(shopFollowers, key = { "shop-follower-${it.id}" }) { follower ->
+                                JellyGlass(
+                                    Modifier.fillMaxWidth(),
+                                    radius = 15.dp,
+                                    padding = 8.dp,
+                                    onClick = { onProfile(follower.id) }
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Avatar(follower, 38.dp)
+                                        Spacer(Modifier.width(7.dp))
+                                        Column {
+                                            UserName(follower, 11)
+                                            if (follower.username.isNotBlank()) {
+                                                Text("@${follower.username}", color = JellyMuted, fontSize = 9.sp)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {},
+                    dismissButton = { JellyButton("Close") { followersOpen = false } }
+                )
             }
         }
     }
