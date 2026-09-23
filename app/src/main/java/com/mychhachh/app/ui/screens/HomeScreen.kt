@@ -49,6 +49,7 @@ fun HomeScreen(
     onRegister: () -> Unit,
     onProfile: (Long) -> Unit,
     onOpenPeople: () -> Unit,
+    onOpenShops: () -> Unit,
     onOpenShop: (Long) -> Unit,
     onFollowSuggestion: (Long) -> Unit,
     onLike: (Post) -> Unit,
@@ -165,7 +166,7 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("Shop Suggestions", Modifier.weight(1f), color = JellyInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
-                        Text("See All ›", color = LiveJellyTheme.activeColor, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { onOpenShop(shopSuggestions.first().id) })
+                        Text("See All ›", color = LiveJellyTheme.activeColor, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { onOpenShops() })
                     }
                     shopSuggestions.take(2).forEach { shop ->
                         JellyGlass(Modifier.fillMaxWidth(), radius = 18.dp, padding = 10.dp) {
