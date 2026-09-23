@@ -59,37 +59,44 @@ fun PeopleScreen(
         error?.let { item { ErrorCard(it, onSearch) } }
 
         items(users, key = { "person-${it.id}" }) { u ->
-            JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Avatar(u, 52.dp, Modifier.clickable { onOpen(u.id) })
-                    Spacer(Modifier.width(9.dp))
-                    Column(Modifier.weight(1f).clickable { onOpen(u.id) }) {
-                        UserName(u, 14)
-                        if (u.username.isNotBlank()) Text("@${u.username}", color = JellyMuted, fontSize = 10.sp)
-                        val place = listOf(u.city, u.village).filter { it.isNotBlank() }.joinToString(" · ")
-                        if (place.isNotBlank()) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                JellyIcon(JellyIcons.Pin, size = 16.dp)
-                                Spacer(Modifier.width(3.dp))
-                                Text(place, color = JellyMuted, fontSize = 9.sp)
+            JellyGlass(Modifier.fillMaxWidth(), radius = 19.dp, padding = 10.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Avatar(u, 54.dp, Modifier.clickable { onOpen(u.id) })
+                        Spacer(Modifier.width(11.dp))
+                        Column(Modifier.weight(1f).clickable { onOpen(u.id) }) {
+                            UserName(u, 14)
+                            if (u.username.isNotBlank()) Text("@${u.username}", color = JellyMuted, fontSize = 10.sp, maxLines = 1)
+                            val place = listOf(u.city, u.village).filter { it.isNotBlank() }.joinToString(" · ")
+                            if (place.isNotBlank()) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    JellyIcon(JellyIcons.Pin, size = 15.dp)
+                                    Spacer(Modifier.width(3.dp))
+                                    Text(place, color = JellyMuted, fontSize = 9.sp, maxLines = 1)
+                                }
                             }
-                        }
-                        val detail = u.work.ifBlank { u.school }
-                        if (detail.isNotBlank()) Text(detail.take(42), color = JellyMuted, fontSize = 8.7f.sp, maxLines = 1)
-                        if (u.relationshipStatus.isNotBlank()) {
-                            Text(
-                                u.relationshipStatus.replace('_', ' '),
-                                color = JellyMuted,
-                                fontSize = 8.4f.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            val detail = u.work.ifBlank { u.school }
+                            if (detail.isNotBlank()) Text(detail.take(42), color = JellyMuted, fontSize = 8.7f.sp, maxLines = 1)
+                            if (u.relationshipStatus.isNotBlank()) {
+                                JellyGlass(radius = 999.dp, padding = 5.dp) {
+                                    Text(
+                                        u.relationshipStatus.replace('_', ' '),
+                                        color = JellyMuted,
+                                        fontSize = 8.2f.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
                         }
                     }
                     if (u.id != currentUserId) {
-                        JellyButton(
-                            if (u.followed) "Following" else "Follow",
-                            primary = !u.followed
-                        ) { onFollow(u.id) }
+                        Row(Modifier.fillMaxWidth().padding(start = 65.dp)) {
+                            JellyButton(
+                                if (u.followed) "Following" else "Follow",
+                                primary = !u.followed
+                            ) { onFollow(u.id) }
+                        }
                     }
                 }
             }
