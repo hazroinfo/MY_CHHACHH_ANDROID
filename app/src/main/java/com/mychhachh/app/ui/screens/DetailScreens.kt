@@ -661,7 +661,7 @@ fun SettingsScreen(
     var verifyBack by remember { mutableStateOf<Uri?>(null) }
     var verifySelfie by remember { mutableStateOf<Uri?>(null) }
     var deleteOpen by remember { mutableStateOf(false) }
-    var settingsSection by remember { mutableStateOf("menu") }
+    var settingsSection by remember { mutableStateOf<String?>(null) }
 
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) avatarUri = uri
@@ -703,128 +703,15 @@ fun SettingsScreen(
         contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
+        item { PageTitle("Settings & Privacy", "Manage your privacy and experience", JellyIcons.Gear) }
+
         item {
-            if (settingsSection == "menu") {
-                PageTitle("Settings", "Manage your account and privacy", JellyIcons.Gear)
-            } else {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    JellyButton("Back", icon = JellyIcons.Arrow) { settingsSection = "menu" }
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        when (settingsSection) {
-                            "privacy" -> "Privacy"
-                            "notifications" -> "Notifications"
-                            "language" -> "Language"
-                            "verification" -> "Verification"
-                            "help" -> "Help & Support"
-                            "delete" -> "Delete Account"
-                            else -> "Settings"
-                        },
-                        color = JellyInk,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 18.sp
-                    )
-                }
-            }
-        }
-
-        if (settingsSection == "menu") {
-            item {
-                JellyGlass(Modifier.fillMaxWidth(), padding = 6.dp) {
-                    Column {
-                        SettingsMenuRow("Privacy", "Control who can see your information", JellyIcons.Shield) { settingsSection = "privacy" }
-                        SettingsMenuRow("Notifications", "Choose what updates and messages you receive", JellyIcons.Bell) { settingsSection = "notifications" }
-                        SettingsMenuRow("Language", "Choose your preferred language", JellyIcons.Address) { settingsSection = "language" }
-                        SettingsMenuRow("Verification", "Secure your identity and media access", JellyIcons.Check) { settingsSection = "verification" }
-                        SettingsMenuRow("Help & Support", "Private support tickets with Chhachh Team", JellyIcons.Comment) { settingsSection = "help" }
-                        SettingsMenuRow("Delete Account", "Permanently remove your account", JellyIcons.Delete) { settingsSection = "delete" }
-                    }
-                }
-            }
-        }
-
-        if (settingsSection == "profile") item {
-            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SectionTitle("Profile")
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (avatarUri != null) {
-                            Box(Modifier.size(66.dp).clip(RoundedCornerShape(99.dp))) {
-                                AsyncImage(avatarUri, "Selected profile photo", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                            }
-                        } else Avatar(me, 66.dp)
-                        Spacer(Modifier.width(10.dp))
-                        JellyButton("Choose Photo", icon = JellyIcons.Photo) { avatarPicker.launch("image/*") }
-                    }
-                    OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text("Name") }, shape = RoundedCornerShape(17.dp), singleLine = true)
-                    OutlinedTextField(
-                        username,
-                        { username = it.lowercase().filter { ch -> ch.isLetterOrDigit() || ch == '_' } },
-                        Modifier.fillMaxWidth(),
-                        label = { Text("Username") },
-                        isError = !usernameOk,
-                        supportingText = { if (!usernameOk) Text("3–30 characters: a-z, 0-9 or underscore") },
-                        shape = RoundedCornerShape(17.dp),
-                        singleLine = true
-                    )
-                    OutlinedTextField(email, { email = it.trim() }, Modifier.fillMaxWidth(), label = { Text("Email") }, isError = !emailOk, shape = RoundedCornerShape(17.dp), singleLine = true)
-                    OutlinedTextField(
-                        phone,
-                        { phone = it.filter { ch -> ch.isDigit() || ch == '+' }.take(16) },
-                        Modifier.fillMaxWidth(),
-                        label = { Text("Phone") },
-                        isError = !phoneOk,
-                        shape = RoundedCornerShape(17.dp),
-                        singleLine = true
-                    )
-                    OutlinedTextField(city, { city = it }, Modifier.fillMaxWidth(), label = { Text("City") }, shape = RoundedCornerShape(17.dp), singleLine = true)
-                    OutlinedTextField(village, { village = it }, Modifier.fillMaxWidth(), label = { Text("Village") }, shape = RoundedCornerShape(17.dp), singleLine = true)
-                    OutlinedTextField(area, { area = it }, Modifier.fillMaxWidth(), label = { Text("Mohallah / Area") }, shape = RoundedCornerShape(17.dp), singleLine = true)
-                    OutlinedTextField(bio, { bio = it }, Modifier.fillMaxWidth(), label = { Text("Bio") }, shape = RoundedCornerShape(17.dp), minLines = 3, maxLines = 6)
-                    OutlinedTextField(hometown, { hometown = it }, Modifier.fillMaxWidth(), label = { Text("Hometown") }, shape = RoundedCornerShape(17.dp), singleLine = true)
-                    OutlinedTextField(gender, { gender = it }, Modifier.fillMaxWidth(), label = { Text("Gender") }, shape = RoundedCornerShape(17.dp), singleLine = true)
-                    OutlinedTextField(relationshipStatus, { relationshipStatus = it }, Modifier.fillMaxWidth(), label = { Text("Relationship status") }, shape = RoundedCornerShape(17.dp), singleLine = true)
-                    OutlinedTextField(work, { work = it }, Modifier.fillMaxWidth(), label = { Text("Work") }, shape = RoundedCornerShape(17.dp), singleLine = true)
-                    OutlinedTextField(school, { school = it }, Modifier.fillMaxWidth(), label = { Text("School") }, shape = RoundedCornerShape(17.dp), singleLine = true)
-                    OutlinedTextField(facebook, { facebook = it }, Modifier.fillMaxWidth(), label = { Text("Facebook link") }, shape = RoundedCornerShape(17.dp), singleLine = true)
-                    OutlinedTextField(instagram, { instagram = it }, Modifier.fillMaxWidth(), label = { Text("Instagram link") }, shape = RoundedCornerShape(17.dp), singleLine = true)
-                    OutlinedTextField(youtube, { youtube = it }, Modifier.fillMaxWidth(), label = { Text("YouTube link") }, shape = RoundedCornerShape(17.dp), singleLine = true)
-                    OutlinedTextField(website, { website = it }, Modifier.fillMaxWidth(), label = { Text("Website link") }, shape = RoundedCornerShape(17.dp), singleLine = true)
-
-                    JellyButton(
-                        if (busy) "Saving…" else "Save Profile",
-                        Modifier.fillMaxWidth(),
-                        primary = true,
-                        icon = JellyIcons.Check,
-                        enabled = canSave
-                    ) {
-                        onSave(
-                            JSONObject()
-                                .put("name", name.trim())
-                                .put("username", username.trim())
-                                .put("email", email.trim())
-                                .put("phone", phone.trim())
-                                .put("city", city.trim())
-                                .put("village", village.trim())
-                                .put("area", area.trim())
-                                .put("bio", bio.trim())
-                                .put("hometown", hometown.trim())
-                                .put("gender", gender.trim())
-                                .put("relationship_status", relationshipStatus.trim())
-                                .put("work", work.trim())
-                                .put("school", school.trim())
-                                .put("social_facebook", facebook.trim())
-                                .put("social_instagram", instagram.trim())
-                                .put("social_youtube", youtube.trim())
-                                .put("social_website", website.trim()),
-                            avatarUri
-                        )
-                    }
-                }
-            }
+            SettingsGroupHeader(
+                title = "Privacy",
+                subtitle = "Control who can see your information",
+                icon = JellyIcons.Shield,
+                expanded = settingsSection == "privacy"
+            ) { settingsSection = if (settingsSection == "privacy") null else "privacy" }
         }
 
         if (settingsSection == "privacy") item {
@@ -866,6 +753,15 @@ fun SettingsScreen(
             }
         }
 
+        item {
+            SettingsGroupHeader(
+                title = "Notifications",
+                subtitle = "Choose what updates you receive",
+                icon = JellyIcons.Bell,
+                expanded = settingsSection == "notifications"
+            ) { settingsSection = if (settingsSection == "notifications") null else "notifications" }
+        }
+
         if (settingsSection == "notifications") item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -884,6 +780,15 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
+
+        item {
+            SettingsGroupHeader(
+                title = "Language",
+                subtitle = "Choose your preferred language",
+                icon = JellyIcons.Address,
+                expanded = settingsSection == "language"
+            ) { settingsSection = if (settingsSection == "language") null else "language" }
         }
 
         if (settingsSection == "language") item {
@@ -907,20 +812,17 @@ fun SettingsScreen(
             }
         }
 
-        if (settingsSection == "security") item {
-            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SectionTitle("Password & Security")
-                    JellyButton("Change Password", Modifier.fillMaxWidth(), icon = JellyIcons.Lock) { passwordOpen = true }
-                    JellyButton("Blocked Users (${blockedUsers.size})", Modifier.fillMaxWidth(), icon = JellyIcons.People) {
-                        blockedOpen = true
-                        onRefreshBlocked()
-                    }
-                }
-            }
-        }
 
         error?.let { item { ErrorCard(it) } }
+
+        item {
+            SettingsGroupHeader(
+                title = "Verification",
+                subtitle = "Secure your identity and media access",
+                icon = JellyIcons.Shield,
+                expanded = settingsSection == "verification"
+            ) { settingsSection = if (settingsSection == "verification") null else "verification" }
+        }
 
         if (settingsSection == "verification") item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
@@ -994,6 +896,15 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
+
+        item {
+            SettingsGroupHeader(
+                title = "Help & Support",
+                subtitle = "Private support tickets with Chhachh Team",
+                icon = JellyIcons.Comment,
+                expanded = settingsSection == "help"
+            ) { settingsSection = if (settingsSection == "help") null else "help" }
         }
 
         if (settingsSection == "help") item {
@@ -1077,6 +988,16 @@ fun SettingsScreen(
             }
         }
 
+        item {
+            SettingsGroupHeader(
+                title = "Delete Account",
+                subtitle = "Permanently remove your account",
+                icon = JellyIcons.Logout,
+                expanded = settingsSection == "delete",
+                danger = true
+            ) { settingsSection = if (settingsSection == "delete") null else "delete" }
+        }
+
         if (settingsSection == "delete") item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1089,15 +1010,7 @@ fun SettingsScreen(
             }
         }
 
-        if (settingsSection == "account") item {
-            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SectionTitle("Account")
-                    JellyButton("Logout", Modifier.fillMaxWidth(), icon = JellyIcons.Logout, onClick = onLogout)
-                    JellyButton("Delete Account", Modifier.fillMaxWidth(), icon = JellyIcons.Delete, danger = true) { deleteOpen = true }
-                }
-            }
-        }
+
     }
 
     if (passwordOpen) {
@@ -1168,6 +1081,41 @@ fun SettingsScreen(
             },
             dismissButton = { JellyButton("Cancel") { deleteOpen = false } }
         )
+    }
+}
+
+@Composable
+private fun SettingsGroupHeader(
+    title: String,
+    subtitle: String,
+    icon: Int,
+    expanded: Boolean,
+    danger: Boolean = false,
+    onClick: () -> Unit
+) {
+    JellyGlass(
+        Modifier.fillMaxWidth(),
+        radius = 22.dp,
+        padding = 0.dp,
+        onClick = onClick
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            JellyIcon(icon, size = 34.dp)
+            Spacer(Modifier.width(9.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    color = if (danger) JellyDanger else JellyInk,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 15.sp
+                )
+                Text(subtitle, color = JellyMuted, fontSize = 10.sp, maxLines = 2)
+            }
+            Text(if (expanded) "⌄" else "›", color = JellyMuted, fontSize = 22.sp, fontWeight = FontWeight.Black)
+        }
     }
 }
 
