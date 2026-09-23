@@ -28,7 +28,7 @@ import com.mychhachh.app.ui.components.*
 import com.mychhachh.app.ui.screens.*
 import com.mychhachh.app.ui.theme.*
 
-enum class Screen { HOME, PEOPLE, SHOPS, MAP, MESSAGES, NOTIFICATIONS, ANNOUNCEMENTS, VOTES, SAVED, SEARCH, PROFILE, SHOP_DETAIL, CHAT, SETTINGS, WEATHER, AUTH }
+enum class Screen { HOME, PEOPLE, SHOPS, MAP, MESSAGES, NOTIFICATIONS, ANNOUNCEMENTS, VOTES, SAVED, SEARCH, PROFILE, SHOP_DETAIL, CHAT, GROUP_CHAT, SETTINGS, WEATHER, AUTH }
 
 @Composable
 fun MyChhachhApp() {
@@ -69,12 +69,17 @@ fun MyChhachhApp() {
     var shopQuery by remember { mutableStateOf("") }
 
     var conversations by remember { mutableStateOf<List<Conversation>>(emptyList()) }
+    var messageGroups by remember { mutableStateOf<List<MessageGroup>>(emptyList()) }
     var conversationsLoading by remember { mutableStateOf(false) }
     var conversationsError by remember { mutableStateOf<String?>(null) }
     var chatOther by remember { mutableStateOf<User?>(null) }
     var chatMessages by remember { mutableStateOf<List<Message>>(emptyList()) }
     var chatLoading by remember { mutableStateOf(false) }
     var chatError by remember { mutableStateOf<String?>(null) }
+    var groupChatName by remember { mutableStateOf("Group") }
+    var groupChatMessages by remember { mutableStateOf<List<Message>>(emptyList()) }
+    var groupChatLoading by remember { mutableStateOf(false) }
+    var groupChatError by remember { mutableStateOf<String?>(null) }
 
     var notices by remember { mutableStateOf<List<Notice>>(emptyList()) }
     var noticesLoading by remember { mutableStateOf(false) }
@@ -148,7 +153,18 @@ fun MyChhachhApp() {
         scope.launch { shopsLoading = true; shopsError = null; try { shops = withContext(Dispatchers.IO) { api.shops(shopQuery) } } catch (e: Exception) { shopsError = e.message }; shopsLoading = false }
     }
     fun loadMessages() {
-        scope.launch { conversationsLoading = true; conversationsError = null; try { conversations = withContext(Dispatchers.IO) { api.conversations() } } catch (e: Exception) { conversationsError = e.message }; conversationsLoading = false }
+        scope.launch {
+            conversationsLoading = true
+            conversationsError = null
+            try {
+                val d = withContext(Dispatchers.IO) { api.conversations() to api.messageGroups() }
+                conversations = d.first
+                messageGroups = d.second
+            } catch (e: Exception) {
+                conversationsError = e.message
+            }
+            conversationsLoading = false
+        }
     }
     fun loadNotices() {
         scope.launch { noticesLoading = true; noticesError = null; try { val d = withContext(Dispatchers.IO) { api.notifications() }; notices = d.first; unread = d.second } catch (e: Exception) { noticesError = e.message }; noticesLoading = false }
@@ -174,6 +190,20 @@ fun MyChhachhApp() {
     }
     fun loadChat(id: Long) {
         scope.launch { chatLoading = true; chatError = null; try { val d = withContext(Dispatchers.IO) { api.chat(id) }; chatOther = d.first; chatMessages = d.second } catch (e: Exception) { chatError = e.message }; chatLoading = false }
+    }
+    fun loadGroupChat(id: Long) {
+        scope.launch {
+            groupChatLoading = true
+            groupChatError = null
+            try {
+                val d = withContext(Dispatchers.IO) { api.groupChat(id) }
+                groupChatName = d.first
+                groupChatMessages = d.second
+            } catch (e: Exception) {
+                groupChatError = e.message
+            }
+            groupChatLoading = false
+        }
     }
     fun loadWeather() {
         scope.launch { weatherLoading = true; weatherError = null; try { weatherData = withContext(Dispatchers.IO) { api.weather() } } catch (e: Exception) { weatherError = e.message }; weatherLoading = false }
@@ -214,6 +244,7 @@ fun MyChhachhApp() {
             Screen.PROFILE -> if (me != null && selectedId > 0) loadProfile(selectedId)
             Screen.SHOP_DETAIL -> if (me != null && selectedId > 0) loadShop(selectedId)
             Screen.CHAT -> if (me != null && selectedId > 0) loadChat(selectedId)
+            Screen.GROUP_CHAT -> if (me != null && selectedId > 0) loadGroupChat(selectedId)
             Screen.WEATHER -> loadWeather()
             else -> Unit
         }
@@ -424,7 +455,26 @@ fun MyChhachhApp() {
                     )
                     Screen.PEOPLE -> currentUser?.let { u -> PeopleScreen(u.id, people, peopleLoading, peopleError, peopleQuery, { peopleQuery = it }, ::loadPeople, { open(Screen.PROFILE, it) }, { id -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.followUser(id) } }; loadPeople() } }) }
                     Screen.SHOPS -> ShopsScreen(shops, shopsLoading, shopsError, shopQuery, { shopQuery = it }, ::loadShops, { open(Screen.SHOP_DETAIL, it) }, { id -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.toggleShopFollow(id) } }; loadShops() } })
-                    Screen.MESSAGES -> MessagesScreen(conversations, conversationsLoading, conversationsError) { open(Screen.CHAT, it) }
+                    Screen.MESSAGES -> MessagesScreen(
+                        conversations = conversations,
+                        groups = messageGroups,
+                        loading = conversationsLoading,
+                        error = conversationsError,
+                        onOpen = { open(Screen.CHAT, it) },
+                        onOpenGroup = { open(Screen.GROUP_CHAT, it) },
+                        onCreateGroup = { name, usernames ->
+                            scope.launch {
+                                try {
+                                    conversationsError = null
+                                    val id = withContext(Dispatchers.IO) { api.createMessageGroup(name, usernames) }
+                                    loadMessages()
+                                    if (id > 0) open(Screen.GROUP_CHAT, id)
+                                } catch (e: Exception) {
+                                    conversationsError = e.message ?: "Group could not be created."
+                                }
+                            }
+                        }
+                    )
                     Screen.CHAT -> currentUser?.let { u ->
                         ChatScreen(
                             me = u,
@@ -453,6 +503,38 @@ fun MyChhachhApp() {
                                     }
                                 }
                             }
+                        )
+                    }
+                    Screen.GROUP_CHAT -> currentUser?.let { u ->
+                        ChatScreen(
+                            me = u,
+                            other = null,
+                            messages = groupChatMessages,
+                            loading = groupChatLoading,
+                            error = groupChatError,
+                            onSearchLocation = { term -> withContext(Dispatchers.IO) { api.geocodePlaces(term) } },
+                            onSend = { txt, photoUri, place ->
+                                scope.launch {
+                                    try {
+                                        groupChatError = null
+                                        val m = withContext(Dispatchers.IO) {
+                                            val photo = photoUri?.let { api.uploadUri(it, "message-image") }.orEmpty()
+                                            api.sendGroupMessage(
+                                                groupId = selectedId,
+                                                text = txt,
+                                                photo = photo,
+                                                locationLat = place?.lat,
+                                                locationLng = place?.lng
+                                            )
+                                        }
+                                        groupChatMessages = groupChatMessages + m
+                                    } catch (e: Exception) {
+                                        groupChatError = e.message ?: "Message could not be sent."
+                                    }
+                                }
+                            },
+                            headerTitle = groupChatName,
+                            headerSubtitle = "Chhachh community conversation"
                         )
                     }
                     Screen.NOTIFICATIONS -> NotificationsScreen(notices, noticesLoading, noticesError, { scope.launch { runCatching { withContext(Dispatchers.IO) { api.markNotificationsRead() } }; unread = 0; loadNotices() } }, { open(Screen.PROFILE, it) })
@@ -712,6 +794,7 @@ private fun routeTitle(route: Screen): String = when (route) {
     Screen.PROFILE -> "Profile"
     Screen.SHOP_DETAIL -> "Shop"
     Screen.CHAT -> "Chat"
+    Screen.GROUP_CHAT -> "Group"
     Screen.SETTINGS -> "Settings"
     Screen.WEATHER -> "Weather"
     else -> "My Chhachh"
