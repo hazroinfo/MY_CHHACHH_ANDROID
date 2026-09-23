@@ -2,6 +2,7 @@ package com.mychhachh.app.ui.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,6 +18,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -312,8 +317,29 @@ fun UserName(user: User, fontSize: Int = 15) {
         )
         if (user.verified) {
             Spacer(Modifier.width(4.dp))
-            Box(Modifier.size(16.dp).clip(CircleShape).background(Color(0xFF2F9EF5)), contentAlignment = Alignment.Center) {
-                Text("✓", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Black)
+            Box(
+                Modifier
+                    .size(16.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF2F9EF5)),
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(Modifier.size(10.dp)) {
+                    val check = Path().apply {
+                        moveTo(size.width * 0.16f, size.height * 0.54f)
+                        lineTo(size.width * 0.40f, size.height * 0.76f)
+                        lineTo(size.width * 0.84f, size.height * 0.28f)
+                    }
+                    drawPath(
+                        path = check,
+                        color = Color.White,
+                        style = Stroke(
+                            width = 1.9.dp.toPx(),
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
+                }
             }
         }
     }
