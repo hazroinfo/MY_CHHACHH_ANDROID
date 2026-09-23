@@ -647,6 +647,11 @@ fun MyChhachhApp() {
                                 loadAnnouncements()
                             }
                         },
+                        onLoadComments = { id -> withContext(Dispatchers.IO) { api.announcementComments(id) } },
+                        onAddComment = { id, text ->
+                            withContext(Dispatchers.IO) { api.addAnnouncementComment(id, text) }
+                            loadAnnouncements()
+                        },
                         onPublish = { text, photoUri, audioFile ->
                             scope.launch {
                                 try {
