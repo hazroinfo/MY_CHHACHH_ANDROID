@@ -100,7 +100,8 @@ data class Shop(
     val locationUrl: String = "",
     val followers: Int = 0,
     val products: Int = 0,
-    val followed: Boolean = false
+    val followed: Boolean = false,
+    val promoted: Boolean = false
 )
 
 data class Conversation(val user: User, val preview: String, val createdAt: String, val unread: Boolean)
@@ -187,7 +188,10 @@ fun JSONObject.toShop(): Shop = Shop(
     category = optString("category", ""), description = optString("description", ""), photo = mediaUrl(optString("photo", "")), cover = mediaUrl(optString("cover_photo", "")),
     city = optString("city", ""), village = optString("village", ""), area = optString("area", ""), location = optString("location", ""), phone = optString("phone", ""), whatsapp = optString("whatsapp", ""),
     locationUrl = optString("location_url", optString("map_url", optString("google_maps_url", optString("location_link", "")))),
-    followers = optInt("followers", 0), products = optInt("products", 0), followed = optBoolean("following", optBoolean("followed", false))
+    followers = optInt("followers", 0),
+    products = optInt("products", 0),
+    followed = optBoolean("following", optBoolean("followed", false)),
+    promoted = optBoolean("promoted", optInt("promoted", 0) != 0)
 )
 
 
