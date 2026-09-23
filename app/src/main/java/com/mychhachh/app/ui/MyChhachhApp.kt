@@ -624,7 +624,7 @@ fun MyChhachhApp() {
                             loading = groupChatLoading,
                             error = groupChatError,
                             onSearchLocation = { term -> withContext(Dispatchers.IO) { api.geocodePlaces(term) } },
-                            onSend = { txt, photoUri, place ->
+                            onSend = { txt, photoUri, audioFile, place ->
                                 scope.launch {
                                     try {
                                         groupChatError = null
