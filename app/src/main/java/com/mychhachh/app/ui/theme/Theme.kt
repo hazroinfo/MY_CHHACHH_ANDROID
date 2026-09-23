@@ -10,29 +10,29 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import org.json.JSONObject
 
-private val DefaultJellyInk = Color(0xFF0D1A34)
-private val DefaultJellyMuted = Color(0xFF66738B)
-private val DefaultJellyAccent = Color(0xFF1683FF)
-private val DefaultJellyAccent2 = Color(0xFF7C3AED)
-private val DefaultJellySurface = Color(0xFFFFFFFF)
-private val DefaultJellyOutline = Color(0xFFE8EDF2)
-private val DefaultJellyIcon = Color(0xFF10203D)
-private val DefaultJellyInput = Color(0xFFF4F7FA)
+private val DefaultJellyInk = Color(0xFF35286F)
+private val DefaultJellyMuted = Color(0xFF717BA2)
+private val DefaultJellyAccent = Color(0xFFFF4FAF)
+private val DefaultJellyAccent2 = Color(0xFF9A78FF)
+private val DefaultJellySurface = Color(0xFFF7FCFF)
+private val DefaultJellyOutline = Color(0xFFFFFFFF)
+private val DefaultJellyIcon = Color(0xFF35286F)
+private val DefaultJellyInput = Color(0xFFE2F7FF)
 
 val JellyInk: Color get() = LiveJellyTheme.text
 val JellyMuted: Color get() = LiveJellyTheme.muted
 val JellyPink: Color get() = LiveJellyTheme.accent
 val JellyPurple: Color get() = LiveJellyTheme.accent2
-val JellyPink2 = Color(0xFF1683FF)
+val JellyPink2 = Color(0xFFFF78C4)
 val JellyCyan = Color(0xFF55D8FF)
-val JellyBlue = Color(0xFF1683FF)
+val JellyBlue = Color(0xFF678CFF)
 val JellyGold = Color(0xFFFFC75A)
-val JellyGreen = Color(0xFF22C55E)
-val JellyBg = Color(0xFFF3F6F9)
-val JellyBg2 = Color(0xFFF7F9FC)
+val JellyGreen = Color(0xFF55DEB1)
+val JellyBg = Color(0xFFDFF5FF)
+val JellyBg2 = Color(0xFFF0EAFF)
 val JellySurface: Color get() = LiveJellyTheme.cardColor
 val JellyOutline: Color get() = LiveJellyTheme.borderColor
-val JellyDanger = Color(0xFFE53935)
+val JellyDanger = Color(0xFFB83057)
 
 object LiveJellyTheme {
     var enabled by mutableStateOf(true)
@@ -44,24 +44,24 @@ object LiveJellyTheme {
     var navColor by mutableStateOf(Color.White)
     var cardColor by mutableStateOf(DefaultJellySurface)
     var borderColor by mutableStateOf(DefaultJellyOutline)
-    var buttonColor by mutableStateOf(DefaultJellyAccent)
+    var buttonColor by mutableStateOf(Color.White)
     var inputColor by mutableStateOf(DefaultJellyInput)
     var iconColor by mutableStateOf(DefaultJellyIcon)
     var activeColor by mutableStateOf(DefaultJellyAccent)
-    var cardOpacity by mutableFloatStateOf(.97f)
-    var headerOpacity by mutableFloatStateOf(.97f)
-    var navOpacity by mutableFloatStateOf(.96f)
-    var inputOpacity by mutableFloatStateOf(.96f)
-    var cardRadius by mutableFloatStateOf(22f)
+    var cardOpacity by mutableFloatStateOf(.76f)
+    var headerOpacity by mutableFloatStateOf(.88f)
+    var navOpacity by mutableFloatStateOf(.80f)
+    var inputOpacity by mutableFloatStateOf(.92f)
+    var cardRadius by mutableFloatStateOf(26f)
     var headerRadius by mutableFloatStateOf(28f)
-    var navRadius by mutableFloatStateOf(17f)
-    var buttonRadius by mutableFloatStateOf(14f)
-    var inputRadius by mutableFloatStateOf(16f)
+    var navRadius by mutableFloatStateOf(23f)
+    var buttonRadius by mutableFloatStateOf(16f)
+    var inputRadius by mutableFloatStateOf(20f)
     var shadow by mutableFloatStateOf(12f)
-    var pageWidth by mutableFloatStateOf(940f)
-    var cardPadding by mutableFloatStateOf(18f)
-    var sectionGap by mutableFloatStateOf(14f)
-    var navHeight by mutableFloatStateOf(64f)
+    var pageWidth by mutableFloatStateOf(920f)
+    var cardPadding by mutableFloatStateOf(16f)
+    var sectionGap by mutableFloatStateOf(8f)
+    var navHeight by mutableFloatStateOf(72f)
     var buttonHeight by mutableFloatStateOf(44f)
     var fontScale by mutableFloatStateOf(1f)
     var profileCoverHeight by mutableFloatStateOf(175f)
@@ -89,24 +89,24 @@ object LiveJellyTheme {
         navColor = Color.White
         cardColor = DefaultJellySurface
         borderColor = DefaultJellyOutline
-        buttonColor = DefaultJellyAccent
+        buttonColor = Color.White
         inputColor = DefaultJellyInput
         iconColor = DefaultJellyIcon
         activeColor = DefaultJellyAccent
-        cardOpacity = .97f
-        headerOpacity = .97f
-        navOpacity = .96f
-        inputOpacity = .96f
-        cardRadius = 22f
+        cardOpacity = .76f
+        headerOpacity = .88f
+        navOpacity = .80f
+        inputOpacity = .92f
+        cardRadius = 26f
         headerRadius = 28f
-        navRadius = 17f
-        buttonRadius = 14f
-        inputRadius = 16f
+        navRadius = 23f
+        buttonRadius = 16f
+        inputRadius = 20f
         shadow = 12f
-        pageWidth = 940f
-        cardPadding = 18f
-        sectionGap = 14f
-        navHeight = 64f
+        pageWidth = 920f
+        cardPadding = 16f
+        sectionGap = 8f
+        navHeight = 72f
         buttonHeight = 44f
         fontScale = 1f
         profileCoverHeight = 175f
@@ -133,7 +133,7 @@ object LiveJellyTheme {
         navColor = color(settings.optString("theme_nav_color", ""), Color.White)
         cardColor = color(settings.optString("theme_card_color", ""), DefaultJellySurface)
         borderColor = color(settings.optString("theme_border_color", ""), DefaultJellyOutline)
-        buttonColor = color(settings.optString("theme_button_color", ""), DefaultJellyAccent)
+        buttonColor = Color.White
         inputColor = color(settings.optString("theme_input_color", ""), DefaultJellyInput)
         iconColor = color(settings.optString("theme_icon_color", ""), DefaultJellyIcon)
         activeColor = color(settings.optString("theme_active_color", ""), accent)
