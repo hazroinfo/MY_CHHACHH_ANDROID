@@ -126,7 +126,7 @@ fun MyChhachhApp() {
 
     var adminState by remember { mutableStateOf<JSONObject?>(null) }
     var adminList by remember { mutableStateOf<JSONObject?>(null) }
-    var adminSection by remember { mutableStateOf("users") }
+    var adminSection by remember { mutableStateOf("overview") }
     var adminQuery by remember { mutableStateOf("") }
     var adminLoading by remember { mutableStateOf(false) }
     var adminError by remember { mutableStateOf<String?>(null) }
