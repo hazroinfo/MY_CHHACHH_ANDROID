@@ -250,51 +250,294 @@ fun AnnouncementsScreen(
     }
 }
 @Composable
-fun VotesScreen(items: List<Vote>, loading: Boolean, error: String?, onCast: (Long, Int) -> Unit) {
+fun VotesScreen(
+    items: List<Vote>,
+    loading: Boolean,
+    error: String?,
+    meId: Long,
+    onSearchOpponent: suspend (String) -> List<User>,
+    onCreateChallenge: (String, Int, String) -> Unit,
+    onCast: (Long, Long) -> Unit,
+    onRespond: (Long, String) -> Unit,
+    onStart: (Long) -> Unit,
+    onCancel: (Long) -> Unit,
+    onLeave: (Long) -> Unit,
+    onShare: (Long) -> Unit,
+    onStatement: (Long, String) -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var opponentQuery by remember { mutableStateOf("") }
+    var opponentResults by remember { mutableStateOf<List<User>>(emptyList()) }
+    var selectedOpponent by remember { mutableStateOf<User?>(null) }
+    var searchingOpponent by remember { mutableStateOf(false) }
+    var challengeLine by remember { mutableStateOf("") }
+    var durationHours by remember { mutableIntStateOf(24) }
+    val durationOptions = listOf(1, 6, 12, 24, 48, 72, 168)
+
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        JellyIcon(JellyIcons.Vote, size = 40.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text("New Challenge", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                            Text("Choose a mutual follower and send a voting invite.", color = JellyMuted, fontSize = 10.sp)
+                        }
+                    }
+                    OutlinedTextField(
+                        opponentQuery,
+                        {
+                            opponentQuery = it
+                            selectedOpponent = null
+                        },
+                        Modifier.fillMaxWidth(),
+                        placeholder = { Text("Type a name or @username") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(18.dp)
+                    )
+                    JellyButton(
+                        if (searchingOpponent) "Searching…" else "Search opponent",
+                        Modifier.fillMaxWidth(),
+                        primary = true,
+                        icon = JellyIcons.Search,
+                        enabled = !searchingOpponent && opponentQuery.isNotBlank()
+                    ) {
+                        scope.launch {
+                            searchingOpponent = true
+                            try {
+                                opponentResults = onSearchOpponent(opponentQuery.removePrefix("@").trim())
+                                    .filter { it.id != meId }
+                                    .take(8)
+                            } finally {
+                                searchingOpponent = false
+                            }
+                        }
+                    }
+                    opponentResults.forEach { person ->
+                        JellyGlass(
+                            Modifier.fillMaxWidth(),
+                            radius = 16.dp,
+                            padding = 8.dp,
+                            onClick = {
+                                selectedOpponent = person
+                                opponentQuery = person.username
+                            }
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Avatar(person, 36.dp)
+                                Spacer(Modifier.width(7.dp))
+                                Column(Modifier.weight(1f)) {
+                                    UserName(person, 11)
+                                    Text("@${person.username}", color = JellyMuted, fontSize = 9.sp)
+                                }
+                                if (selectedOpponent?.id == person.id) {
+                                    Text("Selected", color = JellyPurple, fontWeight = FontWeight.Black, fontSize = 9.sp)
+                                }
+                            }
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Voting duration", Modifier.weight(1f), color = JellyInk, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        JellyButton(
+                            when {
+                                durationHours < 24 -> "$durationHours hours"
+                                durationHours == 24 -> "24 hours"
+                                else -> "${durationHours / 24} days"
+                            },
+                            icon = JellyIcons.Clock
+                        ) {
+                            val i = durationOptions.indexOf(durationHours).coerceAtLeast(0)
+                            durationHours = durationOptions[(i + 1) % durationOptions.size]
+                        }
+                    }
+                    OutlinedTextField(
+                        challengeLine,
+                        { challengeLine = it.take(500) },
+                        Modifier.fillMaxWidth(),
+                        placeholder = { Text("My match line (optional)") },
+                        maxLines = 3,
+                        shape = RoundedCornerShape(18.dp)
+                    )
+                    JellyButton(
+                        "Send Challenge Invite",
+                        Modifier.fillMaxWidth(),
+                        primary = true,
+                        icon = JellyIcons.Send,
+                        enabled = selectedOpponent != null
+                    ) {
+                        val opponent = selectedOpponent ?: return@JellyButton
+                        onCreateChallenge(opponent.username, durationHours, challengeLine.trim())
+                        opponentQuery = ""
+                        selectedOpponent = null
+                        opponentResults = emptyList()
+                        challengeLine = ""
+                        durationHours = 24
+                    }
+                }
+            }
+        }
+
         if (loading && items.isEmpty()) item { LoadingBlock() }
         error?.let { item { ErrorCard(it) } }
-        if (!loading && items.isEmpty() && error == null) item { EmptyCard("No voting available.", JellyIcons.Vote) }
+        if (!loading && items.isEmpty() && error == null) item { EmptyCard("No voting matches yet.", JellyIcons.Vote) }
+
         items(items, key = { "vote-${it.id}" }) { v ->
+            var statementOpen by remember(v.id) { mutableStateOf(false) }
+            val active = v.status == "active"
+            val waiting = v.status == "waiting"
+            val ready = v.status == "ready"
+            val ended = !waiting && !ready && !active
+            val isLeft = meId == v.leftUserId
+            val isRight = meId == v.rightUserId
+            val candidate = isLeft || isRight
+            val canVote = active && !candidate && v.myChoice == 0L
+            val total = (v.votes1 + v.votes2).coerceAtLeast(1)
+            val leftShare = v.votes1.toFloat() / total.toFloat()
+
             JellyGlass(Modifier.fillMaxWidth(), padding = 12.dp) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Text(v.title.ifBlank { "Voting" }, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                    val votingOpen = v.status.equals("active", true) || v.status.equals("open", true) || v.status.equals("running", true)
-                    Text(if (votingOpen) "OPEN" else "ENDED", color = if (votingOpen) JellyGreen else JellyMuted, fontSize = 9.sp, fontWeight = FontWeight.Black)
-                    val total = (v.votes1 + v.votes2).coerceAtLeast(1)
-                    val leftShare = v.votes1.toFloat() / total.toFloat()
+                    Text(
+                        when (v.status) {
+                            "waiting" -> "Challenge waiting"
+                            "ready" -> "Challenge accepted"
+                            "active" -> "Voting live"
+                            "declined" -> "Challenge declined"
+                            "cancelled" -> "Challenge cancelled"
+                            "forfeit" -> "Match ended by forfeit"
+                            else -> "Voting finished"
+                        },
+                        color = if (active) JellyGreen else JellyMuted,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 10.sp
+                    )
+
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        VoteSide(v.user1, v.votes1, Modifier.weight(1f), votingOpen) { onCast(v.id, 1) }
+                        VoteSide(
+                            user = v.user1,
+                            statement = v.leftText,
+                            votes = v.votes1,
+                            revealCount = v.resultRevealed,
+                            selected = v.myChoice == v.leftUserId,
+                            winner = ended && v.winnerUserId == v.leftUserId,
+                            modifier = Modifier.weight(1f),
+                            enabled = canVote
+                        ) { if (v.leftUserId > 0) onCast(v.id, v.leftUserId) }
+
                         Column(Modifier.width(58.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            JellyIcon(JellyIcons.Vote, size = 38.dp)
+                            JellyIcon(JellyIcons.Vote, size = 39.dp)
                             Text("VS", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 17.sp)
                         }
-                        VoteSide(v.user2, v.votes2, Modifier.weight(1f), votingOpen) { onCast(v.id, 2) }
+
+                        VoteSide(
+                            user = v.user2,
+                            statement = v.rightText,
+                            votes = v.votes2,
+                            revealCount = v.resultRevealed,
+                            selected = v.myChoice == v.rightUserId,
+                            winner = ended && v.winnerUserId == v.rightUserId,
+                            modifier = Modifier.weight(1f),
+                            enabled = canVote
+                        ) { if (v.rightUserId > 0) onCast(v.id, v.rightUserId) }
                     }
-                    Row(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(99.dp))) {
-                        Box(Modifier.weight(leftShare.coerceAtLeast(.001f)).fillMaxHeight().background(JellyPink))
-                        Box(Modifier.weight((1f - leftShare).coerceAtLeast(.001f)).fillMaxHeight().background(JellyPurple))
+
+                    if (v.resultRevealed) {
+                        Row(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(99.dp))) {
+                            Box(Modifier.weight(leftShare.coerceAtLeast(.001f)).fillMaxHeight().background(JellyPink))
+                            Box(Modifier.weight((1f - leftShare).coerceAtLeast(.001f)).fillMaxHeight().background(JellyPurple))
+                        }
+                        Text("${v.votes1 + v.votes2} total votes", color = JellyMuted, fontSize = 9.sp)
+                    } else {
+                        Text("Vote totals are hidden until results.", color = JellyMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                     }
-                    Text("${v.votes1 + v.votes2} total votes", color = JellyMuted, fontSize = 9.sp)
+
+                    if (waiting && isRight) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            JellyButton("Accept", Modifier.weight(1f), primary = true, icon = JellyIcons.Check) { onRespond(v.id, "accept") }
+                            JellyButton("Decline", Modifier.weight(1f), icon = JellyIcons.Close) { onRespond(v.id, "decline") }
+                        }
+                    }
+                    if (ready && isLeft) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            JellyButton("Start Match", Modifier.weight(1f), primary = true, icon = JellyIcons.Vote) { onStart(v.id) }
+                            JellyButton("Cancel", Modifier.weight(1f), icon = JellyIcons.Close) { onCancel(v.id) }
+                        }
+                    } else if (waiting && isLeft) {
+                        JellyButton("Cancel Challenge", Modifier.fillMaxWidth(), icon = JellyIcons.Close) { onCancel(v.id) }
+                    }
+
+                    if (candidate && (waiting || ready || active)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            JellyButton("Edit my line", Modifier.weight(1f), icon = JellyIcons.Edit) { statementOpen = true }
+                            if (active) {
+                                JellyButton("Leave Match", Modifier.weight(1f), icon = JellyIcons.Logout) { onLeave(v.id) }
+                            }
+                        }
+                    }
+
+                    JellyButton("Share to Profile", Modifier.fillMaxWidth(), icon = JellyIcons.Share) { onShare(v.id) }
                 }
+            }
+
+            if (statementOpen) {
+                var draft by remember(v.id) { mutableStateOf(if (isLeft) v.leftText else v.rightText) }
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { statementOpen = false },
+                    title = { Text("My match line", color = JellyInk, fontWeight = FontWeight.Black) },
+                    text = {
+                        OutlinedTextField(
+                            draft,
+                            { draft = it.take(500) },
+                            Modifier.fillMaxWidth(),
+                            minLines = 3,
+                            maxLines = 6,
+                            placeholder = { Text("Write a short line under your photo…") },
+                            shape = RoundedCornerShape(18.dp)
+                        )
+                    },
+                    confirmButton = {
+                        JellyButton("Save", primary = true, icon = JellyIcons.Check) {
+                            onStatement(v.id, draft.trim())
+                            statementOpen = false
+                        }
+                    },
+                    dismissButton = { JellyButton("Cancel") { statementOpen = false } }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun VoteSide(user: User?, votes: Int, modifier: Modifier, enabled: Boolean, onVote: () -> Unit) {
+private fun VoteSide(
+    user: User?,
+    statement: String,
+    votes: Int,
+    revealCount: Boolean,
+    selected: Boolean,
+    winner: Boolean,
+    modifier: Modifier,
+    enabled: Boolean,
+    onVote: () -> Unit
+) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
         if (user != null) {
-            Avatar(user, 58.dp)
+            Avatar(user, 62.dp)
             UserName(user, 10)
+            if (user.username.isNotBlank()) Text("@${user.username}", color = JellyMuted, fontSize = 8.5f.sp)
         } else JellyIcon(JellyIcons.User, size = 54.dp)
-        Text("$votes votes", color = JellyMuted, fontSize = 9.5f.sp)
-        JellyButton(if (enabled) "Vote" else "Ended", primary = enabled, enabled = enabled, onClick = onVote)
+        if (statement.isNotBlank()) {
+            Text(statement, color = JellyInk, fontSize = 9.sp, lineHeight = 12.sp, maxLines = 3)
+        }
+        if (revealCount) Text("$votes votes", color = JellyMuted, fontSize = 9.5f.sp)
+        if (winner) Text("Winner", color = JellyGreen, fontWeight = FontWeight.Black, fontSize = 9.5f.sp)
+        if (selected) Text("Your vote", color = JellyPurple, fontWeight = FontWeight.Black, fontSize = 9.sp)
+        if (enabled) JellyButton("Vote", primary = true, icon = JellyIcons.Vote, onClick = onVote)
     }
 }
 
