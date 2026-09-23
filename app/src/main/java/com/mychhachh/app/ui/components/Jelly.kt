@@ -104,7 +104,7 @@ fun JellyPill(text: String, selected: Boolean, modifier: Modifier = Modifier, on
                 else Brush.linearGradient(listOf(Color.White, Color(0xFFF1FAFF)))
             )
             .border(1.dp, if (selected) Color.White.copy(.85f) else JellyOutline, shape)
-            .height(42.dp),
+            .height(48.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
