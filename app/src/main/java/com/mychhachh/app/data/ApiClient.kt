@@ -262,7 +262,7 @@ class ApiClient(private val context: Context) {
             receiverId=o.optLong("target_id", o.optLong("receiver_id", to)),
             text=o.optString("text", o.optString("message", text)),
             photo=mediaUrl(o.optString("photo", photo)),
-            audio=mediaUrl(o.optString("audio", "")),
+            audio=mediaUrl(o.optString("audio", audio)),
             createdAt=o.optString("created_at", ""),
             locationLat=o.optString("location_lat", "").toDoubleOrNull() ?: locationLat,
             locationLng=o.optString("location_lng", "").toDoubleOrNull() ?: locationLng
