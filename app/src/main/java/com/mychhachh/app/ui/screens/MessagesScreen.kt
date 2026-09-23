@@ -220,6 +220,19 @@ fun MessagesScreen(
     }
 }
 
+@Composable
+private fun MessageToolButton(icon: Int, description: String, size: androidx.compose.ui.unit.Dp, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(size)
+            .clip(RoundedCornerShape(13.dp))
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        JellyIcon(icon, size = (size.value - 10f).dp, contentDescription = description)
+    }
+}
+
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun ChatScreen(
@@ -395,7 +408,6 @@ fun ChatScreen(
                     Text(
                         listOfNotNull(
                             photoUri?.let { "Photo ready" },
-                            audioFile?.let { if (recording) "Recording voice…" else "Voice ready" },
                             selectedPlace?.let { "Location: ${it.name.split(",").firstOrNull().orEmpty()}" }
                         ).joinToString(" · "),
                         Modifier.weight(1f),
@@ -404,45 +416,67 @@ fun ChatScreen(
                         fontWeight = FontWeight.Bold
                     )
                     JellyButton("Remove") {
-                        if (recording) stopVoiceRecording()
-                        runCatching { audioFile?.delete() }
                         photoUri = null
-                        audioFile = null
                         selectedPlace = null
                     }
                 }
             }
         }
 
-        JellyGlass(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 7.dp), padding = 7.dp) {
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                JellyIconButton(JellyIcons.Photo, "Photo") { photoPicker.launch("image/*") }
-                JellyIconButton(JellyIcons.Announcement, if (recording) "Stop voice" else "Voice") {
-                    if (recording) {
-                        stopVoiceRecording()
-                    } else {
-                        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-                        if (granted) runCatching { startVoiceRecording() } else micPermission.launch(Manifest.permission.RECORD_AUDIO)
-                    }
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 7.dp)
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(JellyMuted.copy(alpha = .12f))
+            )
+            Row(
+                Modifier.fillMaxWidth().padding(top = 9.dp),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                MessageToolButton(JellyIcons.Photo, "Photo", 38.dp) { photoPicker.launch("image/*") }
+                Box(
+                    Modifier
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(13.dp))
+                        .clickable { emojiOpen = !emojiOpen },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("☺", color = JellyInk, fontSize = 22.sp, fontWeight = FontWeight.Black)
                 }
-                Box {
-                    JellyIconButton(JellyIcons.Feeling, "Emoji") { emojiOpen = !emojiOpen }
+                JellyGlass(
+                    Modifier.weight(1f).heightIn(min = 38.dp, max = 120.dp),
+                    radius = 17.dp,
+                    padding = 0.dp,
+                    surfaceColor = LiveJellyTheme.inputColor,
+                    surfaceOpacity = LiveJellyTheme.inputOpacity
+                ) {
+                    androidx.compose.foundation.text.BasicTextField(
+                        value = text,
+                        onValueChange = { text = it },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            color = JellyInk,
+                            fontSize = 12.sp
+                        ),
+                        maxLines = 4,
+                        decorationBox = { inner ->
+                            Box {
+                                if (text.isBlank()) Text("Send a message…", color = JellyMuted, fontSize = 11.sp)
+                                inner()
+                            }
+                        }
+                    )
                 }
-                OutlinedTextField(
-                    text,
-                    { text = it },
-                    Modifier.weight(1f),
-                    placeholder = { Text("Send a message…") },
-                    shape = RoundedCornerShape(17.dp),
-                    maxLines = 4
-                )
-                JellyIconButton(JellyIcons.Map, "Location") { locationOpen = true }
-                JellyIconButton(JellyIcons.Send, "Send") {
-                    if (!recording && (text.isNotBlank() || photoUri != null || audioFile != null || selectedPlace != null)) {
-                        onSend(text.trim(), photoUri, audioFile, selectedPlace)
+                MessageToolButton(JellyIcons.Map, "Location", 38.dp) { locationOpen = true }
+                MessageToolButton(JellyIcons.Send, "Send", 42.dp) {
+                    if (text.isNotBlank() || photoUri != null || selectedPlace != null) {
+                        onSend(text.trim(), photoUri, null, selectedPlace)
                         text = ""
                         photoUri = null
-                        audioFile = null
                         selectedPlace = null
                         emojiOpen = false
                     }
