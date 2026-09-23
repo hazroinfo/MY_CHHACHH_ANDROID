@@ -926,11 +926,22 @@ fun MyChhachhApp() {
                             },
                             onMessage = { id -> open(Screen.CHAT, id) },
                             onSettings = { open(Screen.SETTINGS) },
-                            onUpdateProfile = { fields ->
+                            onUpdateProfile = { fields, avatarUri, coverUri ->
                                 scope.launch {
                                     profileError = null
                                     try {
-                                        val updated = withContext(Dispatchers.IO) { api.updateProfile(fields) }
+                                        val body = JSONObject(fields.toString())
+                                        val updated = withContext(Dispatchers.IO) {
+                                            avatarUri?.let {
+                                                val avatar = api.uploadUri(it, "avatar")
+                                                if (avatar.isNotBlank()) body.put("avatar", avatar)
+                                            }
+                                            coverUri?.let {
+                                                val cover = api.uploadUri(it, "profile-cover")
+                                                if (cover.isNotBlank()) body.put("cover_photo", cover)
+                                            }
+                                            api.updateProfile(body)
+                                        }
                                         me = updated
                                         loadProfile(updated.id)
                                     } catch (e: Exception) {
