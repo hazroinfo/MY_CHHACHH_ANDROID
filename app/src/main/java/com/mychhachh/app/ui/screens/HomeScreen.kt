@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.mychhachh.app.data.CheckinPlace
+import com.mychhachh.app.data.Comment
 import com.mychhachh.app.data.Post
 import com.mychhachh.app.data.User
 import kotlinx.coroutines.launch
@@ -657,6 +658,158 @@ private fun PostStat(icon: Int, label: String, count: Int, modifier: Modifier = 
                 fontWeight = FontWeight.Black,
                 maxLines = 1
             )
+        }
+    }
+}
+
+
+@Composable
+fun PostDiscussionDialog(
+    post: Post,
+    comments: List<Comment>,
+    likesUsers: List<User>,
+    loading: Boolean,
+    error: String?,
+    busy: Boolean,
+    onDismiss: () -> Unit,
+    onSend: (String, Long) -> Unit,
+    onLikeComment: (Long) -> Unit,
+    onProfile: (Long) -> Unit
+) {
+    var mode by remember(post.id) { mutableStateOf("comments") }
+    var text by remember(post.id) { mutableStateOf("") }
+    var replyTo by remember(post.id) { mutableStateOf<Comment?>(null) }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                JellyPill("Comments ${post.comments}", mode == "comments", Modifier.weight(1f)) { mode = "comments" }
+                JellyPill("Likes ${post.likes}", mode == "likes", Modifier.weight(1f)) { mode = "likes" }
+            }
+        },
+        text = {
+            Column(Modifier.fillMaxWidth().heightIn(max = 520.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (loading) LoadingBlock()
+                error?.let { ErrorCard(it) }
+
+                if (!loading && mode == "comments") {
+                    val roots = comments.filter { it.parentId == 0L }
+                    if (roots.isEmpty()) {
+                        Text("No comments yet.", color = JellyMuted, fontSize = 11.sp)
+                    } else {
+                        LazyColumn(
+                            Modifier.weight(1f, fill = false).fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            items(roots, key = { "comment-${it.id}" }) { comment ->
+                                CommentRow(comment, false, onProfile, onLikeComment) { replyTo = comment }
+                                comments.filter { it.parentId == comment.id }.forEach { reply ->
+                                    Spacer(Modifier.height(3.dp))
+                                    CommentRow(reply, true, onProfile, onLikeComment) { replyTo = comment }
+                                }
+                            }
+                        }
+                    }
+
+                    replyTo?.let {
+                        JellyGlass(Modifier.fillMaxWidth(), radius = 14.dp, padding = 7.dp) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Replying to @${it.user.username}", Modifier.weight(1f), color = JellyMuted, fontSize = 9.5f.sp)
+                                JellyButton("Cancel") { replyTo = null }
+                            }
+                        }
+                    }
+
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+                        OutlinedTextField(
+                            text,
+                            { text = it.take(3000) },
+                            Modifier.weight(1f),
+                            placeholder = { Text(if (replyTo == null) "Write a comment…" else "Write a reply…") },
+                            minLines = 2,
+                            maxLines = 5,
+                            shape = RoundedCornerShape(17.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        JellyIconButton(JellyIcons.Send, "Send") {
+                            if (!busy && text.isNotBlank()) {
+                                onSend(text.trim(), replyTo?.id ?: 0L)
+                                text = ""
+                                replyTo = null
+                            }
+                        }
+                    }
+                }
+
+                if (!loading && mode == "likes") {
+                    if (likesUsers.isEmpty()) {
+                        Text(
+                            if (post.shopId > 0) "Like list is not exposed by the shop-post API." else "No likes yet.",
+                            color = JellyMuted,
+                            fontSize = 11.sp
+                        )
+                    } else {
+                        LazyColumn(
+                            Modifier.weight(1f, fill = false).fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            items(likesUsers, key = { "like-user-${it.id}" }) { user ->
+                                JellyGlass(
+                                    Modifier.fillMaxWidth(),
+                                    radius = 15.dp,
+                                    padding = 8.dp,
+                                    onClick = { onProfile(user.id) }
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Avatar(user, 38.dp)
+                                        Spacer(Modifier.width(7.dp))
+                                        Column {
+                                            UserName(user, 11)
+                                            if (user.username.isNotBlank()) Text("@${user.username}", color = JellyMuted, fontSize = 9.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { JellyButton("Close", onClick = onDismiss) }
+    )
+}
+
+@Composable
+private fun CommentRow(
+    comment: Comment,
+    reply: Boolean,
+    onProfile: (Long) -> Unit,
+    onLike: (Long) -> Unit,
+    onReply: () -> Unit
+) {
+    JellyGlass(
+        Modifier.fillMaxWidth().padding(start = if (reply) 26.dp else 0.dp),
+        radius = 16.dp,
+        padding = 8.dp
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Avatar(comment.user, if (reply) 30.dp else 34.dp, Modifier.clickable { onProfile(comment.user.id) })
+                Spacer(Modifier.width(6.dp))
+                Column(Modifier.weight(1f)) {
+                    UserName(comment.user, if (reply) 10 else 11)
+                    Text(shortTime(comment.createdAt), color = JellyMuted, fontSize = 8.sp)
+                }
+            }
+            Text(comment.text, color = JellyInk, fontSize = if (reply) 10.5f.sp else 11.5f.sp, lineHeight = 16.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                JellyButton(if (comment.liked) "Liked ${comment.likes}" else "Like ${comment.likes}", icon = JellyIcons.Heart) {
+                    onLike(comment.id)
+                }
+                JellyButton("Reply", icon = JellyIcons.Reply, onClick = onReply)
+            }
         }
     }
 }
