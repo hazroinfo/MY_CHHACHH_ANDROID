@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
@@ -470,7 +471,10 @@ fun MyChhachhApp() {
     }
 
     BackHandler(enabled = menuOpen || route != Screen.HOME) { goBack() }
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(JellyBg, JellyBg2)))) {
+    val bgStrength = LiveJellyTheme.bgStrength.coerceIn(0f, 1f)
+    val bgTop = lerp(Color.White, JellyBg, bgStrength)
+    val bgBottom = lerp(Color.White, JellyBg2, bgStrength)
+    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(bgTop, bgBottom)))) {
         Column(
             Modifier
                 .fillMaxSize()
