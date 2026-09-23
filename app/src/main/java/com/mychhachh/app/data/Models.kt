@@ -74,7 +74,7 @@ data class Shop(
 )
 
 data class Conversation(val user: User, val preview: String, val createdAt: String, val unread: Boolean)
-data class Message(val id: Long, val senderId: Long, val receiverId: Long, val text: String, val photo: String?, val audio: String?, val createdAt: String)
+data class Message(val id: Long, val senderId: Long, val receiverId: Long, val text: String, val photo: String?, val audio: String?, val createdAt: String, val locationLat: Double? = null, val locationLng: Double? = null)
 data class Notice(val id: Long, val actor: User?, val text: String, val type: String, val createdAt: String, val read: Boolean)
 data class Announcement(val id: Long, val author: User?, val text: String, val photo: String?, val audio: String?, val type: String, val likes: Int, val comments: Int, val liked: Boolean, val createdAt: String)
 data class Vote(val id: Long, val title: String, val status: String, val user1: User?, val user2: User?, val votes1: Int, val votes2: Int, val createdAt: String)
