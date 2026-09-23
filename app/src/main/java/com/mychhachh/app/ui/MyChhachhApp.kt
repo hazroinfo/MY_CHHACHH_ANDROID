@@ -479,7 +479,7 @@ fun MyChhachhApp() {
             if (route != Screen.AUTH) {
                 if (currentUser == null) GuestHeader(
                     brandName = features.optString("site_name", "My Chhachh"),
-                    brandTagline = features.optString("site_tagline", "People • Places • Good Vibes"),
+                    brandTagline = if (features.optInt("site_tagline_enabled", 1) != 0) features.optString("site_tagline", "People • Places • Good Vibes") else "",
                     brandIcon = if (features.optInt("site_icon_enabled", 1) != 0) mediaUrl(features.optString("site_icon", "")) else null,
                     settings = features,
                     onLogin = { authMode = "login"; authError = null; route = Screen.AUTH },
@@ -487,7 +487,7 @@ fun MyChhachhApp() {
                 ) else AuthHeader(
                     user = currentUser,
                     brandName = features.optString("site_name", "My Chhachh"),
-                    brandTagline = features.optString("site_tagline", "Connect with people for information."),
+                    brandTagline = if (features.optInt("site_tagline_enabled", 1) != 0) features.optString("site_tagline", "People • Places • Good Vibes") else "",
                     brandIcon = if (features.optInt("site_icon_enabled", 1) != 0) mediaUrl(features.optString("site_icon", "")) else null,
                     route = route,
                     unread = unread,
