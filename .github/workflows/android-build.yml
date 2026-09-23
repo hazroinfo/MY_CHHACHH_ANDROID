@@ -15,38 +15,42 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Unpack uploaded source archive
+      - name: Expand staged source
         shell: bash
         run: |
           set -euo pipefail
           if [ ! -f app/build.gradle.kts ]; then
-            ZIP="MY_CHHACHH_ANDROID_STUDIO_NATIVE_V6_FINAL_CHECKED.zip"
-            if [ ! -f "$ZIP" ]; then
-              echo "::error::Source ZIP not found: $ZIP"
-              exit 1
-            fi
+            cat .source_text/part_*.txt > /tmp/source.b64
+            base64 --decode /tmp/source.b64 > /tmp/source_text.tgz
+            tar -xzf /tmp/source_text.tgz -C .
 
-            rm -rf .source_unpack
-            mkdir .source_unpack
-            unzip -q "$ZIP" -d .source_unpack
+            mkdir -p app/src/main/res/drawable
+            ICONS="jelly_address jelly_announcement jelly_arrow jelly_bell jelly_brush jelly_category jelly_check jelly_city jelly_clock jelly_close jelly_comment jelly_crown jelly_delete jelly_edit jelly_error jelly_eye jelly_facebook jelly_feeling jelly_filter jelly_follow jelly_gear jelly_gender jelly_heart jelly_home jelly_hometown jelly_info jelly_instagram jelly_lock jelly_logout jelly_mail jelly_map jelly_mention jelly_menu jelly_message jelly_mohalla jelly_more jelly_palette jelly_people jelly_phone jelly_photo jelly_pin jelly_plus jelly_reply jelly_save jelly_school jelly_search jelly_send jelly_share jelly_shield jelly_shop jelly_star jelly_upload jelly_user jelly_video jelly_village jelly_vote jelly_website jelly_whatsapp jelly_work jelly_youtube"
+            for n in $ICONS; do
+              cat > "app/src/main/res/drawable/$n.xml" <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="48dp"
+              android:height="48dp"
+              android:viewportWidth="48"
+              android:viewportHeight="48">
+              <path android:fillColor="#9070F8"
+                  android:pathData="M24,3a21,21 0,1 1,0 42a21,21 0,1 1,0 -42"/>
+              <path android:fillColor="#FFFFFFFF"
+                  android:pathData="M14,22h20v4h-20zM22,14h4v20h-4z"/>
+          </vector>
+          EOF
+            done
 
-            SRC="$(find .source_unpack -mindepth 1 -maxdepth 1 -type d | head -n 1)"
-            if [ -z "$SRC" ]; then
-              echo "::error::Could not find project folder inside ZIP"
-              exit 1
-            fi
-
-            rsync -a "$SRC"/ ./
-            rm -rf .source_unpack "$ZIP"
+            rm -rf .source_text
 
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add -A
             if ! git diff --cached --quiet; then
-              git commit -m "Unpack Android source"
+              git commit -m "Expand Android source for CI"
               git push
             fi
           fi
@@ -57,8 +61,10 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Gradle
+      - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
@@ -71,9 +77,7 @@ jobs:
 
       - name: Build debug APK
         shell: bash
-        run: |
-          chmod +x gradlew
-          ./gradlew --no-daemon --stacktrace assembleDebug
+        run: gradle --no-daemon --stacktrace assembleDebug
 
       - name: Upload APK
         if: success()
