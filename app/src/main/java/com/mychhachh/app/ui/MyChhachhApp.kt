@@ -425,7 +425,36 @@ fun MyChhachhApp() {
                     Screen.PEOPLE -> currentUser?.let { u -> PeopleScreen(u.id, people, peopleLoading, peopleError, peopleQuery, { peopleQuery = it }, ::loadPeople, { open(Screen.PROFILE, it) }, { id -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.followUser(id) } }; loadPeople() } }) }
                     Screen.SHOPS -> ShopsScreen(shops, shopsLoading, shopsError, shopQuery, { shopQuery = it }, ::loadShops, { open(Screen.SHOP_DETAIL, it) }, { id -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.toggleShopFollow(id) } }; loadShops() } })
                     Screen.MESSAGES -> MessagesScreen(conversations, conversationsLoading, conversationsError) { open(Screen.CHAT, it) }
-                    Screen.CHAT -> currentUser?.let { u -> ChatScreen(u, chatOther, chatMessages, chatLoading, chatError, { txt -> scope.launch { try { val m = withContext(Dispatchers.IO) { api.sendMessage(selectedId, txt) }; chatMessages = chatMessages + m } catch (e: Exception) { chatError = e.message } } }) }
+                    Screen.CHAT -> currentUser?.let { u ->
+                        ChatScreen(
+                            me = u,
+                            other = chatOther,
+                            messages = chatMessages,
+                            loading = chatLoading,
+                            error = chatError,
+                            onSearchLocation = { term -> withContext(Dispatchers.IO) { api.geocodePlaces(term) } },
+                            onSend = { txt, photoUri, place ->
+                                scope.launch {
+                                    try {
+                                        chatError = null
+                                        val m = withContext(Dispatchers.IO) {
+                                            val photo = photoUri?.let { api.uploadUri(it, "message-image") }.orEmpty()
+                                            api.sendMessage(
+                                                to = selectedId,
+                                                text = txt,
+                                                photo = photo,
+                                                locationLat = place?.lat,
+                                                locationLng = place?.lng
+                                            )
+                                        }
+                                        chatMessages = chatMessages + m
+                                    } catch (e: Exception) {
+                                        chatError = e.message ?: "Message could not be sent."
+                                    }
+                                }
+                            }
+                        )
+                    }
                     Screen.NOTIFICATIONS -> NotificationsScreen(notices, noticesLoading, noticesError, { scope.launch { runCatching { withContext(Dispatchers.IO) { api.markNotificationsRead() } }; unread = 0; loadNotices() } }, { open(Screen.PROFILE, it) })
                     Screen.ANNOUNCEMENTS -> AnnouncementsScreen(
                         items = announcements,
