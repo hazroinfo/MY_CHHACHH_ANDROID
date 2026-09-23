@@ -220,8 +220,11 @@ class ApiClient(private val context: Context) {
     fun updatePost(id: Long, text: String, privacy: String): JSONObject =
         patch("/api/posts/$id", JSONObject().put("text", text).put("privacy", privacy))
     fun deletePost(id: Long): JSONObject = delete("/api/posts/$id")
-    fun createPost(text: String, privacy: String = "public", checkin: String = "", feeling: String = "", photo: String = "", video: String = ""): JSONObject =
-        post("/api/posts", JSONObject().put("text", text).put("privacy", privacy).put("checkin", checkin).put("feeling", feeling).put("photo", photo).put("video", video))
+    fun createPost(text: String, privacy: String = "public", checkin: String = "", feeling: String = "", photo: String = "", video: String = "", checkinLat: Double? = null, checkinLng: Double? = null): JSONObject {
+        val body = JSONObject().put("text", text).put("privacy", privacy).put("checkin", checkin).put("feeling", feeling).put("photo", photo).put("video", video)
+        if (checkinLat != null && checkinLng != null) body.put("checkin_lat", checkinLat).put("checkin_lng", checkinLng)
+        return post("/api/posts", body)
+    }
 
     fun postComments(postId: Long): JSONArray = get("/api/posts/$postId/comments").optJSONArray("items") ?: JSONArray()
     fun addComment(postId: Long, text: String): JSONObject = post("/api/posts/$postId/comments", JSONObject().put("text", text))
