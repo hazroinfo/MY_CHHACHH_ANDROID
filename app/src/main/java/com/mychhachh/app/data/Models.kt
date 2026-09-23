@@ -42,7 +42,15 @@ data class Post(
     val liked: Boolean,
     val saved: Boolean,
     val feeling: String?,
-    val checkin: String?
+    val checkin: String?,
+    val checkinLat: Double? = null,
+    val checkinLng: Double? = null
+)
+
+data class CheckinPlace(
+    val name: String,
+    val lat: Double,
+    val lng: Double
 )
 
 data class Shop(
