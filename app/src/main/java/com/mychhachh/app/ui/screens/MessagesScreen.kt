@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -41,6 +42,13 @@ import com.mychhachh.app.ui.theme.JellyMuted
 import com.mychhachh.app.ui.theme.JellyPurple
 import kotlinx.coroutines.launch
 import java.io.File
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.MapEventsOverlay
+import org.osmdroid.events.MapEventsReceiver
+import org.osmdroid.views.overlay.Marker
 
 @Composable
 fun MessagesScreen(
@@ -277,7 +285,6 @@ fun ChatScreen(
             .maxByOrNull { it.time }
         if (location != null) {
             selectedPlace = CheckinPlace("My Location", location.latitude, location.longitude)
-            locationOpen = false
         }
     }
 
@@ -510,66 +517,88 @@ fun ChatScreen(
     }
 
     if (locationOpen) {
-        var query by remember { mutableStateOf("") }
-        var places by remember { mutableStateOf<List<CheckinPlace>>(emptyList()) }
-        var searching by remember { mutableStateOf(false) }
-        var locationError by remember { mutableStateOf<String?>(null) }
+        val pickerMap = remember {
+            MapView(context).apply {
+                Configuration.getInstance().userAgentValue = context.packageName
+                setTileSource(TileSourceFactory.MAPNIK)
+                setMultiTouchControls(true)
+                controller.setZoom(12.0)
+                controller.setCenter(GeoPoint(33.88333, 72.36667))
+            }
+        }
+
+        DisposableEffect(pickerMap) {
+            onDispose { runCatching { pickerMap.onDetach() } }
+        }
+
+        LaunchedEffect(pickerMap) {
+            if (pickerMap.overlays.none { it is MapEventsOverlay }) {
+                pickerMap.overlays.add(
+                    0,
+                    MapEventsOverlay(object : MapEventsReceiver {
+                        override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
+                            selectedPlace = CheckinPlace("Selected location", p.latitude, p.longitude)
+                            return true
+                        }
+                        override fun longPressHelper(p: GeoPoint): Boolean = false
+                    })
+                )
+            }
+        }
+
+        LaunchedEffect(selectedPlace?.lat, selectedPlace?.lng) {
+            val selected = selectedPlace
+            pickerMap.overlays.removeAll { it is Marker }
+            if (selected != null) {
+                val point = GeoPoint(selected.lat, selected.lng)
+                pickerMap.overlays.add(
+                    Marker(pickerMap).apply {
+                        position = point
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        title = selected.name
+                    }
+                )
+                pickerMap.controller.animateTo(point)
+            }
+            pickerMap.invalidate()
+        }
+
         AlertDialog(
             onDismissRequest = { locationOpen = false },
             title = { Text("Send Location", color = JellyInk, fontWeight = FontWeight.Black) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Tap a search result to choose a place, or use your current location.", color = JellyMuted, fontSize = 9.5f.sp)
-                    JellyButton("My Location", Modifier.fillMaxWidth(), icon = JellyIcons.Pin) {
-                        val granted =
-                            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-                            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-                        if (granted) attachCurrentLocation()
-                        else locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-                    }
-                    OutlinedTextField(
-                        query,
-                        { query = it },
-                        placeholder = { Text("Search a place in Chhachh / Hazro") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(18.dp)
+                    Text("Tap the map to choose a place, or use your current location.", color = JellyMuted, fontSize = 9.5f.sp)
+                    AndroidView(
+                        factory = { pickerMap },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(230.dp)
+                            .clip(RoundedCornerShape(18.dp))
                     )
-                    JellyButton(
-                        if (searching) "Searching…" else "Find place",
-                        Modifier.fillMaxWidth(),
-                        primary = true,
-                        icon = JellyIcons.Search,
-                        enabled = !searching && query.isNotBlank()
-                    ) {
-                        scope.launch {
-                            searching = true
-                            locationError = null
-                            try {
-                                places = onSearchLocation(query.trim())
-                                if (places.isEmpty()) locationError = "Place could not be found."
-                            } catch (e: Exception) {
-                                places = emptyList()
-                                locationError = e.message ?: "Place could not be found."
-                            } finally { searching = false }
+                    Text(
+                        selectedPlace?.let {
+                            "${it.name}: ${"%.6f".format(it.lat)}, ${"%.6f".format(it.lng)}"
+                        } ?: "No location selected.",
+                        color = JellyMuted,
+                        fontSize = 9.sp
+                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        JellyButton("My Location", Modifier.weight(1f), icon = JellyIcons.Pin) {
+                            val granted =
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                            if (granted) attachCurrentLocation()
+                            else locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
                         }
-                    }
-                    locationError?.let { Text(it, color = Color(0xFFB23A55), fontSize = 10.sp) }
-                    places.forEach { place ->
-                        JellyGlass(
-                            Modifier.fillMaxWidth(),
-                            radius = 16.dp,
-                            padding = 8.dp,
-                            onClick = {
-                                selectedPlace = place
-                                locationOpen = false
-                            }
+                        JellyButton(
+                            "Attach Location",
+                            Modifier.weight(1f),
+                            primary = true,
+                            icon = JellyIcons.Map,
+                            enabled = selectedPlace != null
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                JellyIcon(JellyIcons.Pin, size = 24.dp)
-                                Spacer(Modifier.width(6.dp))
-                                Text(place.name, Modifier.weight(1f), color = JellyInk, fontSize = 10.sp, maxLines = 2)
-                                Text("Select", color = JellyPurple, fontWeight = FontWeight.Black, fontSize = 9.sp)
-                            }
+                            locationOpen = false
                         }
                     }
                 }
@@ -578,4 +607,5 @@ fun ChatScreen(
             dismissButton = { JellyButton("Close") { locationOpen = false } }
         )
     }
+}
 }
