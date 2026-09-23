@@ -44,13 +44,30 @@ fun ProfileScreen(
     onFollow: (Long) -> Unit,
     onMessage: (Long) -> Unit,
     onEdit: () -> Unit,
+    onShop: (Long) -> Unit,
+    onBlock: (Long) -> Unit,
+    onReport: (Long, String) -> Unit,
+    onLoadRelations: suspend (Long, String) -> List<User>,
     onLike: (Post) -> Unit,
     onComment: (Post) -> Unit,
     onShare: (Post) -> Unit,
     onSave: (Post) -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val user = data?.optJSONObject("user")?.toUser()
     val posts = data?.optJSONArray("posts")?.posts().orEmpty()
+    val shop = data?.optJSONObject("shop")?.toShop()
+    var relationMode by remember { mutableStateOf<String?>(null) }
+    var relationUsers by remember { mutableStateOf<List<User>>(emptyList()) }
+    var relationLoading by remember { mutableStateOf(false) }
+    var reportOpen by remember { mutableStateOf(false) }
+
+    fun openUrl(url: String) {
+        if (url.isBlank()) return
+        val value = if (url.startsWith("http://") || url.startsWith("https://")) url else "https://$url"
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(value))) }
+    }
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -64,17 +81,21 @@ fun ProfileScreen(
                 JellyGlass(Modifier.fillMaxWidth()) {
                     Column(Modifier.fillMaxWidth()) {
                         Box(
-                            Modifier.fillMaxWidth().height(112.dp).clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+                            Modifier.fillMaxWidth().height(165.dp).clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                                 .background(Brush.horizontalGradient(listOf(Color(0xFFE3F8FF), Color(0xFFF0E8FF))))
                         ) {
                             if (!u.cover.isNullOrBlank()) AsyncImage(u.cover, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                         }
-                        Column(Modifier.padding(horizontal = 14.dp).offset(y = (-30).dp)) {
-                            Avatar(u, 76.dp)
-                            Spacer(Modifier.height(5.dp))
-                            UserName(u, 19)
+                        Column(
+                            Modifier.fillMaxWidth().padding(horizontal = 14.dp).offset(y = (-44).dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Avatar(u, 96.dp)
+                            Spacer(Modifier.height(6.dp))
+                            UserName(u, 20)
                             if (u.username.isNotBlank()) Text("@${u.username}", color = JellyMuted, fontSize = 11.sp)
                             if (u.bio.isNotBlank()) Text(u.bio, color = JellyInk, fontSize = 12.5f.sp, lineHeight = 18.sp, modifier = Modifier.padding(top = 7.dp))
+
                             val loc = listOf(u.area, u.village, u.city).filter { it.isNotBlank() }.joinToString(" • ")
                             if (loc.isNotBlank()) {
                                 Row(Modifier.padding(top = 7.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -84,44 +105,186 @@ fun ProfileScreen(
                                 }
                             }
 
+                            val detailParts = listOf(
+                                u.hometown.takeIf { it.isNotBlank() }?.let { "Hometown: $it" },
+                                u.work.takeIf { it.isNotBlank() }?.let { "Work: $it" },
+                                u.school.takeIf { it.isNotBlank() }?.let { "School: $it" },
+                                u.gender.takeIf { it.isNotBlank() }?.let { "Gender: $it" },
+                                u.relationshipStatus.takeIf { it.isNotBlank() }?.let { it }
+                            ).filterNotNull()
+                            detailParts.forEach {
+                                Text(it, color = JellyMuted, fontSize = 9.5f.sp, modifier = Modifier.padding(top = 3.dp))
+                            }
+
+                            if (u.email.isNotBlank()) {
+                                Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    JellyIcon(JellyIcons.Mail, size = 20.dp)
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(u.email, color = JellyMuted, fontSize = 9.5f.sp)
+                                }
+                            }
+                            if (u.phone.isNotBlank()) {
+                                JellyButton(u.phone, icon = JellyIcons.Phone) {
+                                    runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${u.phone}"))) }
+                                }
+                            }
+                            if (u.locationLat != null && u.locationLng != null) {
+                                JellyButton("Current Location", icon = JellyIcons.Map) {
+                                    val uri = Uri.parse("geo:${u.locationLat},${u.locationLng}?q=${u.locationLat},${u.locationLng}")
+                                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+                                }
+                            }
+
+                            val socials = listOf(
+                                "Facebook" to u.socialFacebook,
+                                "Instagram" to u.socialInstagram,
+                                "YouTube" to u.socialYoutube,
+                                "Website" to u.socialWebsite
+                            ).filter { it.second.isNotBlank() }
+                            if (socials.isNotEmpty()) {
+                                Row(
+                                    Modifier.fillMaxWidth().padding(top = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    socials.take(4).forEach { (label, url) ->
+                                        JellyButton(label, Modifier.weight(1f)) { openUrl(url) }
+                                    }
+                                }
+                            }
+
                             val followers = data.optLong("followers", -1)
                             val following = data.optLong("following_count", -1)
                             if (followers >= 0 || following >= 0) {
-                                Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    if (followers >= 0) StatChip("$followers", "Followers")
-                                    if (following >= 0) StatChip("$following", "Following")
+                                Row(
+                                    Modifier.padding(top = 10.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    if (followers >= 0) {
+                                        StatChip(followers.toString(), "Followers") {
+                                            relationMode = "followers"
+                                            scope.launch {
+                                                relationLoading = true
+                                                relationUsers = runCatching { onLoadRelations(u.id, "followers") }.getOrDefault(emptyList())
+                                                relationLoading = false
+                                            }
+                                        }
+                                    }
+                                    if (following >= 0) {
+                                        StatChip(following.toString(), "Following") {
+                                            relationMode = "following"
+                                            scope.launch {
+                                                relationLoading = true
+                                                relationUsers = runCatching { onLoadRelations(u.id, "following") }.getOrDefault(emptyList())
+                                                relationLoading = false
+                                            }
+                                        }
+                                    }
                                 }
+                            }
+
+                            if (shop != null) {
+                                Spacer(Modifier.height(8.dp))
+                                JellyButton("View Shop", primary = true, icon = JellyIcons.Shop) { onShop(shop.id) }
                             }
 
                             Spacer(Modifier.height(10.dp))
                             if (u.id == meId) {
-                                JellyButton("Edit profile", primary = true, icon = JellyIcons.Edit, onClick = onEdit)
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                    JellyButton("Edit Profile", Modifier.weight(1f), primary = true, icon = JellyIcons.Edit, onClick = onEdit)
+                                    JellyButton("Settings", Modifier.weight(1f), icon = JellyIcons.Gear, onClick = onEdit)
+                                }
                             } else {
-                                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                                     JellyButton(
                                         if (data.optBoolean("following", false)) "Following" else "Follow",
+                                        Modifier.weight(1f),
                                         primary = !data.optBoolean("following", false),
                                         icon = JellyIcons.Follow
                                     ) { onFollow(u.id) }
-                                    JellyButton("Message", icon = JellyIcons.Message) { onMessage(u.id) }
+                                    JellyButton("Message", Modifier.weight(1f), icon = JellyIcons.Message) { onMessage(u.id) }
+                                }
+                                Spacer(Modifier.height(6.dp))
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                    JellyButton(
+                                        if (data.optBoolean("blocked", false)) "Unblock" else "Block",
+                                        Modifier.weight(1f),
+                                        icon = JellyIcons.Shield
+                                    ) { onBlock(u.id) }
+                                    JellyButton("Report", Modifier.weight(1f), icon = JellyIcons.Error) { reportOpen = true }
                                 }
                             }
                         }
                     }
                 }
             }
+
             item { SectionTitle("Posts") }
             items(posts, key = { "profile-post-${it.id}" }) { p ->
                 PostCard(p, true, {}, {}, onLike, onComment, onShare, onSave)
             }
             if (posts.isEmpty()) item { EmptyCard("No posts to show.", JellyIcons.Home) }
+
+            if (reportOpen) {
+                item {
+                    var reason by remember(u.id) { mutableStateOf("") }
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { reportOpen = false },
+                        title = { Text("Report Profile", color = JellyInk, fontWeight = FontWeight.Black) },
+                        text = {
+                            OutlinedTextField(
+                                reason,
+                                { reason = it.take(3000) },
+                                Modifier.fillMaxWidth(),
+                                placeholder = { Text("Explain the problem…") },
+                                minLines = 4,
+                                maxLines = 8,
+                                shape = RoundedCornerShape(18.dp)
+                            )
+                        },
+                        confirmButton = {
+                            JellyButton("Send Report", primary = true, icon = JellyIcons.Shield, enabled = reason.trim().length >= 3) {
+                                onReport(u.id, reason.trim())
+                                reportOpen = false
+                            }
+                        },
+                        dismissButton = { JellyButton("Cancel") { reportOpen = false } }
+                    )
+                }
+            }
         }
+    }
+
+    relationMode?.let { mode ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { relationMode = null },
+            title = { Text(if (mode == "followers") "Followers" else "Following", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                LazyColumn(Modifier.heightIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    if (relationLoading) item { LoadingBlock() }
+                    if (!relationLoading && relationUsers.isEmpty()) item { Text("No users to show.", color = JellyMuted) }
+                    items(relationUsers, key = { "relation-${it.id}" }) { person ->
+                        JellyGlass(Modifier.fillMaxWidth(), padding = 8.dp) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Avatar(person, 38.dp)
+                                Spacer(Modifier.width(7.dp))
+                                Column {
+                                    UserName(person, 11)
+                                    Text("@${person.username}", color = JellyMuted, fontSize = 9.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { JellyButton("Close") { relationMode = null } }
+        )
     }
 }
 
 @Composable
-private fun StatChip(number: String, label: String) {
-    JellyGlass(radius = 14.dp, padding = 8.dp) {
+private fun StatChip(number: String, label: String, onClick: (() -> Unit)? = null) {
+    JellyGlass(radius = 14.dp, padding = 8.dp, onClick = onClick) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(number, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 13.sp)
             Text(label, color = JellyMuted, fontSize = 8.5f.sp)
