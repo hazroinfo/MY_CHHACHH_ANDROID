@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -1544,6 +1545,12 @@ private fun AuthHeader(
             Modifier
                 .fillMaxWidth()
                 .height(54.dp)
+                .shadow(
+                    5.dp,
+                    RoundedCornerShape(999.dp),
+                    ambientColor = Color(0x12517391),
+                    spotColor = Color(0x12517391)
+                )
                 .clip(RoundedCornerShape(999.dp))
                 .background(
                     Brush.linearGradient(
@@ -1554,12 +1561,6 @@ private fun AuthHeader(
                     )
                 )
                 .border(1.5.dp, Color.White.copy(alpha = .98f), RoundedCornerShape(999.dp))
-                .shadow(
-                    5.dp,
-                    RoundedCornerShape(999.dp),
-                    ambientColor = Color(0x12517391),
-                    spotColor = Color(0x12517391)
-                )
         ) {
             Row(
                 Modifier.fillMaxSize().padding(horizontal = 9.dp, vertical = 6.dp),
@@ -1625,6 +1626,12 @@ private fun AuthHeader(
         Box(
             Modifier
                 .fillMaxWidth()
+                .shadow(
+                    10.dp,
+                    RoundedCornerShape(22.dp),
+                    ambientColor = Color(0x1F2D5789),
+                    spotColor = Color(0x1F2D5789)
+                )
                 .clip(RoundedCornerShape(22.dp))
                 .background(
                     Brush.linearGradient(
@@ -1636,12 +1643,6 @@ private fun AuthHeader(
                     )
                 )
                 .border(2.dp, Color.White, RoundedCornerShape(22.dp))
-                .shadow(
-                    10.dp,
-                    RoundedCornerShape(22.dp),
-                    ambientColor = Color(0x1F2D5789),
-                    spotColor = Color(0x1F2D5789)
-                )
         ) {
             Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 5.dp)) {
                 navOrder.forEach { key ->
@@ -1720,6 +1721,12 @@ private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: ()
     Box(
         modifier
             .height(76.dp)
+            .shadow(
+                7.dp,
+                shape,
+                ambientColor = Color(0x1F2E588C),
+                spotColor = Color(0x1F2E588C)
+            )
             .clip(shape)
             .clickable { onClick() }
             .background(
@@ -1731,13 +1738,7 @@ private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: ()
                     )
                 )
             )
-            .border(2.dp, Color.White.copy(alpha = .96f), shape)
-            .shadow(
-                7.dp,
-                shape,
-                ambientColor = Color(0x1F2E588C),
-                spotColor = Color(0x1F2E588C)
-            ),
+            .border(2.dp, Color.White.copy(alpha = .96f), shape),
         contentAlignment = Alignment.Center
     ) {
         Box(
