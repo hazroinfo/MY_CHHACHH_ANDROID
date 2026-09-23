@@ -63,7 +63,10 @@ data class Post(
     val checkin: String?,
     val checkinLat: Double? = null,
     val checkinLng: Double? = null,
-    val shopId: Long = 0L
+    val shopId: Long = 0L,
+    val voteId: Long = 0L,
+    val voteLeftName: String = "",
+    val voteRightName: String = ""
 )
 
 data class CheckinPlace(
@@ -127,7 +130,10 @@ data class Vote(
     val resultRevealed: Boolean = true,
     val durationHours: Int = 24,
     val startsAt: String = "",
-    val endsAt: String = ""
+    val endsAt: String = "",
+    val updatedAt: String = "",
+    val endedAt: String = "",
+    val tie: Boolean = false
 )
 
 data class Bootstrap(val user: User?, val unread: Int, val announcementUnread: Int, val features: JSONObject)
@@ -179,7 +185,10 @@ fun JSONObject.toPost(): Post {
         checkin = optString("checkin", "").takeIf { it.isNotBlank() && it != "null" },
         checkinLat = optString("checkin_lat", "").toDoubleOrNull(),
         checkinLng = optString("checkin_lng", "").toDoubleOrNull(),
-        shopId = optLong("shop_id", 0L)
+        shopId = optLong("shop_id", 0L),
+        voteId = optLong("vote_id", 0L),
+        voteLeftName = optString("vote_left_name", ""),
+        voteRightName = optString("vote_right_name", "")
     )
 }
 
