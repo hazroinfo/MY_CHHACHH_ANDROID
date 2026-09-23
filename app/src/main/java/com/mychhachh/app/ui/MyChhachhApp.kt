@@ -387,14 +387,24 @@ fun MyChhachhApp() {
                                 loadFeed(true)
                             }
                         },
-                        onCreatePost = { text, privacy, feeling, checkin, photoUri, videoUri ->
+                        onSearchCheckin = { term -> withContext(Dispatchers.IO) { api.geocodePlaces(term) } },
+                        onCreatePost = { text, privacy, feeling, checkin, checkinLat, checkinLng, photoUri, videoUri ->
                             scope.launch {
                                 try {
                                     feedError = null
                                     withContext(Dispatchers.IO) {
                                         val photo = photoUri?.let { api.uploadUri(it, "post-image") }.orEmpty()
                                         val video = videoUri?.let { api.uploadUri(it, "post-video") }.orEmpty()
-                                        api.createPost(text, privacy, checkin = checkin, feeling = feeling, photo = photo, video = video)
+                                        api.createPost(
+                                            text = text,
+                                            privacy = privacy,
+                                            checkin = checkin,
+                                            feeling = feeling,
+                                            photo = photo,
+                                            video = video,
+                                            checkinLat = checkinLat,
+                                            checkinLng = checkinLng
+                                        )
                                     }
                                     loadFeed(true)
                                 } catch (e: Exception) { feedError = e.message ?: "Post could not be published." }
