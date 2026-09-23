@@ -250,6 +250,7 @@ fun PostCard(
     onSave: (Post) -> Unit
 ) {
     var videoOpen by remember(post.id) { mutableStateOf(false) }
+    var moreOpen by remember(post.id) { mutableStateOf(false) }
 
     JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp) {
         Column(Modifier.fillMaxWidth()) {
@@ -263,6 +264,9 @@ fun PostCard(
                         color = JellyMuted,
                         fontSize = 9.5f.sp
                     )
+                }
+                if (loggedIn) {
+                    JellyIconButton(JellyIcons.More, "More", onClick = { moreOpen = true })
                 }
             }
 
@@ -323,12 +327,33 @@ fun PostCard(
                 PostAction(JellyIcons.Comment, "Comment", post.comments, Modifier.weight(1f)) { if (loggedIn) onComment(post) else onLogin() }
                 PostStat(JellyIcons.Eye, "Views", post.views, Modifier.weight(1f))
                 PostAction(JellyIcons.Share, "Share", post.shares, Modifier.weight(1f)) { if (loggedIn) onShare(post) else onLogin() }
-                if (loggedIn) PostAction(JellyIcons.Save, if (post.saved) "Saved" else "Save", 0, Modifier.weight(1f)) { onSave(post) }
             }
         }
     }
 
     if (videoOpen) post.video?.let { VideoDialog(it) { videoOpen = false } }
+
+    if (moreOpen) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { moreOpen = false },
+            title = { Text("Post options", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    JellyButton(
+                        if (post.saved) "Remove from Saved" else "Save Post",
+                        Modifier.fillMaxWidth(),
+                        primary = !post.saved,
+                        icon = JellyIcons.Save
+                    ) {
+                        onSave(post)
+                        moreOpen = false
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { JellyButton("Close") { moreOpen = false } }
+        )
+    }
 }
 
 @Composable
