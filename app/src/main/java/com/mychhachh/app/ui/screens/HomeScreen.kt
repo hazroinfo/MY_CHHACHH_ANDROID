@@ -106,7 +106,7 @@ fun HomeScreen(
                             value = composing,
                             onValueChange = { composing = it },
                             modifier = Modifier.weight(1f),
-                            placeholder = { Text("What's on your mind? Use @ to mention", fontSize = 11.sp) },
+                            placeholder = { Text("What's on your mind? Type @ to mention someone", fontSize = 11.sp) },
                             shape = RoundedCornerShape(22.dp),
                             minLines = 2,
                             maxLines = 5
@@ -187,7 +187,7 @@ fun HomeScreen(
         if (hasMore) {
             item {
                 Box(Modifier.fillMaxWidth().padding(vertical = 4.dp), contentAlignment = Alignment.Center) {
-                    JellyButton(if (loading) "Loading…" else "Load more", enabled = !loading, onClick = onLoadMore)
+                    JellyButton(if (loading) "Loading…" else "Load more posts", enabled = !loading, onClick = onLoadMore)
                 }
             }
         }
@@ -320,11 +320,11 @@ fun HomeScreen(
             title = { Text("Check in", color = JellyInk, fontWeight = FontWeight.Black) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Choose a real place in Chhachh / Hazro.", color = JellyMuted, fontSize = 10.5f.sp)
+                    Text("Choose a real place or use your phone location.", color = JellyMuted, fontSize = 10.5f.sp)
                     OutlinedTextField(
                         value = query,
                         onValueChange = { query = it },
-                        placeholder = { Text("Search a place") },
+                        placeholder = { Text("Search a place in Chhachh / Hazro") },
                         singleLine = true,
                         shape = RoundedCornerShape(18.dp)
                     )
@@ -371,7 +371,7 @@ fun HomeScreen(
                         }
                     }
                     if (checkin.isNotBlank()) {
-                        JellyButton("Remove check-in", Modifier.fillMaxWidth()) {
+                        JellyButton("Remove", Modifier.fillMaxWidth()) {
                             checkin = ""
                             checkinLat = null
                             checkinLng = null
@@ -525,7 +525,7 @@ fun PostCard(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (post.shopId == 0L) {
                         JellyButton(
-                            if (post.saved) "Remove from Saved" else "Save Post",
+                            if (post.saved) "Remove from Saved" else "Save post",
                             Modifier.fillMaxWidth(),
                             primary = !post.saved,
                             icon = JellyIcons.Save
@@ -535,19 +535,19 @@ fun PostCard(
                         }
                     }
                     if (onEdit != null) {
-                        JellyButton("Edit Post", Modifier.fillMaxWidth(), icon = JellyIcons.Edit) {
+                        JellyButton("Edit post", Modifier.fillMaxWidth(), icon = JellyIcons.Edit) {
                             moreOpen = false
                             editOpen = true
                         }
                     }
                     if (onDelete != null) {
-                        JellyButton("Delete Post", Modifier.fillMaxWidth(), icon = JellyIcons.Delete) {
+                        JellyButton("Delete post", Modifier.fillMaxWidth(), icon = JellyIcons.Delete) {
                             moreOpen = false
                             deleteConfirm = true
                         }
                     }
                     if (onReport != null) {
-                        JellyButton("Report Post", Modifier.fillMaxWidth(), icon = JellyIcons.Shield, danger = true) {
+                        JellyButton("Report post", Modifier.fillMaxWidth(), icon = JellyIcons.Shield, danger = true) {
                             moreOpen = false
                             reportOpen = true
                         }
@@ -564,7 +564,7 @@ fun PostCard(
         var editPrivacy by remember(post.id) { mutableStateOf(post.privacy) }
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { editOpen = false },
-            title = { Text("Edit Post", color = JellyInk, fontWeight = FontWeight.Black) },
+            title = { Text("Edit post", color = JellyInk, fontWeight = FontWeight.Black) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -596,7 +596,7 @@ fun PostCard(
     if (deleteConfirm && onDelete != null) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { deleteConfirm = false },
-            title = { Text("Delete Post", color = JellyInk, fontWeight = FontWeight.Black) },
+            title = { Text("Delete post", color = JellyInk, fontWeight = FontWeight.Black) },
             text = { Text("Delete this post permanently?", color = JellyInk) },
             confirmButton = {
                 JellyButton("Delete", icon = JellyIcons.Delete, danger = true) {
@@ -612,7 +612,7 @@ fun PostCard(
         var reason by remember(post.id) { mutableStateOf("") }
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { reportOpen = false },
-            title = { Text("Report Post", color = JellyInk, fontWeight = FontWeight.Black) },
+            title = { Text("Report post", color = JellyInk, fontWeight = FontWeight.Black) },
             text = {
                 OutlinedTextField(
                     reason,
@@ -761,7 +761,7 @@ fun PostDiscussionDialog(
                             text,
                             { text = it.take(3000) },
                             Modifier.weight(1f),
-                            placeholder = { Text(if (replyTo == null) "Write a comment…" else "Write a reply…") },
+                            placeholder = { Text(if (replyTo == null) "Write a comment... Type @ to mention" else "Write a reply…") },
                             minLines = 2,
                             maxLines = 5,
                             shape = RoundedCornerShape(17.dp)
