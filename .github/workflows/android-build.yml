@@ -23,7 +23,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ ! -f app/build.gradle.kts ]; then
-            ZIP="MY_CHHACHH_ANDROID_STUDIO_NATIVE_V6_FINAL_CHECKED.zip"
+            ZIP="MY_CHHACHH_ANDROID_STUDIO_NATIVE_V6_FINAL_CHECKED-1.zip"
             if [ ! -f "$ZIP" ]; then
               echo "::error::Source ZIP not found: $ZIP"
               exit 1
