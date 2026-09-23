@@ -778,6 +778,7 @@ fun PostDiscussionDialog(
                 }
 
                 if (!loading && mode == "likes") {
+                    Text("People who liked this post", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 12.sp)
                     if (likesUsers.isEmpty()) {
                         Text(
                             if (post.shopId > 0) "Like list is not exposed by the shop-post API." else "No likes yet.",
