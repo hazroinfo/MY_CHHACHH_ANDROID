@@ -1,5 +1,6 @@
 package com.mychhachh.app.ui.screens
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,6 +65,26 @@ fun AdminCenterScreen(
     var verificationDecision by remember { mutableStateOf("approved") }
     var verificationNote by remember { mutableStateOf("") }
     var deleteUserTarget by remember { mutableStateOf<Long?>(null) }
+    var noticeType by remember { mutableStateOf("announcement") }
+    var noticeText by remember { mutableStateOf("") }
+    var noticePhoto by remember { mutableStateOf<Uri?>(null) }
+    var noticeAudio by remember { mutableStateOf<Uri?>(null) }
+    var adminPostText by remember { mutableStateOf("") }
+    var adminPostPhoto by remember { mutableStateOf<Uri?>(null) }
+    var adminPostVideo by remember { mutableStateOf<Uri?>(null) }
+    var featurePackageText by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val noticePhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { if (it != null) noticePhoto = it }
+    val noticeAudioPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { if (it != null) noticeAudio = it }
+    val adminPhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { if (it != null) adminPostPhoto = it }
+    val adminVideoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { if (it != null) adminPostVideo = it }
+    val featurePackagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            featurePackageText = runCatching {
+                context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }.orEmpty()
+            }.getOrDefault("")
+        }
+    }
     val settings = state?.optJSONObject("settings") ?: JSONObject()
     val notices = jsonObjects(state?.optJSONArray("notices"))
     val packages = jsonObjects(state?.optJSONArray("feature_packages"))
