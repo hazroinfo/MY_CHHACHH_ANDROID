@@ -60,8 +60,8 @@ fun HomeScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        contentPadding = PaddingValues(start = 7.dp, end = 7.dp, top = 6.dp, bottom = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -189,7 +189,7 @@ fun PostCard(
 ) {
     var videoOpen by remember(post.id) { mutableStateOf(false) }
 
-    JellyGlass(Modifier.fillMaxWidth()) {
+    JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp) {
         Column(Modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth().padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
                 Avatar(post.user, 42.dp, Modifier.clickable { onProfile() })
@@ -254,14 +254,14 @@ fun PostCard(
             }
 
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 7.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 9.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
-                PostAction(JellyIcons.Heart, if (post.liked) "Liked" else "Like", post.likes) { if (loggedIn) onLike(post) else onLogin() }
-                PostAction(JellyIcons.Comment, "Comment", post.comments) { if (loggedIn) onComment(post) else onLogin() }
-                PostStat(JellyIcons.Eye, "Views", post.views)
-                PostAction(JellyIcons.Share, "Share", post.shares) { if (loggedIn) onShare(post) else onLogin() }
-                if (loggedIn) PostAction(JellyIcons.Save, if (post.saved) "Saved" else "Save", 0) { onSave(post) }
+                PostAction(JellyIcons.Heart, if (post.liked) "Liked" else "Like", post.likes, Modifier.weight(1f)) { if (loggedIn) onLike(post) else onLogin() }
+                PostAction(JellyIcons.Comment, "Comment", post.comments, Modifier.weight(1f)) { if (loggedIn) onComment(post) else onLogin() }
+                PostStat(JellyIcons.Eye, "Views", post.views, Modifier.weight(1f))
+                PostAction(JellyIcons.Share, "Share", post.shares, Modifier.weight(1f)) { if (loggedIn) onShare(post) else onLogin() }
+                if (loggedIn) PostAction(JellyIcons.Save, if (post.saved) "Saved" else "Save", 0, Modifier.weight(1f)) { onSave(post) }
             }
         }
     }
@@ -285,22 +285,41 @@ private fun Tag(icon: Int, text: String) {
 }
 
 @Composable
-private fun PostAction(icon: Int, label: String, count: Int, onClick: () -> Unit) {
-    Column(
-        Modifier.clickable { onClick() }.padding(horizontal = 2.dp, vertical = 2.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        JellyIcon(icon, size = 24.dp)
-        Text(label, color = JellyInk, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
-        if (count > 0) Text(count.toString(), color = JellyMuted, fontSize = 7.5f.sp)
+private fun PostAction(icon: Int, label: String, count: Int, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    JellyGlass(modifier.height(55.dp), radius = 18.dp, padding = 3.dp, onClick = onClick) {
+        Column(
+            Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            JellyIcon(icon, size = 23.dp)
+            Text(
+                if (count > 0) "$label $count" else label,
+                color = JellyInk,
+                fontSize = 7.7f.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
+            )
+        }
     }
 }
 
 @Composable
-private fun PostStat(icon: Int, label: String, count: Int) {
-    Column(Modifier.padding(horizontal = 2.dp, vertical = 2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        JellyIcon(icon, size = 24.dp)
-        Text(label, color = JellyInk, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
-        if (count > 0) Text(count.toString(), color = JellyMuted, fontSize = 7.5f.sp)
+private fun PostStat(icon: Int, label: String, count: Int, modifier: Modifier = Modifier) {
+    JellyGlass(modifier.height(55.dp), radius = 18.dp, padding = 3.dp) {
+        Column(
+            Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            JellyIcon(icon, size = 23.dp)
+            Text(
+                if (count > 0) "$label $count" else label,
+                color = JellyInk,
+                fontSize = 7.7f.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
+            )
+        }
     }
 }
