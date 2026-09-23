@@ -373,6 +373,20 @@ fun MyChhachhApp() {
                         onComment = { p -> commentPost = p },
                         onShare = ::sharePost,
                         onSave = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadFeed(true) } },
+                        onEditPost = { p, text, privacy ->
+                            scope.launch {
+                                runCatching { withContext(Dispatchers.IO) { api.updatePost(p.id, text, privacy) } }
+                                    .onFailure { feedError = it.message }
+                                loadFeed(true)
+                            }
+                        },
+                        onDeletePost = { p ->
+                            scope.launch {
+                                runCatching { withContext(Dispatchers.IO) { api.deletePost(p.id) } }
+                                    .onFailure { feedError = it.message }
+                                loadFeed(true)
+                            }
+                        },
                         onCreatePost = { text, privacy, feeling, checkin, photoUri, videoUri ->
                             scope.launch {
                                 try {
