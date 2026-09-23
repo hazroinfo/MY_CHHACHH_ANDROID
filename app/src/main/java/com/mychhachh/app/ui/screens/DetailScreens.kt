@@ -85,7 +85,7 @@ fun ProfileScreen(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
+        contentPadding = PaddingValues(LiveJellyTheme.framePadding.dp, 8.dp, LiveJellyTheme.framePadding.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         if (loading && user == null) item { LoadingBlock() }
@@ -910,7 +910,7 @@ fun ShopDetailScreen(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
+        contentPadding = PaddingValues(LiveJellyTheme.framePadding.dp, 8.dp, LiveJellyTheme.framePadding.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         if (loading && shop == null) item { LoadingBlock() }
@@ -1403,7 +1403,7 @@ fun SettingsScreen(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
+        contentPadding = PaddingValues(LiveJellyTheme.framePadding.dp, 8.dp, LiveJellyTheme.framePadding.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item { PageTitle("Settings & Privacy", "Manage your privacy and experience", JellyIcons.Gear) }
