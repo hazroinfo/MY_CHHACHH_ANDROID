@@ -37,30 +37,141 @@ import com.mychhachh.app.ui.theme.JellyPurple
 import kotlinx.coroutines.launch
 
 @Composable
-fun MessagesScreen(conversations: List<Conversation>, loading: Boolean, error: String?, onOpen: (Long) -> Unit) {
+fun MessagesScreen(
+    conversations: List<Conversation>,
+    groups: List<com.mychhachh.app.data.MessageGroup>,
+    loading: Boolean,
+    error: String?,
+    onOpen: (Long) -> Unit,
+    onOpenGroup: (Long) -> Unit,
+    onCreateGroup: (String, String) -> Unit
+) {
+    var search by remember { mutableStateOf("") }
+    var filter by remember { mutableStateOf("all") }
+    var newGroupOpen by remember { mutableStateOf(false) }
+    val q = search.trim().lowercase()
+    val directRows = conversations.filter { row ->
+        val matches = q.isBlank() || row.user.name.lowercase().contains(q) || row.user.username.lowercase().contains(q) || row.preview.lowercase().contains(q)
+        matches && (filter == "all" || (filter == "unread" && row.unread))
+    }
+    val groupRows = groups.filter { row ->
+        val matches = q.isBlank() || row.name.lowercase().contains(q) || row.preview.lowercase().contains(q)
+        matches && (filter == "all" || filter == "groups")
+    }
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item { PageTitle("Messages", "Good conversations build a brighter Chhachh", JellyIcons.Message) }
-        if (loading && conversations.isEmpty()) item { LoadingBlock() }
-        error?.let { item { ErrorCard(it) } }
-        if (!loading && conversations.isEmpty() && error == null) item { EmptyCard("No conversations yet.", JellyIcons.Message) }
-        items(conversations, key = { "conversation-${it.user.id}" }) { c ->
-            JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp, onClick = { onOpen(c.user.id) }) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Avatar(c.user, 50.dp)
-                    Spacer(Modifier.width(9.dp))
-                    Column(Modifier.weight(1f)) {
-                        UserName(c.user, 14)
-                        Text(c.preview.ifBlank { "Open conversation" }, color = JellyMuted, fontSize = 10.5f.sp, maxLines = 1)
-                        Text(shortTime(c.createdAt), color = JellyMuted, fontSize = 8.5f.sp)
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 9.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        OutlinedTextField(
+                            search,
+                            { search = it },
+                            Modifier.weight(1f),
+                            placeholder = { Text("Search conversations…") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(18.dp)
+                        )
+                        JellyButton("New Group", icon = JellyIcons.People) { newGroupOpen = true }
                     }
-                    if (c.unread) Box(Modifier.size(9.dp).clip(RoundedCornerShape(99.dp)).background(JellyPurple))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        JellyPill("All", filter == "all", Modifier.weight(1f)) { filter = "all" }
+                        JellyPill("Unread", filter == "unread", Modifier.weight(1f)) { filter = "unread" }
+                        JellyPill("Groups", filter == "groups", Modifier.weight(1f)) { filter = "groups" }
+                    }
                 }
             }
         }
+        if (loading && conversations.isEmpty() && groups.isEmpty()) item { LoadingBlock() }
+        error?.let { item { ErrorCard(it) } }
+
+        if (filter != "groups") {
+            items(directRows, key = { "conversation-${it.user.id}" }) { row ->
+                JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp, onClick = { onOpen(row.user.id) }) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Avatar(row.user, 50.dp)
+                        Spacer(Modifier.width(9.dp))
+                        Column(Modifier.weight(1f)) {
+                            UserName(row.user, 14)
+                            Text(row.preview.ifBlank { "Open conversation" }, color = JellyMuted, fontSize = 10.5f.sp, maxLines = 1)
+                            Text(shortTime(row.createdAt), color = JellyMuted, fontSize = 8.5f.sp)
+                        }
+                        if (row.unread) Box(Modifier.size(9.dp).clip(RoundedCornerShape(99.dp)).background(JellyPurple))
+                    }
+                }
+            }
+        }
+
+        if (filter == "all" || filter == "groups") {
+            items(groupRows, key = { "group-${it.id}" }) { group ->
+                JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp, onClick = { onOpenGroup(group.id) }) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            Modifier.size(50.dp).clip(RoundedCornerShape(99.dp)).background(Color(0xFFE9F6FF)),
+                            contentAlignment = Alignment.Center
+                        ) { JellyIcon(JellyIcons.People, size = 34.dp) }
+                        Spacer(Modifier.width(9.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(group.name, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                            Text(group.preview.ifBlank { "Group conversation" }, color = JellyMuted, fontSize = 10.5f.sp, maxLines = 1)
+                            Text(
+                                listOfNotNull(
+                                    group.memberCount.takeIf { it > 0 }?.let { "$it members" },
+                                    shortTime(group.createdAt).takeIf { group.createdAt.isNotBlank() }
+                                ).joinToString(" · "),
+                                color = JellyMuted,
+                                fontSize = 8.5f.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!loading && directRows.isEmpty() && groupRows.isEmpty() && error == null) {
+            item { EmptyCard("No conversations in this filter.", JellyIcons.Message) }
+        }
+    }
+
+    if (newGroupOpen) {
+        var name by remember { mutableStateOf("") }
+        var usernames by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { newGroupOpen = false },
+            title = { Text("Create Group", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        name,
+                        { name = it },
+                        Modifier.fillMaxWidth(),
+                        placeholder = { Text("Group name") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(18.dp)
+                    )
+                    OutlinedTextField(
+                        usernames,
+                        { usernames = it },
+                        Modifier.fillMaxWidth(),
+                        placeholder = { Text("ali123, usman4, sara") },
+                        minLines = 2,
+                        shape = RoundedCornerShape(18.dp)
+                    )
+                    Text("Add members by username, separated with commas.", color = JellyMuted, fontSize = 10.sp)
+                }
+            },
+            confirmButton = {
+                JellyButton("Create Group", primary = true, icon = JellyIcons.People, enabled = name.isNotBlank()) {
+                    onCreateGroup(name.trim(), usernames.trim())
+                    newGroupOpen = false
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { newGroupOpen = false } }
+        )
     }
 }
 
@@ -72,7 +183,9 @@ fun ChatScreen(
     loading: Boolean,
     error: String?,
     onSearchLocation: suspend (String) -> List<CheckinPlace>,
-    onSend: (String, Uri?, CheckinPlace?) -> Unit
+    onSend: (String, Uri?, CheckinPlace?) -> Unit,
+    headerTitle: String? = null,
+    headerSubtitle: String? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -91,7 +204,22 @@ fun ChatScreen(
     }
 
     Column(Modifier.fillMaxSize()) {
-        if (other != null) {
+        if (headerTitle != null) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    Modifier.size(42.dp).clip(RoundedCornerShape(99.dp)).background(Color(0xFFE9F6FF)),
+                    contentAlignment = Alignment.Center
+                ) { JellyIcon(JellyIcons.People, size = 30.dp) }
+                Spacer(Modifier.width(7.dp))
+                Column {
+                    Text(headerTitle, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                    if (!headerSubtitle.isNullOrBlank()) Text(headerSubtitle, color = JellyMuted, fontSize = 9.sp)
+                }
+            }
+        } else if (other != null) {
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
