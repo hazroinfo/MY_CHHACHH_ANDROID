@@ -1387,18 +1387,18 @@ private fun AuthHeader(
                     )
                 )
             )
-            .padding(horizontal = 13.dp, vertical = 9.dp),
-        verticalArrangement = Arrangement.spacedBy(7.dp)
+            .padding(start = 7.dp, end = 7.dp, top = 8.dp, bottom = 7.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(
-            Modifier.fillMaxWidth().height(48.dp),
+            Modifier.fillMaxWidth().height(43.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                Modifier.size(48.dp).clickable { onMenu() },
+                Modifier.size(43.dp).clickable { onMenu() },
                 contentAlignment = Alignment.Center
             ) {
-                JellyIcon(JellyIcons.Menu, size = 39.dp, contentDescription = "Menu")
+                JellyIcon(JellyIcons.Menu, size = 35.dp, contentDescription = "Menu")
             }
 
             HeaderBrand(
@@ -1409,13 +1409,13 @@ private fun AuthHeader(
                 fontSize = 30
             )
 
-            Box(Modifier.size(45.dp).clickable { onNotifications() }, contentAlignment = Alignment.Center) {
-                JellyIcon(JellyIcons.Bell, size = 40.dp, contentDescription = "Notifications")
+            Box(Modifier.size(41.dp).clickable { onNotifications() }, contentAlignment = Alignment.Center) {
+                JellyIcon(JellyIcons.Bell, size = 36.dp, contentDescription = "Notifications")
                 if (unread > 0) CountBadge(unread, Modifier.align(Alignment.TopEnd))
             }
             Spacer(Modifier.width(5.dp))
-            Box(Modifier.size(47.dp).clickable { onProfile() }, contentAlignment = Alignment.Center) {
-                Avatar(user, 45.dp)
+            Box(Modifier.size(43.dp).clickable { onProfile() }, contentAlignment = Alignment.Center) {
+                Avatar(user, 41.dp)
             }
         }
 
