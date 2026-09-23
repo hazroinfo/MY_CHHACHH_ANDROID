@@ -1395,50 +1395,65 @@ fun MapScreen(
         item { PageTitle("Chhachh Map", "Plan a route between villages, places and local shops", JellyIcons.Map) }
 
         item {
-            JellyGlass(Modifier.fillMaxWidth(), padding = 12.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            JellyGlass(Modifier.fillMaxWidth(), radius = 22.dp, padding = 12.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        JellyIcon(JellyIcons.Map, size = 34.dp)
-                        Spacer(Modifier.width(7.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text("Chhachh Navigation", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
-                            Text("Search villages, places and shops around Chhachh / Hazro", color = JellyMuted, fontSize = 9.sp)
+                        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                            JellyIcon(JellyIcons.Map, size = 34.dp)
+                            Spacer(Modifier.width(7.dp))
+                            Column {
+                                Text("Chhachh Navigation", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                                Text(
+                                    "Search villages, places and shops around Chhachh / Hazro",
+                                    color = JellyMuted,
+                                    fontSize = 9.sp,
+                                    maxLines = 2
+                                )
+                            }
                         }
                         JellyPill("Chhachh", true) {}
                     }
 
-                    OutlinedTextField(
-                        fromText,
-                        {
-                            fromText = it
-                            if (it != "My current location") startPoint = null
-                        },
-                        Modifier.fillMaxWidth(),
-                        label = { Text("From") },
-                        placeholder = { Text("Village / place or use current location") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(18.dp)
-                    )
-                    JellyButton("My location", Modifier.fillMaxWidth(), icon = JellyIcons.Pin) {
-                        val granted =
-                            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-                            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-                        if (granted) setCurrentLocation()
-                        else locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("From", color = JellyInk, fontWeight = FontWeight.Bold, fontSize = 9.5f.sp)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            OutlinedTextField(
+                                fromText,
+                                {
+                                    fromText = it
+                                    if (it != "My current location") startPoint = null
+                                },
+                                Modifier.weight(1f),
+                                placeholder = { Text("Village / place or use current location") },
+                                singleLine = true,
+                                shape = RoundedCornerShape(18.dp)
+                            )
+                            JellyButton("My location", icon = JellyIcons.Pin) {
+                                val granted =
+                                    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                                    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                                if (granted) setCurrentLocation()
+                                else locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                            }
+                        }
                     }
-                    OutlinedTextField(
-                        toText,
-                        {
-                            toText = it
-                            endPoint = null
-                        },
-                        Modifier.fillMaxWidth(),
-                        label = { Text("To") },
-                        placeholder = { Text("Village, place or shop") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(18.dp)
-                    )
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+
+                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("To", color = JellyInk, fontWeight = FontWeight.Bold, fontSize = 9.5f.sp)
+                        OutlinedTextField(
+                            toText,
+                            {
+                                toText = it
+                                endPoint = null
+                            },
+                            Modifier.fillMaxWidth(),
+                            placeholder = { Text("Village, place or shop") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(18.dp)
+                        )
+                    }
+
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         JellyButton(
                             if (loading) "Finding Route…" else "Find Route",
                             Modifier.weight(1f),
@@ -1446,21 +1461,20 @@ fun MapScreen(
                             icon = JellyIcons.Map,
                             enabled = !loading && toText.isNotBlank()
                         ) { planRoute() }
-                        JellyButton("Open Navigation", Modifier.weight(1f), icon = JellyIcons.Arrow) { openNavigation() }
+                        JellyButton(
+                            "Open Navigation",
+                            Modifier.weight(1f),
+                            icon = JellyIcons.Arrow
+                        ) { openNavigation() }
                     }
-                    Text(status, color = JellyMuted, fontSize = 9.5f.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
 
-        item {
-            JellyGlass(Modifier.fillMaxWidth(), radius = 22.dp) {
-                Column {
+                    Text(status, color = JellyMuted, fontSize = 9.5f.sp, fontWeight = FontWeight.Bold)
+
                     Box(
                         Modifier
                             .fillMaxWidth()
-                            .height(310.dp)
-                            .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+                            .height(360.dp)
+                            .clip(RoundedCornerShape(22.dp))
                     ) {
                         AndroidView(
                             factory = { mapView },
@@ -1500,41 +1514,31 @@ fun MapScreen(
                             Modifier.align(Alignment.TopEnd).padding(10.dp),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            JellyGlass(
-                                Modifier.size(40.dp),
-                                radius = 13.dp,
-                                onClick = { mapView.controller.zoomOut() }
-                            ) {
+                            JellyGlass(Modifier.size(40.dp), radius = 13.dp, onClick = { mapView.controller.zoomOut() }) {
                                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     Text("−", color = JellyInk, fontSize = 22.sp, fontWeight = FontWeight.Black)
                                 }
                             }
-                            JellyGlass(
-                                Modifier.size(40.dp),
-                                radius = 13.dp,
-                                onClick = { mapView.controller.zoomIn() }
-                            ) {
+                            JellyGlass(Modifier.size(40.dp), radius = 13.dp, onClick = { mapView.controller.zoomIn() }) {
                                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     Text("+", color = JellyInk, fontSize = 22.sp, fontWeight = FontWeight.Black)
                                 }
                             }
                         }
                     }
-                    Text(
-                        "© OpenStreetMap contributors",
-                        Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        color = JellyMuted,
-                        fontSize = 8.sp
-                    )
-                }
-            }
-        }
+                    Text("© OpenStreetMap contributors", color = JellyMuted, fontSize = 8.sp)
 
-        item {
-            JellyGlass(Modifier.fillMaxWidth(), padding = 11.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SectionTitle("Route to a shop")
-                    Text("Choose Route for directions or View to open the shop", color = JellyMuted, fontSize = 9.sp)
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Route to a shop", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                            Text(
+                                "Choose Route for directions or View to open the shop",
+                                color = JellyMuted,
+                                fontSize = 9.sp
+                            )
+                        }
+                    }
+
                     if (shops.isEmpty()) {
                         Text("No shops have been added yet.", color = JellyMuted, fontSize = 10.sp)
                     } else {
@@ -1542,14 +1546,11 @@ fun MapScreen(
                             val destination = listOf(shop.location, shop.area, shop.village, shop.city, "Attock Pakistan")
                                 .filter { it.isNotBlank() }
                                 .joinToString(", ")
-                            JellyGlass(Modifier.fillMaxWidth(), radius = 18.dp, padding = 9.dp) {
+                            JellyGlass(Modifier.fillMaxWidth(), radius = 20.dp, padding = 10.dp) {
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Row(
-                                        Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
+                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                         Box(
-                                            Modifier.size(50.dp).clip(RoundedCornerShape(99.dp)),
+                                            Modifier.size(56.dp).clip(RoundedCornerShape(99.dp)),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             if (!shop.photo.isNullOrBlank()) {
@@ -1560,24 +1561,28 @@ fun MapScreen(
                                                     contentScale = androidx.compose.ui.layout.ContentScale.Crop
                                                 )
                                             } else {
-                                                JellyIcon(JellyIcons.Shop, size = 36.dp)
+                                                JellyIcon(JellyIcons.Shop, size = 38.dp)
                                             }
                                         }
-                                        Spacer(Modifier.width(9.dp))
+                                        Spacer(Modifier.width(10.dp))
                                         Column(Modifier.weight(1f)) {
-                                            Text(shop.name, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 12.sp)
-                                            Text(shop.category.ifBlank { "Local shop" }, color = JellyMuted, fontSize = 9.sp)
+                                            Text(shop.name, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 14.sp, maxLines = 1)
+                                            Text(shop.category.ifBlank { "Local shop" }, color = JellyMuted, fontSize = 10.sp, maxLines = 1)
                                             val place = listOf(shop.area, shop.village, shop.city)
                                                 .filter { it.isNotBlank() }
                                                 .joinToString(" · ")
                                             if (place.isNotBlank()) {
-                                                Text(place, color = JellyMuted, fontSize = 8.7f.sp, maxLines = 2)
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    JellyIcon(JellyIcons.Pin, size = 14.dp)
+                                                    Spacer(Modifier.width(4.dp))
+                                                    Text(place, color = JellyMuted, fontSize = 10.sp, maxLines = 1)
+                                                }
                                             }
                                         }
                                     }
                                     Row(
                                         Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(7.dp)
                                     ) {
                                         JellyButton("Route", Modifier.weight(1f), primary = true, icon = JellyIcons.Map) {
                                             toText = destination
@@ -1588,10 +1593,12 @@ fun MapScreen(
                                             onOpenShop(shop.id)
                                         }
                                         if (shop.whatsapp.isNotBlank()) {
-                                            JellyButton("WhatsApp", Modifier.weight(1f), icon = JellyIcons.Whatsapp) {
-                                                val digits = shop.whatsapp.filter(Char::isDigit)
-                                                if (digits.isNotBlank()) runCatching {
-                                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$digits")))
+                                            Box(Modifier.width(44.dp)) {
+                                                JellyButton("", Modifier.fillMaxWidth(), icon = JellyIcons.Whatsapp) {
+                                                    val digits = shop.whatsapp.filter(Char::isDigit)
+                                                    if (digits.isNotBlank()) runCatching {
+                                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$digits")))
+                                                    }
                                                 }
                                             }
                                         }
@@ -1600,16 +1607,14 @@ fun MapScreen(
                             }
                         }
                     }
+
+                    Text(
+                        "Find Route draws the route on this map. Open Navigation opens live turn-by-turn directions in Google Maps.",
+                        color = JellyMuted,
+                        fontSize = 8.5f.sp
+                    )
                 }
             }
-        }
-
-        item {
-            Text(
-                "Find Route draws the route on this map. Open Navigation opens live turn-by-turn directions in Google Maps.",
-                color = JellyMuted,
-                fontSize = 8.5f.sp
-            )
         }
     }
 }
