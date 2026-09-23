@@ -78,7 +78,26 @@ data class MessageGroup(val id: Long, val name: String, val memberCount: Int, va
 data class Message(val id: Long, val senderId: Long, val receiverId: Long, val text: String, val photo: String?, val audio: String?, val createdAt: String, val locationLat: Double? = null, val locationLng: Double? = null)
 data class Notice(val id: Long, val actor: User?, val text: String, val type: String, val createdAt: String, val read: Boolean)
 data class Announcement(val id: Long, val author: User?, val text: String, val photo: String?, val audio: String?, val type: String, val likes: Int, val comments: Int, val liked: Boolean, val createdAt: String)
-data class Vote(val id: Long, val title: String, val status: String, val user1: User?, val user2: User?, val votes1: Int, val votes2: Int, val createdAt: String)
+data class Vote(
+    val id: Long,
+    val title: String,
+    val status: String,
+    val user1: User?,
+    val user2: User?,
+    val votes1: Int,
+    val votes2: Int,
+    val createdAt: String,
+    val leftUserId: Long = user1?.id ?: 0L,
+    val rightUserId: Long = user2?.id ?: 0L,
+    val leftText: String = "",
+    val rightText: String = "",
+    val myChoice: Long = 0L,
+    val winnerUserId: Long = 0L,
+    val resultRevealed: Boolean = true,
+    val durationHours: Int = 24,
+    val startsAt: String = "",
+    val endsAt: String = ""
+)
 
 data class Bootstrap(val user: User?, val unread: Int, val announcementUnread: Int, val features: JSONObject)
 
