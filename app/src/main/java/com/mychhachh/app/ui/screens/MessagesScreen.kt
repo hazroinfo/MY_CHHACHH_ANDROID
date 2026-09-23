@@ -46,6 +46,7 @@ import java.io.File
 fun MessagesScreen(
     conversations: List<Conversation>,
     groups: List<com.mychhachh.app.data.MessageGroup>,
+    shopOwnerIds: Set<Long>,
     loading: Boolean,
     error: String?,
     onOpen: (Long) -> Unit,
@@ -58,7 +59,12 @@ fun MessagesScreen(
     val q = search.trim().lowercase()
     val directRows = conversations.filter { row ->
         val matches = q.isBlank() || row.user.name.lowercase().contains(q) || row.user.username.lowercase().contains(q) || row.preview.lowercase().contains(q)
-        matches && (filter == "all" || (filter == "unread" && row.unread))
+        matches && when (filter) {
+            "unread" -> row.unread
+            "shops" -> shopOwnerIds.contains(row.user.id)
+            "groups" -> false
+            else -> true
+        }
     }
     val groupRows = groups.filter { row ->
         val matches = q.isBlank() || row.name.lowercase().contains(q) || row.preview.lowercase().contains(q)
@@ -84,9 +90,10 @@ fun MessagesScreen(
                         )
                         JellyButton("New Group", icon = JellyIcons.People) { newGroupOpen = true }
                     }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                         JellyPill("All", filter == "all", Modifier.weight(1f)) { filter = "all" }
                         JellyPill("Unread", filter == "unread", Modifier.weight(1f)) { filter = "unread" }
+                        JellyPill("Shops", filter == "shops", Modifier.weight(1f)) { filter = "shops" }
                         JellyPill("Groups", filter == "groups", Modifier.weight(1f)) { filter = "groups" }
                     }
                 }
