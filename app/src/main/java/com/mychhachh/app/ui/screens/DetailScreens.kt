@@ -50,6 +50,8 @@ fun ProfileScreen(
     onShop: (Long) -> Unit,
     onBlock: (Long) -> Unit,
     onReport: (Long, String) -> Unit,
+    isAdmin: Boolean,
+    onAdminAction: (String, Long, JSONObject) -> Unit,
     onLoadRelations: suspend (Long, String) -> List<User>,
     onLike: (Post) -> Unit,
     onComment: (Post) -> Unit,
@@ -58,13 +60,19 @@ fun ProfileScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val user = data?.optJSONObject("user")?.toUser()
+    val userRaw = data?.optJSONObject("user")
+    val user = userRaw?.toUser()
     val posts = data?.optJSONArray("posts")?.posts().orEmpty()
     val shop = data?.optJSONObject("shop")?.toShop()
     var relationMode by remember { mutableStateOf<String?>(null) }
     var relationUsers by remember { mutableStateOf<List<User>>(emptyList()) }
     var relationLoading by remember { mutableStateOf(false) }
     var reportOpen by remember { mutableStateOf(false) }
+    var adminWarningOpen by remember { mutableStateOf(false) }
+    var adminWarningText by remember { mutableStateOf("") }
+    var adminPostOpen by remember { mutableStateOf(false) }
+    var adminPostText by remember { mutableStateOf("") }
+    var adminDeleteOpen by remember { mutableStateOf(false) }
 
     fun openUrl(url: String) {
         if (url.isBlank()) return
@@ -196,6 +204,16 @@ fun ProfileScreen(
                                     JellyButton("Edit Profile", Modifier.weight(1f), primary = true, icon = JellyIcons.Edit, onClick = onEdit)
                                     JellyButton("Settings", Modifier.weight(1f), icon = JellyIcons.Gear, onClick = onEdit)
                                 }
+                            } else if (isAdmin) {
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                    JellyButton("Message", Modifier.weight(1f), icon = JellyIcons.Message) { onMessage(u.id) }
+                                    JellyButton("Share", Modifier.weight(1f), icon = JellyIcons.Share) {
+                                        val intent = Intent(Intent.ACTION_SEND)
+                                            .setType("text/plain")
+                                            .putExtra(Intent.EXTRA_TEXT, "https://chhachh.pages.dev/profile.php?id=${u.id}")
+                                        runCatching { context.startActivity(Intent.createChooser(intent, "Share profile")) }
+                                    }
+                                }
                             } else {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                                     JellyButton(
@@ -218,6 +236,21 @@ fun ProfileScreen(
                             }
                         }
                     }
+                }
+            }
+
+            if (isAdmin && u.id != meId) {
+                item {
+                    AdminProfileUserControls(
+                        raw = userRaw ?: JSONObject(),
+                        user = u,
+                        onToggle = { key -> onAdminAction("user_setting", u.id, JSONObject().put("key", key)) },
+                        onBlock = { onAdminAction("toggle_user", u.id, JSONObject()) },
+                        onPromote = { onAdminAction("promote_user", u.id, JSONObject()) },
+                        onWarning = { adminWarningText = ""; adminWarningOpen = true },
+                        onPublish = { adminPostText = ""; adminPostOpen = true },
+                        onDelete = { adminDeleteOpen = true }
+                    )
                 }
             }
 
@@ -257,6 +290,71 @@ fun ProfileScreen(
         }
     }
 
+    if (adminWarningOpen && user != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { adminWarningOpen = false },
+            title = { Text("Send Warning", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                OutlinedTextField(
+                    adminWarningText,
+                    { adminWarningText = it.take(2000) },
+                    Modifier.fillMaxWidth(),
+                    placeholder = { Text("Write an admin warning…") },
+                    minLines = 4,
+                    maxLines = 8,
+                    shape = RoundedCornerShape(18.dp)
+                )
+            },
+            confirmButton = {
+                JellyButton("Send Warning", primary = true, icon = JellyIcons.Bell, enabled = adminWarningText.isNotBlank()) {
+                    onAdminAction("warning", user.id, JSONObject().put("message", adminWarningText.trim()))
+                    adminWarningOpen = false
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { adminWarningOpen = false } }
+        )
+    }
+
+    if (adminPostOpen && user != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { adminPostOpen = false },
+            title = { Text("Publish as this user", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                OutlinedTextField(
+                    adminPostText,
+                    { adminPostText = it.take(5000) },
+                    Modifier.fillMaxWidth(),
+                    placeholder = { Text("Write a post…") },
+                    minLines = 4,
+                    maxLines = 9,
+                    shape = RoundedCornerShape(18.dp)
+                )
+            },
+            confirmButton = {
+                JellyButton("Publish User Post", primary = true, icon = JellyIcons.Send, enabled = adminPostText.isNotBlank()) {
+                    onAdminAction("admin_user_post", user.id, JSONObject().put("text", adminPostText.trim()))
+                    adminPostOpen = false
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { adminPostOpen = false } }
+        )
+    }
+
+    if (adminDeleteOpen && user != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { adminDeleteOpen = false },
+            title = { Text("Delete User Account", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = { Text("Delete this user account? Preserved evidence remains on the server.", color = JellyInk) },
+            confirmButton = {
+                JellyButton("Delete User", icon = JellyIcons.Delete, danger = true) {
+                    onAdminAction("delete_user", user.id, JSONObject())
+                    adminDeleteOpen = false
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { adminDeleteOpen = false } }
+        )
+    }
+
     relationMode?.let { mode ->
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { relationMode = null },
@@ -282,6 +380,80 @@ fun ProfileScreen(
             confirmButton = {},
             dismissButton = { JellyButton("Close") { relationMode = null } }
         )
+    }
+}
+
+@Composable
+private fun AdminProfileUserControls(
+    raw: JSONObject,
+    user: User,
+    onToggle: (String) -> Unit,
+    onBlock: () -> Unit,
+    onPromote: () -> Unit,
+    onWarning: () -> Unit,
+    onPublish: () -> Unit,
+    onDelete: () -> Unit
+) {
+    fun enabled(key: String): Boolean = if (raw.has(key)) raw.optInt(key, 1) != 0 && raw.optBoolean(key, true) else true
+    JellyGlass(Modifier.fillMaxWidth(), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Admin User Controls", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                    Text("All controls for this user are kept on this profile.", color = JellyMuted, fontSize = 9.5f.sp)
+                }
+                Text("User #${user.id}", color = JellyMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            }
+            val controls = listOf(
+                Triple("verified", "Blue Tick", JellyIcons.Shield),
+                Triple("allow_photo_upload", "Photo Upload", JellyIcons.Photo),
+                Triple("allow_video_upload", "Video Upload", JellyIcons.Video),
+                Triple("allow_likes", "Likes", JellyIcons.Heart),
+                Triple("allow_comments", "Comments", JellyIcons.Comment),
+                Triple("allow_follows", "Followers", JellyIcons.People),
+                Triple("allow_posts", "Posts", JellyIcons.Edit),
+                Triple("allow_messages", "Messages", JellyIcons.Message)
+            )
+            controls.chunked(2).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    row.forEach { (key, label, icon) ->
+                        val isOn = if (key == "verified") user.verified else enabled(key)
+                        JellyButton(
+                            "$label · ${if (isOn) "ON" else "OFF"}",
+                            Modifier.weight(1f),
+                            primary = isOn,
+                            icon = icon
+                        ) { onToggle(key) }
+                    }
+                    if (row.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                JellyButton(
+                    if (raw.optBoolean("blocked", false)) "Unblock Account" else "Block Account",
+                    Modifier.weight(1f),
+                    danger = !raw.optBoolean("blocked", false),
+                    icon = JellyIcons.Shield,
+                    onClick = onBlock
+                )
+                JellyButton(
+                    if (raw.optBoolean("promoted", false)) "Stop Promotion" else "Promote User",
+                    Modifier.weight(1f),
+                    icon = JellyIcons.Star,
+                    onClick = onPromote
+                )
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                JellyButton("Send Warning", Modifier.weight(1f), icon = JellyIcons.Bell, onClick = onWarning)
+                JellyButton("Publish as User", Modifier.weight(1f), icon = JellyIcons.Edit, onClick = onPublish)
+            }
+            val context = LocalContext.current
+            JellyButton("Download Complete PDF", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Save) {
+                val uri = Uri.parse("https://chhachh.pages.dev/evidence_pdf.php?user_id=${user.id}")
+                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+            }
+            JellyButton("Delete User Account", Modifier.fillMaxWidth(), icon = JellyIcons.Delete, danger = true, onClick = onDelete)
+        }
     }
 }
 
