@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,6 +18,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -673,24 +676,203 @@ fun AdminCenterScreen(
                     val t = traffic?.optJSONObject("traffic") ?: traffic ?: JSONObject()
                     val today = t.optJSONObject("today") ?: JSONObject()
                     val yesterday = t.optJSONObject("yesterday") ?: JSONObject()
-                    JellyGlass(Modifier.fillMaxWidth(), padding = 11.dp) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            SectionTitle("Professional Traffic Meter")
-                            Text("Real server-side traffic. Admin visits and known bots are excluded.", color = JellyMuted, fontSize = 9.5f.sp)
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                AdminStat("Live Now", t.optInt("live"), Modifier.weight(1f))
-                                AdminStat("Members", t.optInt("live_members"), Modifier.weight(1f))
-                                AdminStat("Guests", t.optInt("live_guests"), Modifier.weight(1f))
+                    val live = t.optInt("live")
+                    val liveMembers = t.optInt("live_members")
+                    val liveGuests = t.optInt("live_guests")
+                    val liveBase = maxOf(10, live, today.optInt("visitors"))
+                    val meter = (live.toFloat() / liveBase.toFloat()).coerceIn(0.03f, 1f)
+                    val days = jsonObjects(t.optJSONArray("days"))
+                    val livePaths = jsonObjects(t.optJSONArray("live_paths"))
+                    val maxViews = days.maxOfOrNull { it.optInt("views") }?.coerceAtLeast(1) ?: 1
+                    val maxPath = livePaths.maxOfOrNull { it.optInt("visitors") }?.coerceAtLeast(1) ?: 1
+
+                    JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    SectionTitle("Professional Traffic Meter")
+                                    Text(
+                                        "Real server-side traffic. Admin visits and known bots are excluded.",
+                                        color = JellyMuted,
+                                        fontSize = 9.5f.sp
+                                    )
+                                }
                             }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                AdminStat("Views Today", today.optInt("views"), Modifier.weight(1f))
-                                AdminStat("Visitors", today.optInt("visitors"), Modifier.weight(1f))
-                                AdminStat("Yesterday", yesterday.optInt("views"), Modifier.weight(1f))
+
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                TrafficLiveMeter(
+                                    live = live,
+                                    members = liveMembers,
+                                    guests = liveGuests,
+                                    progress = meter,
+                                    modifier = Modifier.size(148.dp)
+                                )
+                                Column(
+                                    Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    TrafficTodayCard(
+                                        "Views today",
+                                        today.optInt("views").toString(),
+                                        trafficChangeText(t.optDouble("change_views", 0.0))
+                                    )
+                                    TrafficTodayCard(
+                                        "Unique visitors",
+                                        today.optInt("visitors").toString(),
+                                        trafficChangeText(t.optDouble("change_visitors", 0.0))
+                                    )
+                                    val views = today.optInt("views").coerceAtLeast(1)
+                                    val memberPct = (today.optInt("logged_in_views").toFloat() / views.toFloat()).coerceIn(0f, 1f)
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Box(
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .height(8.dp)
+                                                .background(Color(0x1F66738B), RoundedCornerShape(999.dp))
+                                        ) {
+                                            Box(
+                                                Modifier
+                                                    .fillMaxWidth(memberPct)
+                                                    .fillMaxHeight()
+                                                    .background(
+                                                        Brush.horizontalGradient(
+                                                            listOf(Color(0xFF5AD8FF), Color(0xFF9A7BFF), Color(0xFFF26BCF))
+                                                        ),
+                                                        RoundedCornerShape(999.dp)
+                                                    )
+                                            )
+                                        }
+                                        Text(
+                                            "${today.optInt("logged_in_views")} member views · ${today.optInt("guest_views")} guest views",
+                                            color = JellyMuted,
+                                            fontSize = 8.5f.sp
+                                        )
+                                    }
+                                }
                             }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                AdminStat("7-day Views", t.optInt("last7_views"), Modifier.weight(1f))
-                                AdminStat("30-day Views", t.optInt("last30_views"), Modifier.weight(1f))
+
+                            val kpis = listOf(
+                                Triple("Yesterday", yesterday.optInt("views").toString(), "${yesterday.optInt("visitors")} visitors"),
+                                Triple("7-day views", t.optInt("last7_views").toString(), "${t.optInt("last7_visitors")} visitors"),
+                                Triple("30-day views", t.optInt("last30_views").toString(), "${t.optInt("last30_visitors")} visitors"),
+                                Triple("Daily average", t.optInt("avg7_views").toString(), "${t.optInt("avg7_visitors")} visitors"),
+                                Triple(
+                                    "Peak day",
+                                    t.optJSONObject("peak_day")?.optInt("views", 0)?.toString() ?: "0",
+                                    t.optJSONObject("peak_day")?.optString("day", "No data yet") ?: "No data yet"
+                                ),
+                                Triple("Tracker", "LIVE", "Server-side counted")
+                            )
+                            kpis.chunked(3).forEach { row ->
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                                ) {
+                                    row.forEach { (label, value, note) ->
+                                        TrafficKpi(label, value, note, Modifier.weight(1f))
+                                    }
+                                }
                             }
+
+                            JellyGlass(Modifier.fillMaxWidth(), radius = 20.dp, padding = 11.dp) {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("Last 30 days", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                                    Text("Views per day", color = JellyMuted, fontSize = 8.5f.sp)
+                                    if (days.isEmpty()) {
+                                        Text("Traffic history will appear after visits are recorded.", color = JellyMuted, fontSize = 9.sp)
+                                    } else {
+                                        Row(
+                                            Modifier.fillMaxWidth().height(150.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                            verticalAlignment = Alignment.Bottom
+                                        ) {
+                                            days.take(30).reversed().forEach { day ->
+                                                val ratio = (day.optInt("views").toFloat() / maxViews.toFloat()).coerceIn(0.04f, 1f)
+                                                Column(
+                                                    Modifier.weight(1f).fillMaxHeight(),
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.Bottom
+                                                ) {
+                                                    Box(
+                                                        Modifier
+                                                            .widthIn(min = 4.dp, max = 13.dp)
+                                                            .fillMaxWidth()
+                                                            .fillMaxHeight(ratio)
+                                                            .background(
+                                                                Brush.verticalGradient(
+                                                                    listOf(Color(0xFF63D9FF), Color(0xFF8F7CFF), Color(0xFFF16CCA))
+                                                                ),
+                                                                RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 2.dp, bottomEnd = 2.dp)
+                                                            )
+                                                    )
+                                                    Spacer(Modifier.height(3.dp))
+                                                    Text(
+                                                        day.optString("day").takeLast(2),
+                                                        color = JellyMuted,
+                                                        fontSize = 6.5f.sp
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            JellyGlass(Modifier.fillMaxWidth(), radius = 20.dp, padding = 11.dp) {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("Live pages", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                                    Text("Visitors active in the last 5 minutes", color = JellyMuted, fontSize = 8.5f.sp)
+                                    if (livePaths.isEmpty()) {
+                                        Text("No active visitors right now.", color = JellyMuted, fontSize = 9.sp)
+                                    } else {
+                                        livePaths.forEach { p ->
+                                            val visitors = p.optInt("visitors")
+                                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Row {
+                                                    Text(
+                                                        p.optString("path", "/"),
+                                                        Modifier.weight(1f),
+                                                        color = JellyInk,
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        maxLines = 1
+                                                    )
+                                                    Text(visitors.toString(), color = JellyInk, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                                                }
+                                                Box(
+                                                    Modifier
+                                                        .fillMaxWidth()
+                                                        .height(6.dp)
+                                                        .background(Color(0x1F66738B), RoundedCornerShape(999.dp))
+                                                ) {
+                                                    Box(
+                                                        Modifier
+                                                            .fillMaxWidth((visitors.toFloat() / maxPath.toFloat()).coerceIn(0.06f, 1f))
+                                                            .fillMaxHeight()
+                                                            .background(
+                                                                Brush.horizontalGradient(listOf(Color(0xFF5BD7FF), Color(0xFFF16CCB))),
+                                                                RoundedCornerShape(999.dp)
+                                                            )
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Text(
+                                "Unique visitors are counted per day. Live means activity within the last 5 minutes.",
+                                color = JellyMuted,
+                                fontSize = 8.3f.sp
+                            )
                         }
                     }
                 }
@@ -1368,6 +1550,70 @@ fun NativeThemeScreen(
                         .put("theme_menu_items", menuItems.trim())
                 )
             }
+        }
+    }
+}
+
+private fun trafficChangeText(value: Double): String = when {
+    value > 0.0 -> "+${if (value % 1.0 == 0.0) value.toInt() else value}% vs yesterday"
+    value < 0.0 -> "${if (value % 1.0 == 0.0) value.toInt() else value}% vs yesterday"
+    else -> "No change"
+}
+
+@Composable
+private fun TrafficLiveMeter(
+    live: Int,
+    members: Int,
+    guests: Int,
+    progress: Float,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val stroke = 12.dp.toPx()
+            drawArc(
+                color = Color(0x2466738B),
+                startAngle = -90f,
+                sweepAngle = 360f,
+                useCenter = false,
+                style = Stroke(stroke)
+            )
+            drawArc(
+                brush = Brush.sweepGradient(
+                    listOf(Color(0xFF5BD7FF), Color(0xFF9A7BFF), Color(0xFFF16CCB), Color(0xFF5BD7FF))
+                ),
+                startAngle = -90f,
+                sweepAngle = 360f * progress,
+                useCenter = false,
+                style = Stroke(stroke)
+            )
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("LIVE NOW", color = JellyMuted, fontSize = 8.sp, fontWeight = FontWeight.Black)
+            Text(live.toString(), color = JellyInk, fontSize = 30.sp, fontWeight = FontWeight.Black)
+            Text("$members members · $guests guests", color = JellyMuted, fontSize = 7.5f.sp)
+        }
+    }
+}
+
+@Composable
+private fun TrafficTodayCard(label: String, value: String, change: String) {
+    JellyGlass(Modifier.fillMaxWidth(), radius = 16.dp, padding = 9.dp) {
+        Column {
+            Text(label, color = JellyMuted, fontSize = 8.5f.sp, fontWeight = FontWeight.Bold)
+            Text(value, color = JellyInk, fontSize = 18.sp, fontWeight = FontWeight.Black)
+            Text(change, color = JellyMuted, fontSize = 7.5f.sp)
+        }
+    }
+}
+
+@Composable
+private fun TrafficKpi(label: String, value: String, note: String, modifier: Modifier = Modifier) {
+    JellyGlass(modifier, radius = 17.dp, padding = 9.dp) {
+        Column {
+            Text(label.uppercase(), color = JellyMuted, fontSize = 7.2f.sp, fontWeight = FontWeight.Black)
+            Text(value, color = JellyInk, fontSize = 17.sp, fontWeight = FontWeight.Black)
+            Text(note, color = JellyMuted, fontSize = 7.4f.sp, maxLines = 2)
         }
     }
 }
