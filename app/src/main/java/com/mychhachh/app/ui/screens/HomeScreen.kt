@@ -138,6 +138,27 @@ fun HomeScreen(
         contentPadding = PaddingValues(start = 7.dp, end = 7.dp, top = 6.dp, bottom = 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
+        if (user == null) {
+            item {
+                JellyGlass(Modifier.fillMaxWidth(), radius = 22.dp, padding = 12.dp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("Welcome to My Chhachh", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                            Text(
+                                "Browse public posts, or sign in to like, comment, message and post.",
+                                color = JellyMuted,
+                                fontSize = 9.5f.sp
+                            )
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            JellyButton("Login", Modifier.weight(1f), icon = JellyIcons.User, onClick = onLogin)
+                            JellyButton("Create account", Modifier.weight(1f), primary = true, icon = JellyIcons.Plus, onClick = onRegister)
+                        }
+                    }
+                }
+            }
+        }
+
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 HomeTabPill("For You", mode == "global", Modifier.weight(1f)) { onMode("global") }
