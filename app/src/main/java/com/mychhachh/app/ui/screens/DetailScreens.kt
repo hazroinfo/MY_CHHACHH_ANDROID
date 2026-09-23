@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.mychhachh.app.data.*
 import com.mychhachh.app.ui.components.*
+import com.mychhachh.app.ui.theme.JellyGreen
 import com.mychhachh.app.ui.theme.JellyInk
 import com.mychhachh.app.ui.theme.JellyMuted
 import org.json.JSONObject
