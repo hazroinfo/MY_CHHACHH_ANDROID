@@ -134,8 +134,9 @@ class ApiClient(private val context: Context) {
         return (d.optJSONArray("items") ?: JSONArray()).posts() to d.optLong("next_before", 0)
     }
 
-    fun users(q: String = ""): Pair<List<User>, Long> {
-        val d = get("/api/users?limit=30&q=${java.net.URLEncoder.encode(q, "UTF-8")}")
+    fun users(q: String = "", before: Long = 0L, limit: Int = 24): Pair<List<User>, Long> {
+        val beforePart = if (before > 0) "&before=$before" else ""
+        val d = get("/api/users?limit=$limit$beforePart&q=${java.net.URLEncoder.encode(q, "UTF-8")}")
         return (d.optJSONArray("items") ?: JSONArray()).users() to d.optLong("next_before", 0)
     }
 
