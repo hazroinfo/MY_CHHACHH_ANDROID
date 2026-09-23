@@ -181,8 +181,8 @@ fun HomeScreen(
                 onComment = onComment,
                 onShare = onShare,
                 onSave = onSave,
-                onEdit = if (user?.id == post.user.id) onEditPost else null,
-                onDelete = if (user?.id == post.user.id) onDeletePost else null
+                onEdit = if (user?.id == post.user.id && post.shopId == 0L) onEditPost else null,
+                onDelete = if (user?.id == post.user.id && post.shopId == 0L) onDeletePost else null
             )
         }
         if (!loading && posts.isEmpty() && error == null) {
@@ -525,14 +525,16 @@ fun PostCard(
             title = { Text("Post options", color = JellyInk, fontWeight = FontWeight.Black) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    JellyButton(
-                        if (post.saved) "Remove from Saved" else "Save Post",
-                        Modifier.fillMaxWidth(),
-                        primary = !post.saved,
-                        icon = JellyIcons.Save
-                    ) {
-                        onSave(post)
-                        moreOpen = false
+                    if (post.shopId == 0L) {
+                        JellyButton(
+                            if (post.saved) "Remove from Saved" else "Save Post",
+                            Modifier.fillMaxWidth(),
+                            primary = !post.saved,
+                            icon = JellyIcons.Save
+                        ) {
+                            onSave(post)
+                            moreOpen = false
+                        }
                     }
                     if (onEdit != null) {
                         JellyButton("Edit Post", Modifier.fillMaxWidth(), icon = JellyIcons.Edit) {
