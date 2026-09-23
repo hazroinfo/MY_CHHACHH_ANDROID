@@ -406,6 +406,7 @@ fun MyChhachhApp() {
         } catch (_: Exception) { me = null }
         booting = false
         loadFeed(true)
+        if (features.optInt("voting", 1) != 0) loadVotes()
         loadWeather()
     }
 
@@ -413,9 +414,12 @@ fun MyChhachhApp() {
     LaunchedEffect(route, selectedId, me?.id) {
         if (booting) return@LaunchedEffect
         when (route) {
-            Screen.HOME -> if (me != null) {
-                if (people.isEmpty()) loadPeople()
-                if (shops.isEmpty()) loadShops()
+            Screen.HOME -> {
+                if (features.optInt("voting", 1) != 0) loadVotes()
+                if (me != null) {
+                    if (people.isEmpty()) loadPeople()
+                    if (shops.isEmpty()) loadShops()
+                }
             }
             Screen.PEOPLE -> if (me != null) loadPeople()
             Screen.SHOPS -> if (me != null) loadShops()
@@ -629,12 +633,23 @@ fun MyChhachhApp() {
                         currentUser, feedMode, posts, feedLoading, feedError, nextBefore > 0,
                         peopleSuggestions = people,
                         shopSuggestions = shops,
+                        voteHighlight = votes
+                            .filter { it.status == "active" || it.status == "ended" || it.status == "forfeit" }
+                            .maxByOrNull {
+                                val raw = if (it.status == "ended" || it.status == "forfeit") {
+                                    it.endedAt.ifBlank { it.updatedAt.ifBlank { it.createdAt } }
+                                } else {
+                                    it.startsAt.ifBlank { it.updatedAt.ifBlank { it.createdAt } }
+                                }
+                                raw.trim().replace(' ', 'T').take(19)
+                            },
                         onMode = { feedMode = it },
                         onLogin = { authMode = "login"; route = Screen.AUTH }, onRegister = { authMode = "register"; route = Screen.AUTH },
                         onProfile = { if (currentUser != null) open(Screen.PROFILE, it) else { authMode = "login"; route = Screen.AUTH } },
                         onOpenPeople = { open(Screen.PEOPLE) },
                         onOpenShops = { open(Screen.SHOPS) },
                         onOpenShop = { open(Screen.SHOP_DETAIL, it) },
+                        onOpenVote = { open(Screen.VOTES, it) },
                         onFollowSuggestion = { id ->
                             scope.launch {
                                 runCatching { withContext(Dispatchers.IO) { api.followUser(id) } }
