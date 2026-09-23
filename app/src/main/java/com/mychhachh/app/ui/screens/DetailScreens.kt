@@ -318,6 +318,7 @@ fun ShopDetailScreen(
     val views = data?.optJSONObject("shop")?.optInt("views", 0) ?: 0
     var editOpen by remember { mutableStateOf(false) }
     var deleteOpen by remember { mutableStateOf(false) }
+    var settingsSection by remember { mutableStateOf("menu") }
 
     fun shareShop(id: Long, name: String) {
         val intent = Intent(Intent.ACTION_SEND)
@@ -699,9 +700,48 @@ fun SettingsScreen(
         contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
-        item { PageTitle("Settings & Privacy", "Manage your privacy and experience", JellyIcons.Gear) }
-
         item {
+            if (settingsSection == "menu") {
+                PageTitle("Settings", "Manage your account and privacy", JellyIcons.Gear)
+            } else {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    JellyButton("Back", icon = JellyIcons.Arrow) { settingsSection = "menu" }
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        when (settingsSection) {
+                            "profile" -> "Account Settings"
+                            "privacy" -> "Privacy & Security"
+                            "security" -> "Password & Blocked Users"
+                            "verification" -> "Identity Verification"
+                            "account" -> "Account"
+                            else -> "Settings"
+                        },
+                        color = JellyInk,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 18.sp
+                    )
+                }
+            }
+        }
+
+        if (settingsSection == "menu") {
+            item {
+                JellyGlass(Modifier.fillMaxWidth(), padding = 6.dp) {
+                    Column {
+                        SettingsMenuRow("Account Settings", "Profile, contact details and social links", JellyIcons.User) { settingsSection = "profile" }
+                        SettingsMenuRow("Privacy & Security", "Profile visibility, messages and location", JellyIcons.Shield) { settingsSection = "privacy" }
+                        SettingsMenuRow("Password & Blocked Users", "Password and blocked accounts", JellyIcons.Lock) { settingsSection = "security" }
+                        SettingsMenuRow("Identity Verification", "ID card, passport and selfie verification", JellyIcons.Check) { settingsSection = "verification" }
+                        SettingsMenuRow("Account", "Logout or delete your account", JellyIcons.Gear) { settingsSection = "account" }
+                    }
+                }
+            }
+        }
+
+        if (settingsSection == "profile") item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionTitle("Profile")
@@ -782,7 +822,7 @@ fun SettingsScreen(
             }
         }
 
-        item {
+        if (settingsSection == "privacy") item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     SectionTitle("Privacy")
@@ -816,7 +856,7 @@ fun SettingsScreen(
             }
         }
 
-        item {
+        if (settingsSection == "security") item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionTitle("Password & Security")
@@ -831,7 +871,7 @@ fun SettingsScreen(
 
         error?.let { item { ErrorCard(it) } }
 
-        item {
+        if (settingsSection == "verification") item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionTitle("Identity Verification")
@@ -905,7 +945,7 @@ fun SettingsScreen(
             }
         }
 
-        item {
+        if (settingsSection == "account") item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionTitle("Account")
@@ -984,6 +1024,31 @@ fun SettingsScreen(
             },
             dismissButton = { JellyButton("Cancel") { deleteOpen = false } }
         )
+    }
+}
+
+@Composable
+private fun SettingsMenuRow(
+    title: String,
+    subtitle: String,
+    icon: Int,
+    onClick: () -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 10.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        JellyIcon(icon, size = 26.dp)
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = JellyInk, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            Text(subtitle, color = JellyMuted, fontSize = 9.sp, maxLines = 1)
+        }
+        Text("›", color = JellyMuted, fontSize = 22.sp, fontWeight = FontWeight.Bold)
     }
 }
 
