@@ -1598,12 +1598,13 @@ fun SettingsScreen(
             var supportMessage by remember { mutableStateOf("") }
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    SectionTitle("Help & Support")
+                    SectionTitle("Contact My Chhachh Support")
                     Text(
                         "Send a problem, safety report or feedback directly to the Chhachh Team. Team replies stay in your support history.",
                         color = JellyMuted,
                         fontSize = 10.sp
                     )
+                    Text("Request type", color = JellyMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                     JellyButton(
                         when (category) {
                             "technical" -> "Technical problem"
@@ -1630,6 +1631,7 @@ fun SettingsScreen(
                         { subject = it.take(120) },
                         Modifier.fillMaxWidth(),
                         label = { Text("Subject") },
+                        placeholder = { Text("Short subject") },
                         shape = RoundedCornerShape(17.dp),
                         singleLine = true
                     )
@@ -1638,6 +1640,7 @@ fun SettingsScreen(
                         { supportMessage = it.take(3000) },
                         Modifier.fillMaxWidth(),
                         label = { Text("Message") },
+                        placeholder = { Text("Explain what happened and what help you need...") },
                         shape = RoundedCornerShape(17.dp),
                         minLines = 4,
                         maxLines = 8
@@ -1653,14 +1656,20 @@ fun SettingsScreen(
                         subject = ""
                         supportMessage = ""
                     }
+                    SectionTitle("My Support Requests")
+                    if (supportTickets.isEmpty()) {
+                        Text("No support requests yet.", color = JellyMuted, fontSize = 9.5f.sp)
+                    }
                     if (supportTickets.isNotEmpty()) {
-                        SectionTitle("My Support Requests")
                         supportTickets.take(12).forEach { ticket ->
                             JellyGlass(Modifier.fillMaxWidth(), radius = 16.dp, padding = 9.dp) {
                                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                     Text(ticket.optString("subject", "Help & Support"), color = JellyInk, fontWeight = FontWeight.Black, fontSize = 11.sp)
                                     Text(ticket.optString("reason", ""), color = JellyInk, fontSize = 9.5f.sp, maxLines = 4)
                                     Text(ticket.optString("status", "open"), color = JellyMuted, fontSize = 8.5f.sp)
+                                    if (ticket.optString("admin_reply", "").isBlank()) {
+                                        Text("Waiting for Chhachh Team reply.", color = JellyMuted, fontSize = 8.5f.sp)
+                                    }
                                     ticket.optString("admin_reply", "").takeIf { it.isNotBlank() }?.let { reply ->
                                         Text("Chhachh Team reply", color = JellyInk, fontWeight = FontWeight.Bold, fontSize = 9.sp)
                                         Text(reply, color = JellyMuted, fontSize = 9.sp, maxLines = 5)
