@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.item
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
@@ -33,6 +34,7 @@ import com.mychhachh.app.data.Comment
 import com.mychhachh.app.data.Post
 import com.mychhachh.app.data.Shop
 import com.mychhachh.app.data.User
+import com.mychhachh.app.data.Vote
 import kotlinx.coroutines.launch
 import com.mychhachh.app.ui.components.*
 import com.mychhachh.app.ui.theme.*
@@ -47,6 +49,7 @@ fun HomeScreen(
     hasMore: Boolean,
     peopleSuggestions: List<User>,
     shopSuggestions: List<Shop>,
+    voteHighlight: Vote?,
     onMode: (String) -> Unit,
     onLogin: () -> Unit,
     onRegister: () -> Unit,
@@ -54,6 +57,7 @@ fun HomeScreen(
     onOpenPeople: () -> Unit,
     onOpenShops: () -> Unit,
     onOpenShop: (Long) -> Unit,
+    onOpenVote: (Long) -> Unit,
     onFollowSuggestion: (Long) -> Unit,
     onLike: (Post) -> Unit,
     onComment: (Post) -> Unit,
@@ -118,6 +122,15 @@ fun HomeScreen(
     }
     val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) { videoUri = uri; photoUri = null }
+    }
+
+    val homeVote = voteHighlight?.takeIf {
+        mode == "global" && it.status in listOf("active", "ended", "forfeit")
+    }
+    val voteTimeKey = homeVote?.let(::voteFeedTimeKey).orEmpty()
+    val voteInsertIndex = if (homeVote == null) -1 else {
+        val found = posts.indexOfFirst { postTimeKey(it.createdAt) < voteTimeKey }
+        if (found >= 0) found else posts.size
     }
 
     LazyColumn(
@@ -201,22 +214,35 @@ fun HomeScreen(
 
         if (loading && posts.isEmpty()) item { LoadingBlock() }
         error?.let { item { ErrorCard(it) } }
-        items(posts, key = { "post-${it.id}" }) { post ->
-            PostCard(
-                post = post,
-                loggedIn = user != null,
-                onLogin = onLogin,
-                onProfile = { onProfile(post.user.id) },
-                onLike = onLike,
-                onComment = onComment,
-                onShare = onShare,
-                onSave = onSave,
-                onEdit = if ((user?.id == post.user.id || user?.isAdmin == true) && post.shopId == 0L) onEditPost else null,
-                onDelete = if ((user?.id == post.user.id || user?.isAdmin == true) && post.shopId == 0L) onDeletePost else null,
-                onReport = if (user != null && user.id != post.user.id && !user.isAdmin && post.shopId == 0L) {
-                    { p, reason -> onReportPost(p, reason) }
-                } else null
-            )
+        posts.forEachIndexed { index, post ->
+            if (index == voteInsertIndex && homeVote != null) {
+                item(key = "feed-vote-${homeVote.id}") {
+                    V95VoteFeedCard(homeVote, onOpen = { onOpenVote(homeVote.id) })
+                }
+            }
+            item(key = "post-${post.id}") {
+                PostCard(
+                    post = post,
+                    loggedIn = user != null,
+                    onLogin = onLogin,
+                    onProfile = { onProfile(post.user.id) },
+                    onLike = onLike,
+                    onComment = onComment,
+                    onShare = onShare,
+                    onSave = onSave,
+                    onVote = onOpenVote,
+                    onEdit = if ((user?.id == post.user.id || user?.isAdmin == true) && post.shopId == 0L) onEditPost else null,
+                    onDelete = if ((user?.id == post.user.id || user?.isAdmin == true) && post.shopId == 0L) onDeletePost else null,
+                    onReport = if (user != null && user.id != post.user.id && !user.isAdmin && post.shopId == 0L) {
+                        { p, reason -> onReportPost(p, reason) }
+                    } else null
+                )
+            }
+        }
+        if (voteInsertIndex == posts.size && homeVote != null) {
+            item(key = "feed-vote-${homeVote.id}") {
+                V95VoteFeedCard(homeVote, onOpen = { onOpenVote(homeVote.id) })
+            }
         }
         if (!loading && posts.isEmpty() && error == null) {
             item { EmptyCard(if (mode == "shops") "No shop posts yet." else "No posts yet.") }
@@ -433,6 +459,89 @@ fun HomeScreen(
 
 }
 
+private fun postTimeKey(raw: String): String =
+    raw.trim().replace(' ', 'T').take(19)
+
+private fun voteFeedTimeKey(vote: Vote): String {
+    val raw = if (vote.status == "ended" || vote.status == "forfeit") {
+        vote.endedAt.ifBlank { vote.updatedAt.ifBlank { vote.createdAt } }
+    } else {
+        vote.startsAt.ifBlank { vote.updatedAt.ifBlank { vote.createdAt } }
+    }
+    return postTimeKey(raw)
+}
+
+@Composable
+private fun V95VoteFeedCard(vote: Vote, onOpen: () -> Unit) {
+    val ended = vote.status == "ended" || vote.status == "forfeit"
+    val winner = when (vote.winnerUserId) {
+        vote.leftUserId -> vote.user1
+        vote.rightUserId -> vote.user2
+        else -> null
+    }
+    if (ended && winner != null) {
+        val winnerVotes = if (vote.winnerUserId == vote.leftUserId) vote.votes1 else vote.votes2
+        JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp, padding = 14.dp, onClick = onOpen) {
+            Column(
+                Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                JellyIcon(JellyIcons.Crown, size = 42.dp)
+                Avatar(winner, 72.dp)
+                Text("CONGRATULATIONS", color = JellyPurple, fontWeight = FontWeight.Black, fontSize = 9.sp)
+                UserName(winner, 18)
+                if (winner.username.isNotBlank()) Text("@${winner.username}", color = JellyMuted, fontSize = 9.5f.sp)
+                Text("Winner of the voting match · $winnerVotes vote${if (winnerVotes == 1) "" else "s"}", color = JellyInk, fontSize = 10.sp)
+                Text("View final result →", color = JellyPurple, fontWeight = FontWeight.Black, fontSize = 9.5f.sp)
+            }
+        }
+        return
+    }
+
+    JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp, padding = 13.dp, onClick = onOpen) {
+        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(9.dp).clip(RoundedCornerShape(99.dp)).background(JellyGreen))
+                Spacer(Modifier.width(6.dp))
+                Text("Live Voting", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                Spacer(Modifier.weight(1f))
+                Text("Tap to open", color = JellyMuted, fontSize = 8.5f.sp)
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                VoteTeaserSide(vote.user1, if (vote.resultRevealed) vote.votes1 else null, Modifier.weight(1f))
+                Column(Modifier.width(88.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    JellyIcon(JellyIcons.Vote, size = 31.dp)
+                    Text("VS", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                    if (vote.endsAt.isNotBlank()) Text("LIVE", color = JellyGreen, fontWeight = FontWeight.Black, fontSize = 8.sp)
+                }
+                VoteTeaserSide(vote.user2, if (vote.resultRevealed) vote.votes2 else null, Modifier.weight(1f))
+            }
+            Text(
+                if (vote.resultRevealed) "Live vote counts are visible · Open match →"
+                else "Vote counts are hidden until the result · Open match →",
+                Modifier.fillMaxWidth(),
+                color = JellyMuted,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun VoteTeaserSide(user: User?, votes: Int?, modifier: Modifier = Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        if (user != null) {
+            Avatar(user, 54.dp)
+            UserName(user, 9)
+        } else {
+            JellyIcon(JellyIcons.User, size = 48.dp)
+        }
+        votes?.let { Text("$it votes", color = JellyMuted, fontSize = 8.5f.sp, fontWeight = FontWeight.Bold) }
+    }
+}
+
 @Composable
 private fun ComposerTool(icon: Int, label: String, onClick: () -> Unit) {
     Column(
@@ -458,6 +567,7 @@ fun PostCard(
     onComment: (Post) -> Unit,
     onShare: (Post) -> Unit,
     onSave: (Post) -> Unit,
+    onVote: ((Long) -> Unit)? = null,
     onEdit: ((Post, String, String) -> Unit)? = null,
     onDelete: ((Post) -> Unit)? = null,
     onReport: ((Post, String) -> Unit)? = null
@@ -503,6 +613,32 @@ fun PostCard(
                                 }
                             } else null
                         )
+                    }
+                }
+            }
+
+            if (post.voteId > 0L) {
+                JellyGlass(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                        .then(if (onVote != null) Modifier.clickable { onVote(post.voteId) } else Modifier),
+                    radius = 18.dp,
+                    padding = 10.dp
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        JellyIcon(JellyIcons.Vote, size = 34.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Voting Match", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 11.5f.sp)
+                            Text(
+                                "${post.voteLeftName.ifBlank { "Player 1" }}  VS  ${post.voteRightName.ifBlank { "Player 2" }}",
+                                color = JellyMuted,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 9.5f.sp
+                            )
+                        }
+                        JellyIcon(JellyIcons.Arrow, size = 21.dp)
                     }
                 }
             }
