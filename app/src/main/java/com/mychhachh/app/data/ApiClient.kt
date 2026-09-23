@@ -356,6 +356,16 @@ class ApiClient(private val context: Context) {
 
     fun profileMe(): User = get("/api/me").optJSONObject("user")?.toUser() ?: throw ApiException("Profile unavailable")
     fun updateProfile(fields: JSONObject): User = patch("/api/profile", fields).optJSONObject("user")?.toUser() ?: profileMe()
+    fun updatePrivacy(fields: JSONObject): User = patch("/api/privacy", fields).optJSONObject("user")?.toUser() ?: profileMe()
+    fun changePassword(currentPassword: String, newPassword: String): JSONObject =
+        post("/api/password", JSONObject().put("current_password", currentPassword).put("new_password", newPassword))
+    fun updateLocation(latitude: Double, longitude: Double): JSONObject =
+        post("/api/location", JSONObject().put("latitude", latitude).put("longitude", longitude))
+    fun deleteAccount(password: String): JSONObject =
+        post("/api/delete-account", JSONObject().put("password", password))
+    fun blockedUsers(): List<User> =
+        (get("/api/blocked-users").optJSONArray("items") ?: JSONArray()).users()
+    fun toggleBlockUser(id: Long): JSONObject = post("/api/users/$id/block")
 
     fun weather(): JSONObject = get("/api/weather/current")
 
