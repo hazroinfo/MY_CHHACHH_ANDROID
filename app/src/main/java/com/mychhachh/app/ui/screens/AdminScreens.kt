@@ -1448,6 +1448,11 @@ fun NativeThemeScreen(
     var tagline by remember(stateKey) { mutableStateOf(settings.optString("site_tagline", "People • Places • Good Vibes")) }
     var iconEnabled by remember(stateKey) { mutableStateOf(settings.optInt("site_icon_enabled", 1) != 0) }
     var taglineEnabled by remember(stateKey) { mutableStateOf(settings.optInt("site_tagline_enabled", 1) != 0) }
+    var iconFit by remember(stateKey) { mutableStateOf(settings.optString("site_icon_fit", "contain").ifBlank { "contain" }) }
+    var iconSize by remember(stateKey) { mutableFloatStateOf(settings.optInt("site_icon_size", 40).toFloat()) }
+    var iconHeaderBlend by remember(stateKey) { mutableStateOf(settings.optInt("site_icon_header_blend", settings.optInt("site_icon_auto_transparent", 1)) != 0) }
+    var iconBgTolerance by remember(stateKey) { mutableFloatStateOf(settings.optInt("site_icon_bg_tolerance", 28).toFloat()) }
+    var removeSavedLogo by remember(stateKey) { mutableStateOf(false) }
     var iconUri by remember { mutableStateOf<Uri?>(null) }
     val iconPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { if (it != null) iconUri = it }
 
@@ -1539,29 +1544,40 @@ fun NativeThemeScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionTitle("Complete Theme Control")
                     Text("Logo, every jelly icon, all main frames, sizes, spacing, colors, header/menu order and live background.", color = JellyMuted, fontSize = 9.5f.sp)
-                    OutlinedTextField(siteName, { siteName = it.take(60) }, Modifier.fillMaxWidth(), label = { Text("Website / App name") }, shape = RoundedCornerShape(17.dp), singleLine = true)
+                    SectionTitle("Website branding & logo")
+                    OutlinedTextField(siteName, { siteName = it.take(60) }, Modifier.fillMaxWidth(), label = { Text("Website name") }, shape = RoundedCornerShape(17.dp), singleLine = true)
                     OutlinedTextField(tagline, { tagline = it.take(120) }, Modifier.fillMaxWidth(), label = { Text("Tagline") }, shape = RoundedCornerShape(17.dp), singleLine = true)
-                    ThemeSwitch("Show logo", iconEnabled) { iconEnabled = it }
-                    ThemeSwitch("Show tagline", taglineEnabled) { taglineEnabled = it }
-                    JellyButton(if (iconUri != null) "New Logo Selected ✓" else "Choose Logo", Modifier.fillMaxWidth(), icon = JellyIcons.Photo) {
+                    JellyButton(if (iconUri != null) "Logo selected ✓" else "Change website logo", Modifier.fillMaxWidth(), icon = JellyIcons.Photo) {
                         iconPicker.launch("image/*")
                     }
+                    ThemeSwitch("Blend PNG logo background with the live header background", iconHeaderBlend) { iconHeaderBlend = it }
+                    ThemeSlider("Header blend tolerance", iconBgTolerance, 0f..100f) { iconBgTolerance = it }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        JellyPill("Contain", iconFit == "contain", Modifier.weight(1f)) { iconFit = "contain" }
+                        JellyPill("Cover", iconFit == "cover", Modifier.weight(1f)) { iconFit = "cover" }
+                    }
+                    ThemeSlider("Logo size", iconSize, 20f..96f) { iconSize = it }
+                    ThemeSwitch("Show logo", iconEnabled) { iconEnabled = it }
+                    ThemeSwitch("Show tagline", taglineEnabled) { taglineEnabled = it }
+                    ThemeSwitch("Remove saved logo", removeSavedLogo) { removeSavedLogo = it }
                     SectionTitle("Website name colour strength")
-                    Text("These values are saved in the theme, not just previewed.", color = JellyMuted, fontSize = 9.sp)
+                    Text("These values are saved in the theme, not just previewed in CSS.", color = JellyMuted, fontSize = 9.sp)
                     ThemeSlider("Name brightness / intensity", brandBrightness, 40f..180f) { brandBrightness = it }
                     ThemeSlider("Name colour saturation", brandSaturation, 40f..220f) { brandSaturation = it }
                     ThemeSlider("Name glow strength", brandGlow, 0f..36f) { brandGlow = it }
-                    JellyButton("Save Branding", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Check, enabled = !busy && siteName.isNotBlank()) {
+                    JellyButton("Save / Upload Logo", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Check, enabled = !busy && siteName.isNotBlank()) {
                         onSaveBrand(
                             JSONObject()
                                 .put("site_name", siteName.trim())
                                 .put("site_tagline", tagline.trim())
                                 .put("site_icon_enabled", if (iconEnabled) 1 else 0)
                                 .put("site_tagline_enabled", if (taglineEnabled) 1 else 0)
-                                .put("site_icon_fit", "contain")
-                                .put("site_icon_header_blend", true)
-                                .put("site_icon_auto_transparent", true)
-                                .put("site_icon_size", 40),
+                                .put("site_icon_fit", iconFit)
+                                .put("site_icon_header_blend", if (iconHeaderBlend) 1 else 0)
+                                .put("site_icon_auto_transparent", if (iconHeaderBlend) 1 else 0)
+                                .put("site_icon_bg_tolerance", iconBgTolerance.roundToInt())
+                                .put("site_icon_size", iconSize.roundToInt())
+                                .put("remove_icon", if (removeSavedLogo) 1 else 0),
                             iconUri
                         )
                     }
