@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -922,6 +923,111 @@ fun AdminCenterScreen(
             },
             dismissButton = { JellyButton("Cancel") { deleteUserTarget = null } }
         )
+    }
+}
+
+private data class AdminNavItem(
+    val key: String,
+    val label: String,
+    val icon: Int,
+    val badge: Int = 0
+)
+
+private fun adminSectionTitle(section: String): String = when (section) {
+    "overview" -> "Overview"
+    "users" -> "Users"
+    "verification" -> "Verification"
+    "posts" -> "Posts"
+    "shops" -> "Shops"
+    "votes" -> "Voting"
+    "reports" -> "Reports"
+    "deleted" -> "Deleted Accounts"
+    "activity" -> "Activity"
+    "records" -> "User Records"
+    "notices" -> "Announcements"
+    "features" -> "Features"
+    "installer" -> "Feature Installer"
+    "ads" -> "Ad Manager"
+    "traffic" -> "Traffic"
+    "social" -> "Login Setup"
+    "adminprofile" -> "Admin Profile"
+    else -> "Admin Center"
+}
+
+@Composable
+private fun AdminNavGroup(
+    title: String,
+    items: List<AdminNavItem>,
+    selected: String,
+    onSelect: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(title, color = JellyMuted, fontSize = 9.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 3.dp))
+        items.chunked(3).forEach { rowItems ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                rowItems.forEach { item ->
+                    val active = selected == item.key
+                    JellyGlass(
+                        Modifier.weight(1f).heightIn(min = 76.dp),
+                        radius = 16.dp,
+                        padding = 5.dp,
+                        onClick = { onSelect(item.key) },
+                        surfaceColor = if (active) Color.White else LiveJellyTheme.cardColor,
+                        surfaceOpacity = if (active) .72f else .34f
+                    ) {
+                        Box(Modifier.fillMaxSize()) {
+                            Column(
+                                Modifier.align(Alignment.Center),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                JellyIcon(item.icon, size = 34.dp)
+                                Text(
+                                    item.label,
+                                    color = if (active) LiveJellyTheme.activeColor else JellyInk,
+                                    fontSize = 8.5f.sp,
+                                    fontWeight = FontWeight.Black,
+                                    maxLines = 2
+                                )
+                            }
+                            if (item.badge > 0) {
+                                Box(
+                                    Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(2.dp)
+                                        .background(Color(0xFFFF4D88), RoundedCornerShape(999.dp))
+                                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        if (item.badge > 99) "99+" else item.badge.toString(),
+                                        color = Color.White,
+                                        fontSize = 7.sp,
+                                        fontWeight = FontWeight.Black
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                repeat(3 - rowItems.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FeatureToggleRow(label: String, enabled: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            label.replace('_', ' ').replaceFirstChar { it.uppercase() },
+            Modifier.weight(1f),
+            color = JellyInk,
+            fontWeight = FontWeight.Bold,
+            fontSize = 10.5f.sp
+        )
+        JellyButton(if (enabled) "Turn OFF" else "Turn ON", primary = !enabled, danger = enabled) {
+            onChange(!enabled)
+        }
     }
 }
 
