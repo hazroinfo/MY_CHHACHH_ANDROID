@@ -20,7 +20,8 @@ import com.mychhachh.app.ui.theme.JellyMuted
 fun PeopleScreen(
     currentUserId: Long,
     users: List<User>, loading: Boolean, error: String?, query: String,
-    onQuery: (String) -> Unit, onSearch: () -> Unit, onOpen: (Long) -> Unit, onFollow: (Long) -> Unit
+    onQuery: (String) -> Unit, onSearch: () -> Unit, onOpen: (Long) -> Unit, onFollow: (Long) -> Unit,
+    hasMore: Boolean = false, onLoadMore: () -> Unit = {}
 ) {
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -92,6 +93,17 @@ fun PeopleScreen(
                         ) { onFollow(u.id) }
                     }
                 }
+            }
+        }
+
+        if (hasMore) {
+            item {
+                JellyButton(
+                    text = if (loading) "Loading…" else "Load more people",
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !loading,
+                    onClick = onLoadMore
+                )
             }
         }
     }
