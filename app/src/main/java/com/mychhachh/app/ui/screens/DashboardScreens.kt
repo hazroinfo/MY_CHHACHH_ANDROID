@@ -91,7 +91,7 @@ fun NotificationsScreen(
             JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     n.actor?.let {
-                        Avatar(it, 43.dp, Modifier.clickable { onProfile(it.id) })
+                        Avatar(it, LiveJellyTheme.notificationAvatarSize.dp, Modifier.clickable { onProfile(it.id) })
                     } ?: JellyIcon(JellyIcons.Bell, size = 36.dp)
                     Spacer(Modifier.width(8.dp))
                     Column(Modifier.weight(1f)) {
