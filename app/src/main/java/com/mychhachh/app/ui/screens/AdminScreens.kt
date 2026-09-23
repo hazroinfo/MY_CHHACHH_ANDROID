@@ -1458,6 +1458,11 @@ fun NativeThemeScreen(
     var motion by remember(stateKey) { mutableStateOf(settings.optInt("theme_motion", 1) != 0) }
     var rainbow by remember(stateKey) { mutableStateOf(settings.optInt("theme_brand_rainbow", 1) != 0) }
     var weatherChip by remember(stateKey) { mutableStateOf(settings.optInt("theme_weather_chip", 0) != 0) }
+    var themeIconEnabled by remember(stateKey) { mutableStateOf(settings.optInt("theme_theme_icon_enabled", 1) != 0) }
+    var jellyDepth by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_jelly_depth", 92).toFloat()) }
+    var jellyShine by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_jelly_shine", 96).toFloat()) }
+    var jellyBorder by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_jelly_border", 92).toFloat()) }
+    var jellySaturation by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_jelly_saturation", 140).toFloat()) }
     var timeMode by remember(stateKey) { mutableStateOf(settings.optString("theme_time_mode", "auto").ifBlank { "auto" }) }
     var manualWeather by remember(stateKey) { mutableStateOf(settings.optString("theme_manual_weather", "clear").ifBlank { "clear" }) }
 
@@ -1547,27 +1552,45 @@ fun NativeThemeScreen(
         item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    SectionTitle("Theme Engine")
-                    ThemeSwitch("Enable theme", themeEnabled) { themeEnabled = it }
-                    ThemeSwitch("Jelly theme", jelly) { jelly = it }
-                    ThemeSwitch("Live Chhachh weather", weatherLive) { weatherLive = it }
-                    ThemeSwitch("Natural motion", motion) { motion = it }
-                    ThemeSwitch("Rainbow My Chhachh", rainbow) { rainbow = it }
-                    ThemeSwitch("Weather chip", weatherChip) { weatherChip = it }
+                    SectionTitle("Jelly depth & live background")
+                    ThemeSlider("Jelly depth", jellyDepth, 0f..100f) { jellyDepth = it }
+                    ThemeSlider("Jelly shine", jellyShine, 0f..100f) { jellyShine = it }
+                    ThemeSlider("Jelly border", jellyBorder, 0f..100f) { jellyBorder = it }
+                    ThemeSlider("Jelly saturation", jellySaturation, 80f..180f) { jellySaturation = it }
+
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        JellyButton("Time: ${timeMode.uppercase()}", Modifier.weight(1f)) {
+                        JellyButton(
+                            "Time mode: " + when (timeMode) {
+                                "day" -> "Day"
+                                "night" -> "Night"
+                                else -> "Automatic"
+                            },
+                            Modifier.weight(1f)
+                        ) {
                             timeMode = when (timeMode) { "auto" -> "day"; "day" -> "night"; else -> "auto" }
                         }
-                        JellyButton("Weather: ${manualWeather.replaceFirstChar { it.uppercase() }}", Modifier.weight(1f)) {
+                        JellyButton(
+                            "Manual weather: " + manualWeather.replaceFirstChar { it.uppercase() },
+                            Modifier.weight(1f)
+                        ) {
                             manualWeather = when (manualWeather) {
                                 "clear" -> "clouds"
                                 "clouds" -> "rain"
                                 "rain" -> "fog"
                                 "fog" -> "storm"
+                                "storm" -> "snow"
                                 else -> "clear"
                             }
                         }
                     }
+
+                    ThemeSwitch("Live weather background", weatherLive) { weatherLive = it }
+                    ThemeSwitch("Background motion", motion) { motion = it }
+                    ThemeSwitch("Rainbow website name", rainbow) { rainbow = it }
+                    ThemeSwitch("Jelly theme", jelly) { jelly = it }
+                    ThemeSwitch("Weather chip", weatherChip) { weatherChip = it }
+                    ThemeSwitch("Theme Builder in menu", themeIconEnabled) { themeIconEnabled = it }
+                    ThemeSwitch("Enable theme", themeEnabled) { themeEnabled = it }
                 }
             }
         }
@@ -1685,6 +1708,11 @@ fun NativeThemeScreen(
                         .put("theme_motion", if (motion) 1 else 0)
                         .put("theme_brand_rainbow", if (rainbow) 1 else 0)
                         .put("theme_weather_chip", if (weatherChip) 1 else 0)
+                        .put("theme_theme_icon_enabled", if (themeIconEnabled) 1 else 0)
+                        .put("theme_jelly_depth", jellyDepth.roundToInt())
+                        .put("theme_jelly_shine", jellyShine.roundToInt())
+                        .put("theme_jelly_border", jellyBorder.roundToInt())
+                        .put("theme_jelly_saturation", jellySaturation.roundToInt())
                         .put("theme_time_mode", timeMode)
                         .put("theme_manual_weather", manualWeather)
                         .put("theme_card_opacity", cardOpacity.roundToInt())
