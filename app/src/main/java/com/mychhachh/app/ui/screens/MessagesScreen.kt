@@ -3,6 +3,7 @@ package com.mychhachh.app.ui.screens
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Build
@@ -216,6 +217,32 @@ fun ChatScreen(
         if (uri != null) photoUri = uri
     }
 
+    fun attachCurrentLocation() {
+        val manager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as LocationManager
+        val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+        val location = providers.asSequence()
+            .filter { runCatching { manager.isProviderEnabled(it) }.getOrDefault(false) }
+            .mapNotNull { provider ->
+                runCatching {
+                    if (
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                    ) manager.getLastKnownLocation(provider) else null
+                }.getOrNull()
+            }
+            .maxByOrNull { it.time }
+        if (location != null) {
+            selectedPlace = CheckinPlace("My Location", location.latitude, location.longitude)
+            locationOpen = false
+        }
+    }
+
+    val locationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        if (result.values.any { it }) attachCurrentLocation()
+    }
+
     fun startVoiceRecording() {
         val file = File(context.cacheDir, "message-${System.currentTimeMillis()}.m4a")
         val r = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(context) else @Suppress("DEPRECATION") MediaRecorder()
@@ -294,6 +321,7 @@ fun ChatScreen(
         ) {
             if (loading) item { LoadingBlock() }
             error?.let { item { ErrorCard(it) } }
+            if (!loading && messages.isEmpty() && error == null) item { EmptyCard("No messages.", JellyIcons.Message) }
             items(messages, key = { "message-${it.id}" }) { m ->
                 val mine = m.senderId == me.id
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start) {
@@ -426,10 +454,18 @@ fun ChatScreen(
             title = { Text("Send Location", color = JellyInk, fontWeight = FontWeight.Black) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Tap a search result to choose a place, or use your current location.", color = JellyMuted, fontSize = 9.5f.sp)
+                    JellyButton("My Location", Modifier.fillMaxWidth(), icon = JellyIcons.Pin) {
+                        val granted =
+                            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                        if (granted) attachCurrentLocation()
+                        else locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                    }
                     OutlinedTextField(
                         query,
                         { query = it },
-                        placeholder = { Text("Search a place") },
+                        placeholder = { Text("Search a place in Chhachh / Hazro") },
                         singleLine = true,
                         shape = RoundedCornerShape(18.dp)
                     )
