@@ -1,6 +1,10 @@
 package com.mychhachh.app.ui.screens
 
+import android.Manifest
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,6 +24,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -443,32 +448,79 @@ fun SettingsScreen(
     me: User,
     busy: Boolean,
     error: String?,
+    blockedUsers: List<User>,
     onSave: (JSONObject, Uri?) -> Unit,
+    onPrivacy: (JSONObject) -> Unit,
+    onLocation: (Double, Double) -> Unit,
+    onPassword: (String, String) -> Unit,
+    onRefreshBlocked: () -> Unit,
+    onUnblock: (Long) -> Unit,
+    onDeleteAccount: (String) -> Unit,
     onLogout: () -> Unit
 ) {
+    val context = LocalContext.current
     var name by remember(me.id, me.name) { mutableStateOf(me.name) }
     var username by remember(me.id, me.username) { mutableStateOf(me.username) }
+    var email by remember(me.id, me.email) { mutableStateOf(me.email) }
+    var phone by remember(me.id, me.phone) { mutableStateOf(me.phone) }
     var city by remember(me.id, me.city) { mutableStateOf(me.city) }
     var village by remember(me.id, me.village) { mutableStateOf(me.village) }
     var area by remember(me.id, me.area) { mutableStateOf(me.area) }
     var bio by remember(me.id, me.bio) { mutableStateOf(me.bio) }
-    var privateProfile by remember(me.id, me.profileVisibility) { mutableStateOf(me.profileVisibility.equals("private", true)) }
+    var showEmail by remember(me.id, me.showEmail) { mutableStateOf(me.showEmail) }
+    var showPhone by remember(me.id, me.showPhone) { mutableStateOf(me.showPhone) }
+    var showLocation by remember(me.id, me.showLocation) { mutableStateOf(me.showLocation) }
+    var hideFollowers by remember(me.id, me.hideFollowers) { mutableStateOf(me.hideFollowers) }
+    var privateProfile by remember(me.id, me.profileVisibility) { mutableStateOf(me.profileVisibility.equals("followers", true)) }
+    var acceptMessages by remember(me.id, me.acceptMessages) { mutableStateOf(me.acceptMessages) }
     var avatarUri by remember(me.id) { mutableStateOf<Uri?>(null) }
+    var passwordOpen by remember { mutableStateOf(false) }
+    var blockedOpen by remember { mutableStateOf(false) }
+    var deleteOpen by remember { mutableStateOf(false) }
+
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) avatarUri = uri
     }
-    val usernameOk = username.matches(Regex("[a-z0-9._]{3,30}"))
-    val canSave = name.trim().length >= 2 && usernameOk && !busy
+
+    fun sendLastKnownLocation() {
+        val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+        val location = providers.asSequence()
+            .filter { runCatching { manager.isProviderEnabled(it) }.getOrDefault(false) }
+            .mapNotNull { provider ->
+                runCatching {
+                    if (
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                    ) manager.getLastKnownLocation(provider) else null
+                }.getOrNull()
+            }
+            .maxByOrNull { it.time }
+        if (location != null) onLocation(location.latitude, location.longitude)
+    }
+
+    val locationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        if (result.values.any { it }) sendLastKnownLocation()
+    }
+
+    val usernameOk = username.matches(Regex("[a-z0-9_]{3,30}"))
+    val emailOk = email.isBlank() || email.matches(Regex("[^@\\s]+@[^@\\s]+\\.[^@\\s]+"))
+    val phoneOk = phone.isBlank() || phone.matches(Regex("\\+?[0-9]{7,15}"))
+    val canSave = name.trim().length >= 2 && usernameOk && emailOk && phoneOk && !busy
 
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
+        item { PageTitle("Settings & Privacy", "Manage your privacy and experience", JellyIcons.Gear) }
+
         item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SectionTitle("Profile photo")
+                    SectionTitle("Profile")
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (avatarUri != null) {
                             Box(Modifier.size(66.dp).clip(RoundedCornerShape(99.dp))) {
@@ -476,23 +528,26 @@ fun SettingsScreen(
                             }
                         } else Avatar(me, 66.dp)
                         Spacer(Modifier.width(10.dp))
-                        JellyButton("Choose photo", icon = JellyIcons.Photo) { avatarPicker.launch("image/*") }
+                        JellyButton("Choose Photo", icon = JellyIcons.Photo) { avatarPicker.launch("image/*") }
                     }
-                }
-            }
-        }
-        item {
-            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SectionTitle("Edit profile")
                     OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text("Name") }, shape = RoundedCornerShape(17.dp), singleLine = true)
                     OutlinedTextField(
                         username,
-                        { username = it.lowercase().filter { ch -> ch.isLetterOrDigit() || ch == '.' || ch == '_' } },
+                        { username = it.lowercase().filter { ch -> ch.isLetterOrDigit() || ch == '_' } },
                         Modifier.fillMaxWidth(),
                         label = { Text("Username") },
-                        supportingText = { if (!usernameOk) Text("3–30 characters: a-z, 0-9, dot or underscore") },
                         isError = !usernameOk,
+                        supportingText = { if (!usernameOk) Text("3–30 characters: a-z, 0-9 or underscore") },
+                        shape = RoundedCornerShape(17.dp),
+                        singleLine = true
+                    )
+                    OutlinedTextField(email, { email = it.trim() }, Modifier.fillMaxWidth(), label = { Text("Email") }, isError = !emailOk, shape = RoundedCornerShape(17.dp), singleLine = true)
+                    OutlinedTextField(
+                        phone,
+                        { phone = it.filter { ch -> ch.isDigit() || ch == '+' }.take(16) },
+                        Modifier.fillMaxWidth(),
+                        label = { Text("Phone") },
+                        isError = !phoneOk,
                         shape = RoundedCornerShape(17.dp),
                         singleLine = true
                     )
@@ -501,17 +556,8 @@ fun SettingsScreen(
                     OutlinedTextField(area, { area = it }, Modifier.fillMaxWidth(), label = { Text("Mohallah / Area") }, shape = RoundedCornerShape(17.dp), singleLine = true)
                     OutlinedTextField(bio, { bio = it }, Modifier.fillMaxWidth(), label = { Text("Bio") }, shape = RoundedCornerShape(17.dp), minLines = 3, maxLines = 6)
 
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Private profile", color = JellyInk, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            Text("Only approved followers can see follower-only content.", color = JellyMuted, fontSize = 9.5f.sp)
-                        }
-                        Switch(checked = privateProfile, onCheckedChange = { privateProfile = it })
-                    }
-
-                    error?.let { Text(it, color = Color(0xFFB23A55), fontWeight = FontWeight.Bold, fontSize = 10.5f.sp) }
                     JellyButton(
-                        if (busy) "Saving…" else "Save changes",
+                        if (busy) "Saving…" else "Save Profile",
                         Modifier.fillMaxWidth(),
                         primary = true,
                         icon = JellyIcons.Check,
@@ -521,25 +567,154 @@ fun SettingsScreen(
                             JSONObject()
                                 .put("name", name.trim())
                                 .put("username", username.trim())
+                                .put("email", email.trim())
+                                .put("phone", phone.trim())
                                 .put("city", city.trim())
                                 .put("village", village.trim())
                                 .put("area", area.trim())
-                                .put("bio", bio.trim())
-                                .put("profile_visibility", if (privateProfile) "private" else "public"),
+                                .put("bio", bio.trim()),
                             avatarUri
                         )
                     }
                 }
             }
         }
+
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    SectionTitle("Privacy")
+                    PrivacySwitch("Show my email on my profile", showEmail) { showEmail = it }
+                    PrivacySwitch("Show my phone number on my profile", showPhone) { showPhone = it }
+                    PrivacySwitch("Private profile (followers only)", privateProfile) { privateProfile = it }
+                    PrivacySwitch("Hide followers and following counts", hideFollowers) { hideFollowers = it }
+                    PrivacySwitch("Accept messages", acceptMessages) { acceptMessages = it }
+                    PrivacySwitch("Show current location", showLocation) { checked ->
+                        showLocation = checked
+                        if (checked) {
+                            val granted =
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                            if (granted) sendLastKnownLocation()
+                            else locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                        }
+                    }
+                    JellyButton("Save Privacy", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Shield) {
+                        onPrivacy(
+                            JSONObject()
+                                .put("show_email", showEmail)
+                                .put("show_phone", showPhone)
+                                .put("show_location", showLocation)
+                                .put("hide_followers", hideFollowers)
+                                .put("accept_messages", acceptMessages)
+                                .put("profile_visibility", if (privateProfile) "followers" else "public")
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionTitle("Password & Security")
+                    JellyButton("Change Password", Modifier.fillMaxWidth(), icon = JellyIcons.Lock) { passwordOpen = true }
+                    JellyButton("Blocked Users (${blockedUsers.size})", Modifier.fillMaxWidth(), icon = JellyIcons.People) {
+                        blockedOpen = true
+                        onRefreshBlocked()
+                    }
+                }
+            }
+        }
+
+        error?.let { item { ErrorCard(it) } }
+
         item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionTitle("Account")
-                    Text("Your login session is stored securely on this device.", color = JellyMuted, fontSize = 10.5f.sp)
-                    JellyButton("Logout", icon = JellyIcons.Logout, onClick = onLogout)
+                    JellyButton("Logout", Modifier.fillMaxWidth(), icon = JellyIcons.Logout, onClick = onLogout)
+                    JellyButton("Delete Account", Modifier.fillMaxWidth(), icon = JellyIcons.Delete) { deleteOpen = true }
                 }
             }
         }
+    }
+
+    if (passwordOpen) {
+        var current by remember { mutableStateOf("") }
+        var next by remember { mutableStateOf("") }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { passwordOpen = false },
+            title = { Text("Change Password", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(current, { current = it }, Modifier.fillMaxWidth(), label = { Text("Current password") }, shape = RoundedCornerShape(17.dp))
+                    OutlinedTextField(next, { next = it }, Modifier.fillMaxWidth(), label = { Text("New password") }, supportingText = { Text("At least 6 characters") }, shape = RoundedCornerShape(17.dp))
+                }
+            },
+            confirmButton = {
+                JellyButton("Change Password", primary = true, icon = JellyIcons.Lock, enabled = current.isNotBlank() && next.length >= 6) {
+                    onPassword(current, next)
+                    passwordOpen = false
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { passwordOpen = false } }
+        )
+    }
+
+    if (blockedOpen) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { blockedOpen = false },
+            title = { Text("Blocked Users", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                LazyColumn(Modifier.heightIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    if (blockedUsers.isEmpty()) item { Text("No blocked users.", color = JellyMuted) }
+                    items(blockedUsers, key = { "blocked-${it.id}" }) { user ->
+                        JellyGlass(Modifier.fillMaxWidth(), padding = 8.dp) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Avatar(user, 38.dp)
+                                Spacer(Modifier.width(7.dp))
+                                Column(Modifier.weight(1f)) {
+                                    UserName(user, 11)
+                                    Text("@${user.username}", color = JellyMuted, fontSize = 9.sp)
+                                }
+                                JellyButton("Unblock") { onUnblock(user.id) }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { JellyButton("Close") { blockedOpen = false } }
+        )
+    }
+
+    if (deleteOpen) {
+        var password by remember { mutableStateOf("") }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { deleteOpen = false },
+            title = { Text("Delete Account", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("This permanently deletes your account and its data.", color = Color(0xFFB23A55), fontWeight = FontWeight.Bold)
+                    OutlinedTextField(password, { password = it }, Modifier.fillMaxWidth(), label = { Text("Password") }, shape = RoundedCornerShape(17.dp))
+                }
+            },
+            confirmButton = {
+                JellyButton("Delete Account", primary = true, icon = JellyIcons.Delete, enabled = password.isNotBlank()) {
+                    onDeleteAccount(password)
+                    deleteOpen = false
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { deleteOpen = false } }
+        )
+    }
+}
+
+@Composable
+private fun PrivacySwitch(label: String, checked: Boolean, onChecked: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.weight(1f), color = JellyInk, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+        Switch(checked = checked, onCheckedChange = onChecked)
     }
 }
