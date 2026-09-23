@@ -130,7 +130,10 @@ fun MyChhachhApp() {
     var themeError by remember { mutableStateOf<String?>(null) }
 
     var commentPost by remember { mutableStateOf<Post?>(null) }
-    var commentText by remember { mutableStateOf("") }
+    var discussionComments by remember { mutableStateOf<List<Comment>>(emptyList()) }
+    var discussionLikes by remember { mutableStateOf<List<User>>(emptyList()) }
+    var discussionLoading by remember { mutableStateOf(false) }
+    var discussionError by remember { mutableStateOf<String?>(null) }
     var commentBusy by remember { mutableStateOf(false) }
 
     fun open(screen: Screen, id: Long = 0L) {
@@ -250,6 +253,30 @@ fun MyChhachhApp() {
             .setType("text/plain")
             .putExtra(Intent.EXTRA_TEXT, "https://chhachh.pages.dev/post.php?id=${post.id}")
         runCatching { context.startActivity(Intent.createChooser(share, "Share post")) }
+    }
+
+    fun openDiscussion(post: Post) {
+        commentPost = post
+        discussionComments = emptyList()
+        discussionLikes = emptyList()
+        discussionError = null
+        discussionLoading = true
+        scope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    val comments = api.postComments(post).comments()
+                    val likes = if (post.shopId == 0L) {
+                        api.postDetail(post.id).optJSONArray("likes_users")?.users().orEmpty()
+                    } else emptyList()
+                    comments to likes
+                }
+                discussionComments = result.first
+                discussionLikes = result.second
+            } catch (e: Exception) {
+                discussionError = e.message ?: "Could not load comments."
+            }
+            discussionLoading = false
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -448,7 +475,7 @@ fun MyChhachhApp() {
                         onLogin = { authMode = "login"; route = Screen.AUTH }, onRegister = { authMode = "register"; route = Screen.AUTH },
                         onProfile = { if (currentUser != null) open(Screen.PROFILE, it) else { authMode = "login"; route = Screen.AUTH } },
                         onLike = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p) } }; loadFeed(true) } },
-                        onComment = { p -> commentPost = p },
+                        onComment = { p -> openDiscussion(p) },
                         onShare = ::sharePost,
                         onSave = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadFeed(true) } },
                         onEditPost = { p, text, privacy ->
@@ -725,7 +752,7 @@ fun MyChhachhApp() {
                             )
                         }
                     }
-                    Screen.SAVED -> SavedScreen(saved, savedLoading, savedError, { open(Screen.PROFILE, it) }, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p) } }; loadSaved() } }, { commentPost = it }, ::sharePost, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadSaved() } })
+                    Screen.SAVED -> SavedScreen(saved, savedLoading, savedError, { open(Screen.PROFILE, it) }, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p) } }; loadSaved() } }, { openDiscussion(it) }, ::sharePost, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadSaved() } })
                     Screen.SEARCH -> SearchScreen(searchResult, searchLoading, searchError, searchQuery, { searchQuery = it }, ::doSearch, { if (currentUser != null) open(Screen.PROFILE, it) }, { if (currentUser != null) open(Screen.SHOP_DETAIL, it) })
                     Screen.PROFILE -> currentUser?.let { u ->
                         ProfileScreen(
@@ -758,7 +785,7 @@ fun MyChhachhApp() {
                             },
                             onLoadRelations = { id, mode -> withContext(Dispatchers.IO) { api.relationUsers(id, mode) } },
                             onLike = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p) } }; loadProfile(selectedId) } },
-                            onComment = { commentPost = it },
+                            onComment = { openDiscussion(it) },
                             onShare = ::sharePost,
                             onSave = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadProfile(selectedId) } }
                         )
@@ -824,7 +851,7 @@ fun MyChhachhApp() {
                                 }
                             },
                             onLike = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p) } }; loadShop(selectedId) } },
-                            onComment = { commentPost = it },
+                            onComment = { openDiscussion(it) },
                             onShare = ::sharePost,
                             onSave = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadShop(selectedId) } }
                         )
@@ -1018,30 +1045,45 @@ fun MyChhachhApp() {
     }
 
     commentPost?.let { post ->
-        AlertDialog(
-            onDismissRequest = { if (!commentBusy) commentPost = null },
-            title = { Text("Comment", color = JellyInk, fontWeight = FontWeight.Black) },
-            text = { OutlinedTextField(commentText, { commentText = it }, placeholder = { Text("Write a comment") }, minLines = 3, shape = RoundedCornerShape(18.dp)) },
-            confirmButton = {
-                JellyButton(if (commentBusy) "Sending…" else "Send", primary = true, icon = JellyIcons.Send) {
-                    if (!commentBusy && commentText.isNotBlank()) scope.launch {
-                        commentBusy = true
-                        try {
-                            withContext(Dispatchers.IO) { api.addComment(post, commentText.trim()) }
-                            commentText = ""; commentPost = null
-                            when (route) {
-                                Screen.HOME -> loadFeed(true)
-                                Screen.SAVED -> loadSaved()
-                                Screen.PROFILE -> loadProfile(selectedId)
-                                Screen.SHOP_DETAIL -> loadShop(selectedId)
-                                else -> Unit
-                            }
-                        } catch (e: Exception) { feedError = e.message }
-                        commentBusy = false
+        PostDiscussionDialog(
+            post = post,
+            comments = discussionComments,
+            likesUsers = discussionLikes,
+            loading = discussionLoading,
+            error = discussionError,
+            busy = commentBusy,
+            onDismiss = { if (!commentBusy) commentPost = null },
+            onSend = { text, parentId ->
+                scope.launch {
+                    commentBusy = true
+                    discussionError = null
+                    try {
+                        withContext(Dispatchers.IO) { api.addComment(post, text, parentId) }
+                        discussionComments = withContext(Dispatchers.IO) { api.postComments(post).comments() }
+                        when (route) {
+                            Screen.HOME -> loadFeed(true)
+                            Screen.SAVED -> loadSaved()
+                            Screen.PROFILE -> loadProfile(selectedId)
+                            Screen.SHOP_DETAIL -> loadShop(selectedId)
+                            else -> Unit
+                        }
+                    } catch (e: Exception) {
+                        discussionError = e.message ?: "Comment could not be sent."
+                    }
+                    commentBusy = false
+                }
+            },
+            onLikeComment = { commentId ->
+                scope.launch {
+                    try {
+                        withContext(Dispatchers.IO) { api.likeComment(commentId) }
+                        discussionComments = withContext(Dispatchers.IO) { api.postComments(post).comments() }
+                    } catch (e: Exception) {
+                        discussionError = e.message ?: "Comment like failed."
                     }
                 }
             },
-            dismissButton = { JellyButton("Cancel") { commentPost = null } }
+            onProfile = { id -> open(Screen.PROFILE, id) }
         )
     }
 }
