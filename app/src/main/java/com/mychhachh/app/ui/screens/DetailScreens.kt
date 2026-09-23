@@ -36,6 +36,7 @@ import com.mychhachh.app.ui.theme.JellyDanger
 import com.mychhachh.app.ui.theme.JellyGreen
 import com.mychhachh.app.ui.theme.JellyInk
 import com.mychhachh.app.ui.theme.JellyMuted
+import com.mychhachh.app.ui.theme.LiveJellyTheme
 import org.json.JSONObject
 import kotlinx.coroutines.launch
 
@@ -93,7 +94,7 @@ fun ProfileScreen(
                 JellyGlass(Modifier.fillMaxWidth()) {
                     Column(Modifier.fillMaxWidth()) {
                         Box(
-                            Modifier.fillMaxWidth().height(165.dp).clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                            Modifier.fillMaxWidth().height(LiveJellyTheme.profileCoverHeight.dp).clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                                 .background(Brush.horizontalGradient(listOf(Color(0xFFE3F8FF), Color(0xFFF0E8FF))))
                         ) {
                             if (!u.cover.isNullOrBlank()) AsyncImage(u.cover, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -102,7 +103,7 @@ fun ProfileScreen(
                             Modifier.fillMaxWidth().padding(horizontal = 14.dp).offset(y = (-44).dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Avatar(u, 96.dp)
+                            Avatar(u, LiveJellyTheme.profileAvatarSize.dp)
                             Spacer(Modifier.height(6.dp))
                             UserName(u, 20)
                             if (u.username.isNotBlank()) Text("@${u.username}", color = JellyMuted, fontSize = 11.sp)
@@ -514,7 +515,7 @@ fun ShopDetailScreen(
                 JellyGlass(Modifier.fillMaxWidth()) {
                     Column {
                         Box(
-                            Modifier.fillMaxWidth().height(132.dp)
+                            Modifier.fillMaxWidth().height(LiveJellyTheme.shopCoverHeight.dp)
                                 .background(Brush.horizontalGradient(listOf(Color(0xFFE3F8FF), Color(0xFFFFEAF5))))
                         ) {
                             s.cover?.let { AsyncImage(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
@@ -529,11 +530,11 @@ fun ShopDetailScreen(
                         }
 
                         Column(
-                            Modifier.fillMaxWidth().padding(horizontal = 14.dp).offset(y = (-34).dp),
+                            Modifier.fillMaxWidth().padding(horizontal = 14.dp).offset(y = (-50).dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Box(
-                                Modifier.size(82.dp).clip(RoundedCornerShape(99.dp)).background(Color.White),
+                                Modifier.size(LiveJellyTheme.shopAvatarSize.dp).clip(RoundedCornerShape(99.dp)).background(Color.White),
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (!s.photo.isNullOrBlank()) AsyncImage(s.photo, s.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
