@@ -1,13 +1,7 @@
 name: Android Build
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
-
-permissions:
-  contents: write
-  actions: read
 
 jobs:
   build:
