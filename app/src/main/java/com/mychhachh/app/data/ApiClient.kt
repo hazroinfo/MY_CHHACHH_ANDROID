@@ -438,6 +438,9 @@ class ApiClient(private val context: Context) {
     fun weather(): JSONObject = get("/api/weather/current")
 
     fun geocode(q: String): JSONObject = get("/api/map/geocode?q=${java.net.URLEncoder.encode(q, "UTF-8")}")
+    fun mapRoute(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double): JSONObject =
+        get("/api/map/route?from=$fromLat,$fromLng&to=$toLat,$toLng")
+
     fun geocodePlaces(q: String): List<CheckinPlace> {
         val d = geocode(q)
         val a = d.optJSONArray("items")
