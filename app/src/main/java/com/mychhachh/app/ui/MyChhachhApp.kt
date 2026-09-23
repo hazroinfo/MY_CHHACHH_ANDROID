@@ -5,6 +5,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -1881,6 +1883,12 @@ private fun SideMenu(
                 .fillMaxHeight()
                 .fillMaxWidth(.88f)
                 .widthIn(max = 350.dp)
+                .shadow(
+                    22.dp,
+                    RoundedCornerShape(0.dp),
+                    ambientColor = Color(0x3320466F),
+                    spotColor = Color(0x3320466F)
+                )
                 .clickable(enabled = false) {}
                 .background(
                     Brush.linearGradient(
@@ -1904,7 +1912,8 @@ private fun SideMenu(
             Column(
                 Modifier
                     .fillMaxSize()
-                    .padding(start = 14.dp, end = 14.dp, top = 58.dp, bottom = 24.dp),
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 14.dp, end = 14.dp, top = 66.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 order.forEach { key ->
@@ -1931,7 +1940,7 @@ private fun SideMenu(
                         }
                         "admin" -> if (user.isAdmin) MenuRow("Admin Center", JellyIcons.Shield) { onOpen(Screen.ADMIN) }
                         "logout" -> {
-                            Spacer(Modifier.weight(1f))
+                            Spacer(Modifier.height(12.dp))
                             MenuRow("Logout", JellyIcons.Logout, danger = true, onClick = onLogout)
                         }
                     }
