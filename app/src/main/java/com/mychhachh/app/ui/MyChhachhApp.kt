@@ -23,10 +23,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import coil.compose.AsyncImage
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
@@ -403,6 +405,7 @@ fun MyChhachhApp() {
     }
 
     LaunchedEffect(Unit) {
+        AppLanguage.set(context.getSharedPreferences("my_chhachh_native", android.content.Context.MODE_PRIVATE).getString("language", "en") ?: "en")
         try {
             val b = withContext(Dispatchers.IO) { api.bootstrap() }
             me = b.user; unread = b.unread; announcementUnread = b.announcementUnread; features = b.features; LiveJellyTheme.apply(b.features)
@@ -481,6 +484,7 @@ fun MyChhachhApp() {
     val bgStrength = LiveJellyTheme.bgStrength.coerceIn(0f, 1f)
     val bgTop = lerp(Color.White, JellyBg, bgStrength)
     val bgBottom = lerp(Color.White, JellyBg2, bgStrength)
+    CompositionLocalProvider(LocalLayoutDirection provides if (AppLanguage.isUrdu) LayoutDirection.Rtl else LayoutDirection.Ltr) {
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(bgTop, bgBottom)))) {
         Column(
             Modifier
@@ -1455,6 +1459,7 @@ fun MyChhachhApp() {
             },
             onProfile = { id -> open(Screen.PROFILE, id) }
         )
+    }
     }
 }
 
