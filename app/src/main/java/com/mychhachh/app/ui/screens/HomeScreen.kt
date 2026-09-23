@@ -1,5 +1,6 @@
 package com.mychhachh.app.ui.screens
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -19,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,6 +51,7 @@ fun HomeScreen(
     onEditPost: (Post, String, String) -> Unit,
     onDeletePost: (Post) -> Unit,
     onSearchCheckin: suspend (String) -> List<CheckinPlace>,
+    onSearchMentions: suspend (String) -> List<User>,
     onCreatePost: (String, String, String, String, Double?, Double?, Uri?, Uri?) -> Unit,
     onLoadMore: () -> Unit
 ) {
@@ -62,6 +65,7 @@ fun HomeScreen(
     var checkinLng by remember { mutableStateOf<Double?>(null) }
     var feelingDialog by remember { mutableStateOf(false) }
     var checkinDialog by remember { mutableStateOf(false) }
+    var mentionDialog by remember { mutableStateOf(false) }
     val uiScope = rememberCoroutineScope()
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) { photoUri = uri; videoUri = null }
@@ -120,9 +124,7 @@ fun HomeScreen(
                         ComposerTool(JellyIcons.Video, if (videoUri != null) "Video ✓" else "Video") { videoPicker.launch("video/*") }
                         ComposerTool(JellyIcons.Feeling, if (feeling.isNotBlank()) "Feeling ✓" else "Feeling") { feelingDialog = true }
                         ComposerTool(JellyIcons.Pin, if (checkin.isNotBlank()) "Check in ✓" else "Check in") { checkinDialog = true }
-                        ComposerTool(JellyIcons.Mention, "Mention") {
-                            composing = if (composing.isBlank()) "@" else if (composing.endsWith(" ")) composing + "@" else composing + " @"
-                        }
+                        ComposerTool(JellyIcons.Mention, "Mention") { mentionDialog = true }
                     }
                     if (feeling.isNotBlank() || checkin.isNotBlank()) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -195,26 +197,119 @@ fun HomeScreen(
         }
     }
     if (feelingDialog) {
-        var draft by remember { mutableStateOf(feeling) }
+        val feelings = listOf(
+            "😊" to "Happy",
+            "❤️" to "Loved",
+            "🎉" to "Celebrating",
+            "🙏" to "Grateful",
+            "🤔" to "Thinking",
+            "😢" to "Sad",
+            "😡" to "Angry"
+        )
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { feelingDialog = false },
             title = { Text("Feeling", color = JellyInk, fontWeight = FontWeight.Black) },
             text = {
-                OutlinedTextField(
-                    value = draft,
-                    onValueChange = { draft = it },
-                    placeholder = { Text("Happy, excited, thankful…") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(18.dp)
-                )
-            },
-            confirmButton = {
-                JellyButton("Add", primary = true) {
-                    feeling = draft.trim()
-                    feelingDialog = false
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    feelings.forEach { (emoji, label) ->
+                        JellyGlass(
+                            Modifier.fillMaxWidth(),
+                            radius = 16.dp,
+                            padding = 9.dp,
+                            onClick = {
+                                feeling = label
+                                feelingDialog = false
+                            }
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(emoji, fontSize = 22.sp)
+                                Spacer(Modifier.width(8.dp))
+                                Text(label, color = JellyInk, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                    if (feeling.isNotBlank()) {
+                        JellyButton("Remove feeling", Modifier.fillMaxWidth()) {
+                            feeling = ""
+                            feelingDialog = false
+                        }
+                    }
                 }
             },
-            dismissButton = { JellyButton("Cancel") { feelingDialog = false } }
+            confirmButton = {},
+            dismissButton = { JellyButton("Close") { feelingDialog = false } }
+        )
+    }
+
+    if (mentionDialog) {
+        var query by remember { mutableStateOf("") }
+        var users by remember { mutableStateOf<List<User>>(emptyList()) }
+        var searching by remember { mutableStateOf(false) }
+        var searchError by remember { mutableStateOf<String?>(null) }
+
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { mentionDialog = false },
+            title = { Text("Mention someone", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = { Text("Search name or username") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(18.dp)
+                    )
+                    JellyButton(
+                        if (searching) "Searching…" else "Search people",
+                        Modifier.fillMaxWidth(),
+                        primary = true,
+                        icon = JellyIcons.Search,
+                        enabled = !searching && query.isNotBlank()
+                    ) {
+                        uiScope.launch {
+                            searching = true
+                            searchError = null
+                            try {
+                                users = onSearchMentions(query.trim())
+                                if (users.isEmpty()) searchError = "No people found."
+                            } catch (e: Exception) {
+                                users = emptyList()
+                                searchError = e.message ?: "Could not search people."
+                            } finally {
+                                searching = false
+                            }
+                        }
+                    }
+                    searchError?.let { Text(it, color = Color(0xFFB23A55), fontSize = 10.sp) }
+                    users.take(8).forEach { person ->
+                        JellyGlass(
+                            Modifier.fillMaxWidth(),
+                            radius = 16.dp,
+                            padding = 8.dp,
+                            onClick = {
+                                val mention = "@${person.username}"
+                                composing = when {
+                                    composing.isBlank() -> mention
+                                    composing.endsWith(" ") -> composing + mention
+                                    else -> composing + " " + mention
+                                }
+                                mentionDialog = false
+                            }
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Avatar(person, 34.dp)
+                                Spacer(Modifier.width(7.dp))
+                                Column(Modifier.weight(1f)) {
+                                    UserName(person, 11)
+                                    Text("@${person.username}", color = JellyMuted, fontSize = 9.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { JellyButton("Close") { mentionDialog = false } }
         )
     }
 
@@ -328,6 +423,7 @@ fun PostCard(
     var moreOpen by remember(post.id) { mutableStateOf(false) }
     var editOpen by remember(post.id) { mutableStateOf(false) }
     var deleteConfirm by remember(post.id) { mutableStateOf(false) }
+    val context = LocalContext.current
 
     JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp) {
         Column(Modifier.fillMaxWidth()) {
@@ -350,7 +446,20 @@ fun PostCard(
             if (!post.feeling.isNullOrBlank() || !post.checkin.isNullOrBlank()) {
                 Row(Modifier.padding(horizontal = 11.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     post.feeling?.let { Tag(JellyIcons.Feeling, it) }
-                    post.checkin?.let { Tag(JellyIcons.Pin, it) }
+                    post.checkin?.let { label ->
+                        val lat = post.checkinLat
+                        val lng = post.checkinLng
+                        Tag(
+                            JellyIcons.Pin,
+                            label,
+                            onClick = if (lat != null && lng != null) {
+                                {
+                                    val uri = Uri.parse("geo:$lat,$lng?q=$lat,$lng(${Uri.encode(label)})")
+                                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+                                }
+                            } else null
+                        )
+                    }
                 }
             }
 
@@ -495,12 +604,13 @@ fun PostCard(
 }
 
 @Composable
-private fun Tag(icon: Int, text: String) {
+private fun Tag(icon: Int, text: String, onClick: (() -> Unit)? = null) {
+    var modifier = Modifier
+        .clip(RoundedCornerShape(13.dp))
+        .background(Color.White.copy(.86f))
+    if (onClick != null) modifier = modifier.clickable { onClick() }
     Row(
-        Modifier
-            .clip(RoundedCornerShape(13.dp))
-            .background(Color.White.copy(.86f))
-            .padding(horizontal = 8.dp, vertical = 5.dp),
+        modifier.padding(horizontal = 8.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         JellyIcon(icon, size = 18.dp)
