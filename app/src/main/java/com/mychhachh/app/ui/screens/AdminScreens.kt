@@ -1,0 +1,546 @@
+package com.mychhachh.app.ui.screens
+
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.mychhachh.app.data.User
+import com.mychhachh.app.data.toUser
+import com.mychhachh.app.ui.components.*
+import com.mychhachh.app.ui.theme.*
+import org.json.JSONArray
+import org.json.JSONObject
+import kotlin.math.roundToInt
+
+private fun jsonObjects(a: JSONArray?): List<JSONObject> {
+    if (a == null) return emptyList()
+    return (0 until a.length()).mapNotNull { a.optJSONObject(it) }
+}
+
+@Composable
+fun AdminCenterScreen(
+    state: JSONObject?,
+    list: JSONObject?,
+    section: String,
+    query: String,
+    loading: Boolean,
+    error: String?,
+    onSection: (String) -> Unit,
+    onQuery: (String) -> Unit,
+    onRefresh: () -> Unit,
+    onAction: (String, Long, JSONObject) -> Unit,
+    onProfile: (Long) -> Unit
+) {
+    val stats = state?.optJSONObject("stats") ?: JSONObject()
+    val rows = jsonObjects(list?.optJSONArray("items"))
+    var replyTarget by remember { mutableStateOf<Long?>(null) }
+    var replyText by remember { mutableStateOf("") }
+    var warningTarget by remember { mutableStateOf<Long?>(null) }
+    var warningText by remember { mutableStateOf("") }
+
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 24.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp)
+    ) {
+        item { PageTitle("Admin Center", "Live platform controls and activity", JellyIcons.Shield) }
+
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        AdminStat("Users", stats.optInt("total_users"), Modifier.weight(1f))
+                        AdminStat("Online", stats.optInt("online_users"), Modifier.weight(1f))
+                        AdminStat("Shops", stats.optInt("total_shops"), Modifier.weight(1f))
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        AdminStat("Posts", stats.optInt("total_posts"), Modifier.weight(1f))
+                        AdminStat("Votes", stats.optInt("total_votes"), Modifier.weight(1f))
+                        AdminStat("Alerts", stats.optInt("admin_alerts"), Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 9.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        query,
+                        onQuery,
+                        Modifier.fillMaxWidth(),
+                        placeholder = { Text("Search this section…") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(18.dp)
+                    )
+                    val sections = listOf(
+                        "users" to "Users",
+                        "verification" to "Verification",
+                        "reports" to "Reports",
+                        "posts" to "Posts",
+                        "shops" to "Shops",
+                        "votes" to "Voting",
+                        "activity" to "Activity"
+                    )
+                    sections.chunked(4).forEach { row ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            row.forEach { (key, label) ->
+                                JellyPill(label, section == key, Modifier.weight(1f)) { onSection(key) }
+                            }
+                            repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                    JellyButton("Refresh", Modifier.fillMaxWidth(), icon = JellyIcons.Search, onClick = onRefresh)
+                }
+            }
+        }
+
+        if (loading && rows.isEmpty()) item { LoadingBlock() }
+        error?.let { item { ErrorCard(it, onRefresh) } }
+
+        when (section) {
+            "users" -> items(rows, key = { "admin-user-${it.optLong("id")}" }) { o ->
+                val u = runCatching { o.toUser() }.getOrNull()
+                if (u != null) {
+                    JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Avatar(u, 48.dp)
+                                Spacer(Modifier.width(8.dp))
+                                Column(Modifier.weight(1f)) {
+                                    UserName(u, 13)
+                                    Text("@${u.username}", color = JellyMuted, fontSize = 9.5f.sp)
+                                    val contact = listOf(u.email, u.phone).filter { it.isNotBlank() }.joinToString(" · ")
+                                    if (contact.isNotBlank()) Text(contact, color = JellyMuted, fontSize = 8.5f.sp)
+                                    Text(
+                                        if (o.optBoolean("online", false)) "Online" else "Offline",
+                                        color = if (o.optBoolean("online", false)) JellyGreen else JellyMuted,
+                                        fontSize = 8.5f.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                JellyButton("Profile") { onProfile(u.id) }
+                            }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                JellyButton(
+                                    if (u.verified) "Remove Tick" else "Blue Tick",
+                                    Modifier.weight(1f),
+                                    icon = JellyIcons.Check
+                                ) { onAction("user_setting", u.id, JSONObject().put("key", "verified")) }
+                                JellyButton(
+                                    if (o.optBoolean("blocked", false)) "Unblock" else "Block",
+                                    Modifier.weight(1f),
+                                    icon = JellyIcons.Shield
+                                ) { onAction("toggle_user", u.id, JSONObject()) }
+                                JellyButton("Warning", Modifier.weight(1f), icon = JellyIcons.Bell) {
+                                    warningTarget = u.id
+                                    warningText = ""
+                                }
+                            }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                listOf(
+                                    "allow_comments" to "Comments",
+                                    "allow_likes" to "Likes",
+                                    "allow_messages" to "Messages",
+                                    "allow_posts" to "Posts"
+                                ).forEach { (key, label) ->
+                                    JellyButton(label, Modifier.weight(1f)) {
+                                        onAction("user_setting", u.id, JSONObject().put("key", key))
+                                    }
+                                }
+                            }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                JellyButton("Photo", Modifier.weight(1f)) {
+                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_photo_upload"))
+                                }
+                                JellyButton("Video", Modifier.weight(1f)) {
+                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_video_upload"))
+                                }
+                                JellyButton("Follows", Modifier.weight(1f)) {
+                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_follows"))
+                                }
+                                JellyButton("Delete", Modifier.weight(1f), icon = JellyIcons.Delete) {
+                                    onAction("delete_user", u.id, JSONObject())
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            "verification" -> items(rows, key = { "verify-${it.optLong("id")}" }) { o ->
+                val u = o.optJSONObject("user")?.let { runCatching { it.toUser() }.getOrNull() }
+                JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        if (u != null) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Avatar(u, 44.dp)
+                                Spacer(Modifier.width(7.dp))
+                                Column {
+                                    UserName(u, 12)
+                                    Text("@${u.username}", color = JellyMuted, fontSize = 9.sp)
+                                }
+                            }
+                        }
+                        Text("Status: ${o.optString("status", "pending")}", color = JellyMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            JellyButton("Approve", Modifier.weight(1f), primary = true, icon = JellyIcons.Check) {
+                                onAction("verification_review", o.optLong("id"), JSONObject().put("decision", "approved"))
+                            }
+                            JellyButton("Reject", Modifier.weight(1f), icon = JellyIcons.Close) {
+                                onAction("verification_review", o.optLong("id"), JSONObject().put("decision", "rejected"))
+                            }
+                        }
+                    }
+                }
+            }
+
+            "reports" -> items(rows, key = { "report-${it.optLong("id")}" }) { o ->
+                val reporter = o.optJSONObject("reporter")?.let { runCatching { it.toUser() }.getOrNull() }
+                JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        reporter?.let {
+                            UserName(it, 12)
+                            Text("@${it.username}", color = JellyMuted, fontSize = 9.sp)
+                        }
+                        Text(o.optString("reason", o.optString("text", "Report")), color = JellyInk, fontSize = 11.5f.sp)
+                        Text("Status: ${o.optString("status", "open")}", color = JellyMuted, fontSize = 9.sp)
+                        JellyButton("Reply", icon = JellyIcons.Reply) {
+                            replyTarget = o.optLong("id")
+                            replyText = o.optString("admin_reply", "")
+                        }
+                    }
+                }
+            }
+
+            "posts" -> items(rows, key = { "admin-post-${it.optLong("id")}" }) { o ->
+                JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        o.optJSONObject("user")?.let { uo ->
+                            runCatching { uo.toUser() }.getOrNull()?.let { UserName(it, 11) }
+                        }
+                        Text(o.optString("text", "(media post)"), color = JellyInk, fontSize = 11.5f.sp, maxLines = 5)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            JellyButton("Promote", icon = JellyIcons.Star) {
+                                onAction("promote_post", o.optLong("id"), JSONObject())
+                            }
+                            JellyButton("Delete", icon = JellyIcons.Delete) {
+                                onAction("delete_post", o.optLong("id"), JSONObject())
+                            }
+                        }
+                    }
+                }
+            }
+
+            "shops" -> items(rows, key = { "admin-shop-${it.optLong("id")}" }) { o ->
+                JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(o.optString("name", "Shop"), color = JellyInk, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                        Text("@${o.optString("username", "")}", color = JellyMuted, fontSize = 9.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            JellyButton(if (o.optInt("active", 1) == 0) "Enable" else "Disable") {
+                                onAction("toggle_shop", o.optLong("id"), JSONObject())
+                            }
+                            JellyButton("Promote", icon = JellyIcons.Star) {
+                                onAction("promote_shop", o.optLong("id"), JSONObject())
+                            }
+                            JellyButton("Delete", icon = JellyIcons.Delete) {
+                                onAction("delete_shop", o.optLong("id"), JSONObject())
+                            }
+                        }
+                    }
+                }
+            }
+
+            "votes" -> items(rows, key = { "admin-vote-${it.optLong("id")}" }) { o ->
+                JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Text("Voting #${o.optLong("id")} · ${o.optString("status", "")}", color = JellyInk, fontWeight = FontWeight.Black)
+                        val left = o.optInt("left_votes", o.optInt("votes1", 0))
+                        val right = o.optInt("right_votes", o.optInt("votes2", 0))
+                        Text("Left: $left   ·   Right: $right", color = JellyMuted, fontSize = 10.sp)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            JellyButton("L +1", Modifier.weight(1f)) {
+                                onAction("vote_adjust", o.optLong("id"), JSONObject().put("side", "left").put("delta", 1))
+                            }
+                            JellyButton("L -1", Modifier.weight(1f)) {
+                                onAction("vote_adjust", o.optLong("id"), JSONObject().put("side", "left").put("delta", -1))
+                            }
+                            JellyButton("R +1", Modifier.weight(1f)) {
+                                onAction("vote_adjust", o.optLong("id"), JSONObject().put("side", "right").put("delta", 1))
+                            }
+                            JellyButton("R -1", Modifier.weight(1f)) {
+                                onAction("vote_adjust", o.optLong("id"), JSONObject().put("side", "right").put("delta", -1))
+                            }
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            JellyButton("End", Modifier.weight(1f)) {
+                                onAction("vote_end", o.optLong("id"), JSONObject())
+                            }
+                            JellyButton("Cancel", Modifier.weight(1f)) {
+                                onAction("vote_cancel", o.optLong("id"), JSONObject())
+                            }
+                            JellyButton("Delete", Modifier.weight(1f), icon = JellyIcons.Delete) {
+                                onAction("vote_delete", o.optLong("id"), JSONObject())
+                            }
+                        }
+                    }
+                }
+            }
+
+            "activity" -> items(rows, key = { "activity-${it.optLong("id")}" }) { o ->
+                JellyGlass(Modifier.fillMaxWidth(), padding = 9.dp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(o.optString("action", "activity"), color = JellyInk, fontWeight = FontWeight.Black, fontSize = 11.5f.sp)
+                        Text("User #${o.optLong("actor_id")} · ${o.optString("created_at", "")}", color = JellyMuted, fontSize = 9.sp)
+                        if (o.optString("ip").isNotBlank()) Text("IP: ${o.optString("ip")}", color = JellyMuted, fontSize = 8.5f.sp)
+                    }
+                }
+            }
+        }
+
+        if (!loading && rows.isEmpty() && error == null) {
+            item { EmptyCard("Nothing to show in this section.", JellyIcons.Shield) }
+        }
+    }
+
+    replyTarget?.let { id ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { replyTarget = null },
+            title = { Text("Reply to Report", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                OutlinedTextField(
+                    replyText,
+                    { replyText = it.take(3000) },
+                    Modifier.fillMaxWidth(),
+                    minLines = 4,
+                    maxLines = 8,
+                    placeholder = { Text("Write admin reply…") },
+                    shape = RoundedCornerShape(18.dp)
+                )
+            },
+            confirmButton = {
+                JellyButton("Send Reply", primary = true, icon = JellyIcons.Send, enabled = replyText.isNotBlank()) {
+                    onAction("report_reply", id, JSONObject().put("reply", replyText.trim()))
+                    replyTarget = null
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { replyTarget = null } }
+        )
+    }
+
+    warningTarget?.let { id ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { warningTarget = null },
+            title = { Text("Send Warning", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                OutlinedTextField(
+                    warningText,
+                    { warningText = it.take(2000) },
+                    Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 7,
+                    placeholder = { Text("Warning message…") },
+                    shape = RoundedCornerShape(18.dp)
+                )
+            },
+            confirmButton = {
+                JellyButton("Send Warning", primary = true, icon = JellyIcons.Bell, enabled = warningText.isNotBlank()) {
+                    onAction("warning", id, JSONObject().put("message", warningText.trim()))
+                    warningTarget = null
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { warningTarget = null } }
+        )
+    }
+}
+
+@Composable
+private fun AdminStat(label: String, value: Int, modifier: Modifier = Modifier) {
+    JellyGlass(modifier, radius = 18.dp, padding = 9.dp) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(value.toString(), color = JellyInk, fontWeight = FontWeight.Black, fontSize = 17.sp)
+            Text(label, color = JellyMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+fun NativeThemeScreen(
+    settings: JSONObject,
+    busy: Boolean,
+    error: String?,
+    onSaveTheme: (JSONObject) -> Unit,
+    onSaveBrand: (JSONObject, Uri?) -> Unit
+) {
+    var siteName by remember(settings.toString()) { mutableStateOf(settings.optString("site_name", "My Chhachh")) }
+    var tagline by remember(settings.toString()) { mutableStateOf(settings.optString("site_tagline", "Connect with people for information.")) }
+    var iconEnabled by remember(settings.toString()) { mutableStateOf(settings.optInt("site_icon_enabled", 1) != 0) }
+    var taglineEnabled by remember(settings.toString()) { mutableStateOf(settings.optInt("site_tagline_enabled", 1) != 0) }
+    var iconUri by remember { mutableStateOf<Uri?>(null) }
+    val iconPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { if (it != null) iconUri = it }
+
+    var jelly by remember(settings.toString()) { mutableStateOf(settings.optInt("theme_jelly_enabled", 1) != 0) }
+    var weatherLive by remember(settings.toString()) { mutableStateOf(settings.optInt("theme_weather_live", 1) != 0) }
+    var motion by remember(settings.toString()) { mutableStateOf(settings.optInt("theme_motion", 1) != 0) }
+    var rainbow by remember(settings.toString()) { mutableStateOf(settings.optInt("theme_brand_rainbow", 1) != 0) }
+    var weatherChip by remember(settings.toString()) { mutableStateOf(settings.optInt("theme_weather_chip", 0) != 0) }
+    var cardOpacity by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_card_opacity", 68).toFloat()) }
+    var headerOpacity by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_header_opacity", 70).toFloat()) }
+    var blur by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_blur", 28).toFloat()) }
+    var cardRadius by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_card_radius", 30).toFloat()) }
+    var headerRadius by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_header_radius", 28).toFloat()) }
+    var navHeight by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_nav_height", 64).toFloat()) }
+    var buttonHeight by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_button_height", 44).toFloat()) }
+    var fontScale by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_font_scale", 100).toFloat()) }
+    var profileCover by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_profile_cover_height", 165).toFloat()) }
+    var profileAvatar by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_profile_avatar_size", 96).toFloat()) }
+    var shopCover by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_shop_cover_height", 185).toFloat()) }
+    var shopAvatar by remember(settings.toString()) { mutableFloatStateOf(settings.optInt("theme_shop_avatar_size", 96).toFloat()) }
+    var accent by remember(settings.toString()) { mutableStateOf(settings.optString("theme_accent", "#ff4fb8")) }
+    var accent2 by remember(settings.toString()) { mutableStateOf(settings.optString("theme_accent2", "#6fc8ff")) }
+    var textColor by remember(settings.toString()) { mutableStateOf(settings.optString("theme_text_color", "#0d1a34")) }
+    var mutedColor by remember(settings.toString()) { mutableStateOf(settings.optString("theme_muted_color", "#66738b")) }
+    var headerItems by remember(settings.toString()) { mutableStateOf(settings.optString("theme_header_items", "home,people,shop,map,messages")) }
+    var menuItems by remember(settings.toString()) { mutableStateOf(settings.optString("theme_menu_items", "votes,saved,settings,theme,admin,logout")) }
+
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 24.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp)
+    ) {
+        item { PageTitle("Theme", "Live website and native app appearance controls", JellyIcons.Palette) }
+
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionTitle("Branding")
+                    OutlinedTextField(siteName, { siteName = it.take(60) }, Modifier.fillMaxWidth(), label = { Text("Website / App name") }, shape = RoundedCornerShape(17.dp), singleLine = true)
+                    OutlinedTextField(tagline, { tagline = it.take(120) }, Modifier.fillMaxWidth(), label = { Text("Tagline") }, shape = RoundedCornerShape(17.dp), singleLine = true)
+                    ThemeSwitch("Show logo", iconEnabled) { iconEnabled = it }
+                    ThemeSwitch("Show tagline", taglineEnabled) { taglineEnabled = it }
+                    JellyButton(if (iconUri != null) "New Logo Selected ✓" else "Choose Logo", Modifier.fillMaxWidth(), icon = JellyIcons.Photo) {
+                        iconPicker.launch("image/*")
+                    }
+                    JellyButton("Save Branding", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Check, enabled = !busy && siteName.isNotBlank()) {
+                        onSaveBrand(
+                            JSONObject()
+                                .put("site_name", siteName.trim())
+                                .put("site_tagline", tagline.trim())
+                                .put("site_icon_enabled", iconEnabled)
+                                .put("site_tagline_enabled", taglineEnabled)
+                                .put("site_icon_fit", "contain")
+                                .put("site_icon_header_blend", true)
+                                .put("site_icon_auto_transparent", true)
+                                .put("site_icon_size", 40),
+                            iconUri
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    SectionTitle("Theme Engine")
+                    ThemeSwitch("Jelly theme", jelly) { jelly = it }
+                    ThemeSwitch("Live weather", weatherLive) { weatherLive = it }
+                    ThemeSwitch("Motion", motion) { motion = it }
+                    ThemeSwitch("Rainbow brand", rainbow) { rainbow = it }
+                    ThemeSwitch("Weather chip", weatherChip) { weatherChip = it }
+                    ThemeSlider("Card opacity", cardOpacity, 35f..100f) { cardOpacity = it }
+                    ThemeSlider("Header opacity", headerOpacity, 35f..100f) { headerOpacity = it }
+                    ThemeSlider("Blur", blur, 0f..50f) { blur = it }
+                    ThemeSlider("Card radius", cardRadius, 0f..60f) { cardRadius = it }
+                    ThemeSlider("Header radius", headerRadius, 0f..60f) { headerRadius = it }
+                    ThemeSlider("Navigation height", navHeight, 44f..100f) { navHeight = it }
+                    ThemeSlider("Button height", buttonHeight, 32f..72f) { buttonHeight = it }
+                    ThemeSlider("Font scale", fontScale, 90f..115f) { fontScale = it }
+                    ThemeSlider("Profile cover", profileCover, 90f..300f) { profileCover = it }
+                    ThemeSlider("Profile avatar", profileAvatar, 56f..160f) { profileAvatar = it }
+                    ThemeSlider("Shop cover", shopCover, 100f..320f) { shopCover = it }
+                    ThemeSlider("Shop avatar", shopAvatar, 60f..170f) { shopAvatar = it }
+                }
+            }
+        }
+
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    SectionTitle("Colors & Layout")
+                    OutlinedTextField(accent, { accent = it.take(7) }, Modifier.fillMaxWidth(), label = { Text("Accent #RRGGBB") }, shape = RoundedCornerShape(17.dp), singleLine = true)
+                    OutlinedTextField(accent2, { accent2 = it.take(7) }, Modifier.fillMaxWidth(), label = { Text("Accent 2 #RRGGBB") }, shape = RoundedCornerShape(17.dp), singleLine = true)
+                    OutlinedTextField(textColor, { textColor = it.take(7) }, Modifier.fillMaxWidth(), label = { Text("Text #RRGGBB") }, shape = RoundedCornerShape(17.dp), singleLine = true)
+                    OutlinedTextField(mutedColor, { mutedColor = it.take(7) }, Modifier.fillMaxWidth(), label = { Text("Muted #RRGGBB") }, shape = RoundedCornerShape(17.dp), singleLine = true)
+                    OutlinedTextField(headerItems, { headerItems = it }, Modifier.fillMaxWidth(), label = { Text("Header items order") }, supportingText = { Text("home,people,shop,map,messages") }, shape = RoundedCornerShape(17.dp))
+                    OutlinedTextField(menuItems, { menuItems = it }, Modifier.fillMaxWidth(), label = { Text("Menu items order") }, supportingText = { Text("saved,settings,theme,admin,logout etc.") }, shape = RoundedCornerShape(17.dp))
+                }
+            }
+        }
+
+        error?.let { item { ErrorCard(it) } }
+
+        item {
+            JellyButton("Save Theme", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Palette, enabled = !busy) {
+                onSaveTheme(
+                    JSONObject()
+                        .put("theme_enabled", true)
+                        .put("theme_jelly_enabled", jelly)
+                        .put("theme_weather_live", weatherLive)
+                        .put("theme_motion", motion)
+                        .put("theme_brand_rainbow", rainbow)
+                        .put("theme_weather_chip", weatherChip)
+                        .put("theme_card_opacity", cardOpacity.roundToInt())
+                        .put("theme_header_opacity", headerOpacity.roundToInt())
+                        .put("theme_blur", blur.roundToInt())
+                        .put("theme_card_radius", cardRadius.roundToInt())
+                        .put("theme_header_radius", headerRadius.roundToInt())
+                        .put("theme_nav_height", navHeight.roundToInt())
+                        .put("theme_button_height", buttonHeight.roundToInt())
+                        .put("theme_font_scale", fontScale.roundToInt())
+                        .put("theme_profile_cover_height", profileCover.roundToInt())
+                        .put("theme_profile_avatar_size", profileAvatar.roundToInt())
+                        .put("theme_shop_cover_height", shopCover.roundToInt())
+                        .put("theme_shop_avatar_size", shopAvatar.roundToInt())
+                        .put("theme_accent", accent)
+                        .put("theme_accent2", accent2)
+                        .put("theme_text_color", textColor)
+                        .put("theme_muted_color", mutedColor)
+                        .put("theme_header_items", headerItems)
+                        .put("theme_menu_items", menuItems)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThemeSwitch(label: String, checked: Boolean, onChecked: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.weight(1f), color = JellyInk, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+        Switch(checked = checked, onCheckedChange = onChecked)
+    }
+}
+
+@Composable
+private fun ThemeSlider(label: String, value: Float, range: ClosedFloatingPointRange<Float>, onValue: (Float) -> Unit) {
+    Column {
+        Text("$label: ${value.roundToInt()}", color = JellyInk, fontWeight = FontWeight.Bold, fontSize = 10.5f.sp)
+        Slider(value = value, onValueChange = onValue, valueRange = range)
+    }
+}
