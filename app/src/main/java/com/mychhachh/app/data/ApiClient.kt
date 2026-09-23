@@ -287,6 +287,10 @@ class ApiClient(private val context: Context) {
     }
     fun markAnnouncementsRead() { post("/api/announcements/read") }
     fun toggleAnnouncementLike(id: Long): JSONObject = post("/api/announcements/$id/like")
+    fun announcementComments(id: Long): List<Comment> =
+        (get("/api/announcements/$id/comments").optJSONArray("items") ?: JSONArray()).comments()
+    fun addAnnouncementComment(id: Long, text: String): JSONObject =
+        post("/api/announcements/$id/comments", JSONObject().put("text", text))
     fun createAnnouncement(text: String, photo: String = "", audio: String = "", noticeType: String = "announcement"): JSONObject =
         post("/api/announcements", JSONObject().put("text", text).put("photo", photo).put("audio", audio).put("notice_type", noticeType))
 
