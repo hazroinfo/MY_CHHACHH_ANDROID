@@ -371,6 +371,20 @@ class ApiClient(private val context: Context) {
         (get("/api/blocked-users").optJSONArray("items") ?: JSONArray()).users()
     fun toggleBlockUser(id: Long): JSONObject = post("/api/users/$id/block")
 
+    fun adminState(): JSONObject = get("/api/admin/state")
+    fun adminList(section: String, page: Int = 1, query: String = "", status: String = ""): JSONObject {
+        val q = java.net.URLEncoder.encode(query, "UTF-8")
+        val s = java.net.URLEncoder.encode(status, "UTF-8")
+        return get("/api/admin/list?section=$section&page=$page&per_page=50&q=$q&status=$s")
+    }
+    fun adminAction(action: String, id: Long = 0L, fields: JSONObject = JSONObject()): JSONObject {
+        val body = JSONObject(fields.toString()).put("action", action)
+        if (id > 0) body.put("id", id)
+        return post("/api/admin/action", body)
+    }
+    fun saveTheme(fields: JSONObject): JSONObject = adminAction("theme_settings", fields = fields)
+    fun saveBranding(fields: JSONObject): JSONObject = adminAction("site_branding", fields = fields)
+
     fun weather(): JSONObject = get("/api/weather/current")
 
     fun geocode(q: String): JSONObject = get("/api/map/geocode?q=${java.net.URLEncoder.encode(q, "UTF-8")}")
