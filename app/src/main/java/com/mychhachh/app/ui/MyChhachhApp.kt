@@ -32,6 +32,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import com.mychhachh.app.data.*
 import com.mychhachh.app.ui.components.*
+import com.mychhachh.app.ui.components.Text
 import com.mychhachh.app.ui.screens.*
 import com.mychhachh.app.ui.theme.*
 
