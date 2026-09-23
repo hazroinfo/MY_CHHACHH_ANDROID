@@ -38,6 +38,10 @@ object LiveJellyTheme {
     var enabled by mutableStateOf(true)
     var accent by mutableStateOf(DefaultJellyAccent)
     var accent2 by mutableStateOf(DefaultJellyAccent2)
+    var brandColor by mutableStateOf(Color(0xFF7B65D7))
+    var brandColor2 by mutableStateOf(DefaultJellyAccent)
+    var brandGlow by mutableFloatStateOf(12f)
+    var customIconPalette by mutableStateOf(false)
     var text by mutableStateOf(DefaultJellyInk)
     var muted by mutableStateOf(DefaultJellyMuted)
     var headerColor by mutableStateOf(Color.White)
@@ -68,6 +72,11 @@ object LiveJellyTheme {
     var profileAvatarSize by mutableFloatStateOf(96f)
     var shopCoverHeight by mutableFloatStateOf(185f)
     var shopAvatarSize by mutableFloatStateOf(96f)
+    var profileOverlap by mutableFloatStateOf(44f)
+    var shopOverlap by mutableFloatStateOf(50f)
+    var notificationAvatarSize by mutableFloatStateOf(46f)
+    var framePadding by mutableFloatStateOf(10f)
+    var bgStrength by mutableFloatStateOf(1f)
     var rainbowBrand by mutableStateOf(true)
     var motion by mutableStateOf(true)
     var jellyDepth by mutableFloatStateOf(92f)
@@ -87,6 +96,10 @@ object LiveJellyTheme {
     private fun resetVisualDefaults() {
         accent = DefaultJellyAccent
         accent2 = DefaultJellyAccent2
+        brandColor = Color(0xFF7B65D7)
+        brandColor2 = DefaultJellyAccent
+        brandGlow = 12f
+        customIconPalette = false
         text = DefaultJellyInk
         muted = DefaultJellyMuted
         headerColor = Color.White
@@ -117,6 +130,11 @@ object LiveJellyTheme {
         profileAvatarSize = 96f
         shopCoverHeight = 185f
         shopAvatarSize = 96f
+        profileOverlap = 44f
+        shopOverlap = 50f
+        notificationAvatarSize = 46f
+        framePadding = 10f
+        bgStrength = 1f
         rainbowBrand = true
         motion = true
         jellyDepth = 92f
@@ -135,6 +153,10 @@ object LiveJellyTheme {
         }
         accent = color(settings.optString("theme_accent", ""), DefaultJellyAccent)
         accent2 = color(settings.optString("theme_accent2", ""), DefaultJellyAccent2)
+        brandColor = color(settings.optString("theme_brand_color", ""), Color(0xFF7B65D7))
+        brandColor2 = color(settings.optString("theme_brand_color2", ""), DefaultJellyAccent)
+        brandGlow = settings.optInt("theme_brand_glow", 12).coerceIn(0, 36).toFloat()
+        customIconPalette = settings.optString("theme_icon_mode", "multicolor") == "custom"
         text = color(settings.optString("theme_text_color", ""), DefaultJellyInk)
         muted = color(settings.optString("theme_muted_color", ""), DefaultJellyMuted)
         headerColor = color(settings.optString("theme_header_color", ""), Color.White)
@@ -165,6 +187,11 @@ object LiveJellyTheme {
         profileAvatarSize = settings.optInt("theme_profile_avatar_size", 96).coerceIn(56, 160).toFloat()
         shopCoverHeight = settings.optInt("theme_shop_cover_height", 185).coerceIn(100, 320).toFloat()
         shopAvatarSize = settings.optInt("theme_shop_avatar_size", 96).coerceIn(60, 170).toFloat()
+        profileOverlap = settings.optInt("theme_profile_overlap", 44).coerceIn(0, 80).toFloat()
+        shopOverlap = settings.optInt("theme_shop_overlap", 50).coerceIn(0, 90).toFloat()
+        notificationAvatarSize = settings.optInt("theme_notification_avatar_size", 46).coerceIn(32, 72).toFloat()
+        framePadding = settings.optInt("theme_frame_padding", 10).coerceIn(0, 28).toFloat()
+        bgStrength = settings.optInt("theme_bg_strength", 100).coerceIn(0, 100) / 100f
         rainbowBrand = settings.optInt("theme_brand_rainbow", 1) != 0
         motion = settings.optInt("theme_motion", 1) != 0
         jellyDepth = settings.optInt("theme_jelly_depth", 92).coerceIn(0, 100).toFloat()
