@@ -69,21 +69,23 @@ fun JellyIcon(
 @Composable
 fun JellyGlass(
     modifier: Modifier = Modifier,
-    radius: Dp = 22.dp,
+    radius: Dp? = null,
     padding: Dp = 0.dp,
     onClick: (() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val shape = RoundedCornerShape(radius)
+    val actualRadius = radius ?: LiveJellyTheme.cardRadius.dp
+    val shape = RoundedCornerShape(actualRadius)
+    val opacity = LiveJellyTheme.cardOpacity
     var m = modifier
         .shadow(4.dp, shape, ambientColor = Color(0x124E5B90), spotColor = Color(0x164E5B90))
         .clip(shape)
         .background(
             Brush.linearGradient(
                 listOf(
-                    Color(0xF9FFFFFF),
-                    Color(0xF2F5FBFF),
-                    Color(0xF2F6F1FF)
+                    Color.White.copy(alpha = opacity),
+                    Color(0xFFF5FBFF).copy(alpha = (opacity - .05f).coerceAtLeast(.30f)),
+                    Color(0xFFF6F1FF).copy(alpha = (opacity - .05f).coerceAtLeast(.30f))
                 )
             )
         )
@@ -100,7 +102,7 @@ fun JellyPill(text: String, selected: Boolean, modifier: Modifier = Modifier, on
             .clip(shape)
             .clickable { onClick() }
             .background(
-                if (selected) Brush.horizontalGradient(listOf(JellyPink, JellyPurple))
+                if (selected) Brush.horizontalGradient(listOf(LiveJellyTheme.accent, LiveJellyTheme.accent2))
                 else Brush.linearGradient(listOf(Color.White, Color(0xFFF1FAFF)))
             )
             .border(1.dp, if (selected) Color.White.copy(.85f) else JellyOutline, shape)
@@ -111,7 +113,7 @@ fun JellyPill(text: String, selected: Boolean, modifier: Modifier = Modifier, on
             text,
             color = if (selected) Color.White else JellyInk,
             fontWeight = FontWeight.ExtraBold,
-            fontSize = 12.sp,
+            fontSize = (12f * LiveJellyTheme.fontScale).sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -134,11 +136,11 @@ fun JellyButton(
             .clip(shape)
             .clickable(enabled = enabled) { onClick() }
             .background(
-                if (primary) Brush.horizontalGradient(listOf(JellyPink.copy(alpha = alpha), JellyPurple.copy(alpha = alpha)))
+                if (primary) Brush.horizontalGradient(listOf(LiveJellyTheme.accent.copy(alpha = alpha), LiveJellyTheme.accent2.copy(alpha = alpha)))
                 else Brush.linearGradient(listOf(Color.White.copy(alpha = alpha), Color(0xFFF0F9FF).copy(alpha = alpha)))
             )
             .border(1.dp, if (enabled) Color.White else JellyOutline, shape)
-            .heightIn(min = 40.dp)
+            .heightIn(min = LiveJellyTheme.buttonHeight.dp)
             .padding(horizontal = 13.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
@@ -151,7 +153,7 @@ fun JellyButton(
             text,
             color = (if (primary) Color.White else JellyInk).copy(alpha = alpha),
             fontWeight = FontWeight.ExtraBold,
-            fontSize = 11.sp,
+            fontSize = (11f * LiveJellyTheme.fontScale).sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -195,16 +197,20 @@ fun Brand(name: String = "My Chhachh", modifier: Modifier = Modifier, fontSize: 
         name,
         modifier = modifier,
         style = TextStyle(
-            brush = Brush.horizontalGradient(
-                listOf(
-                    Color(0xFFFF47B3),
-                    Color(0xFFFFB642),
-                    Color(0xFF62DC9D),
-                    Color(0xFF56C9FF),
-                    Color(0xFF8B75F5)
+            brush = if (LiveJellyTheme.rainbowBrand) {
+                Brush.horizontalGradient(
+                    listOf(
+                        Color(0xFFFF47B3),
+                        Color(0xFFFFB642),
+                        Color(0xFF62DC9D),
+                        Color(0xFF56C9FF),
+                        Color(0xFF8B75F5)
+                    )
                 )
-            ),
-            fontSize = fontSize.sp,
+            } else {
+                Brush.horizontalGradient(listOf(LiveJellyTheme.accent, LiveJellyTheme.accent2))
+            },
+            fontSize = (fontSize * LiveJellyTheme.fontScale).sp,
             fontWeight = FontWeight.Black,
             letterSpacing = (-1f).sp
         ),
