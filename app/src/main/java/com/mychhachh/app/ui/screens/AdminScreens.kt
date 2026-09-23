@@ -51,6 +51,12 @@ fun AdminCenterScreen(
     var replyText by remember { mutableStateOf("") }
     var warningTarget by remember { mutableStateOf<Long?>(null) }
     var warningText by remember { mutableStateOf("") }
+    var userPostTarget by remember { mutableStateOf<Long?>(null) }
+    var userPostText by remember { mutableStateOf("") }
+    var verificationTarget by remember { mutableStateOf<Long?>(null) }
+    var verificationDecision by remember { mutableStateOf("approved") }
+    var verificationNote by remember { mutableStateOf("") }
+    var deleteUserTarget by remember { mutableStateOf<Long?>(null) }
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -173,8 +179,21 @@ fun AdminCenterScreen(
                                 JellyButton("Follows", Modifier.weight(1f)) {
                                     onAction("user_setting", u.id, JSONObject().put("key", "allow_follows"))
                                 }
-                                JellyButton("Delete", Modifier.weight(1f), icon = JellyIcons.Delete) {
-                                    onAction("delete_user", u.id, JSONObject())
+                                JellyButton(
+                                    if (o.optBoolean("promoted", false)) "Stop Promote" else "Promote",
+                                    Modifier.weight(1f),
+                                    icon = JellyIcons.Star
+                                ) {
+                                    onAction("promote_user", u.id, JSONObject())
+                                }
+                            }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                JellyButton("Publish as User", Modifier.weight(1f), icon = JellyIcons.Edit) {
+                                    userPostTarget = u.id
+                                    userPostText = ""
+                                }
+                                JellyButton("Delete Account", Modifier.weight(1f), icon = JellyIcons.Delete) {
+                                    deleteUserTarget = u.id
                                 }
                             }
                         }
@@ -199,10 +218,14 @@ fun AdminCenterScreen(
                         Text("Status: ${o.optString("status", "pending")}", color = JellyMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                             JellyButton("Approve", Modifier.weight(1f), primary = true, icon = JellyIcons.Check) {
-                                onAction("verification_review", o.optLong("id"), JSONObject().put("decision", "approved"))
+                                verificationTarget = o.optLong("id")
+                                verificationDecision = "approved"
+                                verificationNote = o.optString("admin_note", "")
                             }
                             JellyButton("Reject", Modifier.weight(1f), icon = JellyIcons.Close) {
-                                onAction("verification_review", o.optLong("id"), JSONObject().put("decision", "rejected"))
+                                verificationTarget = o.optLong("id")
+                                verificationDecision = "rejected"
+                                verificationNote = o.optString("admin_note", "")
                             }
                         }
                     }
@@ -217,11 +240,31 @@ fun AdminCenterScreen(
                             UserName(it, 12)
                             Text("@${it.username}", color = JellyMuted, fontSize = 9.sp)
                         }
+                        val targetType = o.optString("target_type", "")
+                        val reporterId = o.optLong("reporter_id", o.optLong("user_id", reporter?.id ?: 0L))
+                        val targetId = o.optLong("target_user_id", o.optLong("target_id", 0L))
+                        if (o.optString("category").isNotBlank()) {
+                            Text("Type: ${o.optString("category")}", color = JellyMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        }
+                        if (o.optString("subject").isNotBlank()) {
+                            Text(o.optString("subject"), color = JellyInk, fontSize = 10.5f.sp, fontWeight = FontWeight.Bold)
+                        }
                         Text(o.optString("reason", o.optString("text", "Report")), color = JellyInk, fontSize = 11.5f.sp)
                         Text("Status: ${o.optString("status", "open")}", color = JellyMuted, fontSize = 9.sp)
-                        JellyButton("Reply", icon = JellyIcons.Reply) {
-                            replyTarget = o.optLong("id")
-                            replyText = o.optString("admin_reply", "")
+                        if (o.optString("admin_reply").isNotBlank()) {
+                            Text("Previous reply: ${o.optString("admin_reply")}", color = JellyMuted, fontSize = 9.5f.sp, maxLines = 4)
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            if (reporterId > 0) {
+                                JellyButton("Reporter", Modifier.weight(1f), icon = JellyIcons.User) { onProfile(reporterId) }
+                            }
+                            if (targetType == "profile" && targetId > 0) {
+                                JellyButton("Reported Profile", Modifier.weight(1f), icon = JellyIcons.Shield) { onProfile(targetId) }
+                            }
+                            JellyButton("Reply", Modifier.weight(1f), icon = JellyIcons.Reply) {
+                                replyTarget = o.optLong("id")
+                                replyText = o.optString("admin_reply", "")
+                            }
                         }
                     }
                 }
@@ -234,12 +277,15 @@ fun AdminCenterScreen(
                             runCatching { uo.toUser() }.getOrNull()?.let { UserName(it, 11) }
                         }
                         Text(o.optString("text", "(media post)"), color = JellyInk, fontSize = 11.5f.sp, maxLines = 5)
+                        val shopPost = o.optLong("shop_id", 0L) > 0L || o.optJSONObject("shop") != null || o.optBoolean("shop_post", false)
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            JellyButton("Promote", icon = JellyIcons.Star) {
-                                onAction("promote_post", o.optLong("id"), JSONObject())
+                            JellyButton(if (o.optBoolean("promoted", false)) "Stop Promotion" else "Promote", icon = JellyIcons.Star) {
+                                onAction(if (shopPost) "promote_shop_post" else "promote_post", o.optLong("id"), JSONObject())
                             }
-                            JellyButton("Delete", icon = JellyIcons.Delete) {
-                                onAction("delete_post", o.optLong("id"), JSONObject())
+                            if (!shopPost) {
+                                JellyButton("Delete", icon = JellyIcons.Delete) {
+                                    onAction("delete_post", o.optLong("id"), JSONObject())
+                                }
                             }
                         }
                     }
@@ -308,6 +354,12 @@ fun AdminCenterScreen(
                         Text(o.optString("action", "activity"), color = JellyInk, fontWeight = FontWeight.Black, fontSize = 11.5f.sp)
                         Text("User #${o.optLong("actor_id")} · ${o.optString("created_at", "")}", color = JellyMuted, fontSize = 9.sp)
                         if (o.optString("ip").isNotBlank()) Text("IP: ${o.optString("ip")}", color = JellyMuted, fontSize = 8.5f.sp)
+                        val details = when {
+                            o.optJSONObject("details") != null -> o.optJSONObject("details").toString()
+                            o.optString("details").isNotBlank() -> o.optString("details")
+                            else -> ""
+                        }
+                        if (details.isNotBlank()) Text(details.take(420), color = JellyMuted, fontSize = 8.sp, maxLines = 6)
                     }
                 }
             }
@@ -365,6 +417,88 @@ fun AdminCenterScreen(
                 }
             },
             dismissButton = { JellyButton("Cancel") { warningTarget = null } }
+        )
+    }
+
+
+    userPostTarget?.let { id ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { userPostTarget = null },
+            title = { Text("Publish as User", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                OutlinedTextField(
+                    userPostText,
+                    { userPostText = it.take(5000) },
+                    Modifier.fillMaxWidth(),
+                    minLines = 4,
+                    maxLines = 9,
+                    placeholder = { Text("Write the post to publish as this user…") },
+                    shape = RoundedCornerShape(18.dp)
+                )
+            },
+            confirmButton = {
+                JellyButton("Publish", primary = true, icon = JellyIcons.Send, enabled = userPostText.isNotBlank()) {
+                    onAction("admin_user_post", id, JSONObject().put("text", userPostText.trim()))
+                    userPostTarget = null
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { userPostTarget = null } }
+        )
+    }
+
+    verificationTarget?.let { id ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { verificationTarget = null },
+            title = {
+                Text(
+                    if (verificationDecision == "approved") "Approve Verification" else "Reject Verification",
+                    color = JellyInk,
+                    fontWeight = FontWeight.Black
+                )
+            },
+            text = {
+                OutlinedTextField(
+                    verificationNote,
+                    { verificationNote = it.take(2000) },
+                    Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 7,
+                    placeholder = { Text("Admin note (optional)…") },
+                    shape = RoundedCornerShape(18.dp)
+                )
+            },
+            confirmButton = {
+                JellyButton(
+                    if (verificationDecision == "approved") "Approve" else "Reject",
+                    primary = verificationDecision == "approved",
+                    icon = if (verificationDecision == "approved") JellyIcons.Check else JellyIcons.Close
+                ) {
+                    onAction(
+                        "verification_review",
+                        id,
+                        JSONObject()
+                            .put("decision", verificationDecision)
+                            .put("admin_note", verificationNote.trim())
+                    )
+                    verificationTarget = null
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { verificationTarget = null } }
+        )
+    }
+
+    deleteUserTarget?.let { id ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { deleteUserTarget = null },
+            title = { Text("Delete User Account", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = { Text("Delete this user account? Preserved admin evidence remains on the server.", color = JellyInk) },
+            confirmButton = {
+                JellyButton("Delete", primary = true, icon = JellyIcons.Delete) {
+                    onAction("delete_user", id, JSONObject())
+                    deleteUserTarget = null
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { deleteUserTarget = null } }
         )
     }
 }
