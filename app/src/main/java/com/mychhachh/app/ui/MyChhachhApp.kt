@@ -1101,6 +1101,36 @@ fun MyChhachhApp() {
                     }
                 }
             }
+
+            if (currentUser != null && isPrimaryRoute) {
+                JellyGlass(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                    radius = 18.dp,
+                    padding = 3.dp,
+                    surfaceColor = LiveJellyTheme.navColor,
+                    surfaceOpacity = LiveJellyTheme.navOpacity
+                ) {
+                    Row(Modifier.fillMaxWidth()) {
+                        NavItem("Home", JellyIcons.Home, route == Screen.HOME, Modifier.weight(1f)) {
+                            route = Screen.HOME; selectedId = 0L; backStack.clear(); menuOpen = false
+                        }
+                        NavItem("People", JellyIcons.People, route == Screen.PEOPLE, Modifier.weight(1f)) {
+                            route = Screen.PEOPLE; selectedId = 0L; backStack.clear(); menuOpen = false
+                        }
+                        NavItem("Shop", JellyIcons.Shop, route == Screen.SHOPS, Modifier.weight(1f)) {
+                            route = Screen.SHOPS; selectedId = 0L; backStack.clear(); menuOpen = false
+                        }
+                        NavItem("Map", JellyIcons.Map, route == Screen.MAP, Modifier.weight(1f)) {
+                            route = Screen.MAP; selectedId = 0L; backStack.clear(); menuOpen = false
+                        }
+                        NavItem("Messages", JellyIcons.Message, route == Screen.MESSAGES, Modifier.weight(1f)) {
+                            route = Screen.MESSAGES; selectedId = 0L; backStack.clear(); menuOpen = false
+                        }
+                    }
+                }
+            }
         }
 
         if (menuOpen && currentUser != null) {
@@ -1210,71 +1240,57 @@ private fun AuthHeader(
         return
     }
 
-    Box(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 6.dp)) {
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(Modifier.fillMaxWidth().height(56.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.size(48.dp).clip(RoundedCornerShape(17.dp)).clickable { onMenu() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        JellyIcon(JellyIcons.Menu, size = 39.dp, contentDescription = "Menu")
-                    }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        Row(
+            Modifier.fillMaxWidth().height(48.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            JellyIconButton(JellyIcons.Menu, "Menu", onClick = onMenu)
+            HeaderBrand(
+                name = brandName,
+                tagline = "",
+                iconUrl = null,
+                modifier = Modifier.weight(1f),
+                fontSize = 23
+            )
+            Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
+                JellyIconButton(JellyIcons.Bell, "Notifications", badge = unread, onClick = onNotifications)
+            }
+            Spacer(Modifier.width(4.dp))
+            Box(Modifier.clickable { onProfile() }) { Avatar(user, 38.dp) }
+        }
 
-                    HeaderBrand(brandName, brandTagline, brandIcon, Modifier.weight(1f), 30)
-
-                    Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                        JellyIconButton(JellyIcons.Bell, "Notifications", badge = unread, onClick = onNotifications)
-                    }
-                    Spacer(Modifier.width(2.dp))
-                    Box(Modifier.clickable { onProfile() }) { Avatar(user, 45.dp) }
-                }
-
-                JellyGlass(
-                    Modifier.fillMaxWidth().height(58.dp),
-                    radius = LiveJellyTheme.inputRadius.dp,
-                    padding = 8.dp,
-                    onClick = onSearch,
-                    surfaceColor = LiveJellyTheme.inputColor,
-                    surfaceOpacity = LiveJellyTheme.inputOpacity
-                ) {
-                    Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                        JellyIcon(JellyIcons.Search, size = 30.dp, tint = LiveJellyTheme.muted)
-                        Spacer(Modifier.width(7.dp))
-                        Text(
-                            "Search people, posts, places...",
-                            Modifier.weight(1f),
-                            color = JellyMuted,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        JellyIcon(JellyIcons.Filter, size = 28.dp, tint = LiveJellyTheme.muted)
-                    }
-                }
-
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    QuickHeader("Voting", JellyIcons.Vote, Modifier.weight(1f), onVotes)
-                    QuickHeader(weatherText, JellyIcons.Weather, Modifier.weight(1f), onWeather)
-                    Box(Modifier.weight(1f)) {
-                        QuickHeader("Announcements", JellyIcons.Announcement, Modifier.fillMaxWidth(), onAnnouncements)
-                        if (announcementUnread > 0) CountBadge(announcementUnread, Modifier.align(Alignment.TopEnd))
-                    }
-                }
-
-                JellyGlass(
-                    Modifier.fillMaxWidth(),
-                    radius = LiveJellyTheme.navRadius.dp,
-                    padding = 4.dp,
-                    surfaceColor = LiveJellyTheme.navColor,
-                    surfaceOpacity = LiveJellyTheme.navOpacity
-                ) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        NavItem("Home", JellyIcons.Home, route == Screen.HOME, Modifier.weight(1f)) { onNav(Screen.HOME) }
-                        NavItem("People", JellyIcons.People, route == Screen.PEOPLE, Modifier.weight(1f)) { onNav(Screen.PEOPLE) }
-                        NavItem("Shop", JellyIcons.Shop, route == Screen.SHOPS, Modifier.weight(1f)) { onNav(Screen.SHOPS) }
-                        NavItem("Map", JellyIcons.Map, route == Screen.MAP, Modifier.weight(1f)) { onNav(Screen.MAP) }
-                        NavItem("Messages", JellyIcons.Message, route == Screen.MESSAGES, Modifier.weight(1f)) { onNav(Screen.MESSAGES) }
-                    }
-                }
+        JellyGlass(
+            Modifier.fillMaxWidth().height(46.dp),
+            radius = 15.dp,
+            padding = 7.dp,
+            onClick = onSearch,
+            surfaceColor = LiveJellyTheme.inputColor,
+            surfaceOpacity = LiveJellyTheme.inputOpacity
+        ) {
+            Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                JellyIcon(JellyIcons.Search, size = 23.dp)
+                Spacer(Modifier.width(7.dp))
+                Text(
+                    when (route) {
+                        Screen.PEOPLE -> "Search people..."
+                        Screen.SHOPS -> "Search shops..."
+                        Screen.MAP -> "Search places..."
+                        Screen.MESSAGES -> "Search messages..."
+                        else -> "Search people, posts, shops..."
+                    },
+                    Modifier.weight(1f),
+                    color = JellyMuted,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                JellyIcon(JellyIcons.Filter, size = 22.dp)
+            }
         }
     }
 }
@@ -1344,7 +1360,7 @@ private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: ()
         ) {
             JellyIcon(icon, size = 39.dp)
             Spacer(Modifier.height(3.dp))
-            Text(text, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 10.sp, maxLines = 1)
+            Text(text, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 9.sp, maxLines = 1)
         }
     }
 }
@@ -1353,19 +1369,14 @@ private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: ()
 private fun NavItem(text: String, icon: Int, active: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(
         modifier
-            .height(LiveJellyTheme.navHeight.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .height(58.dp)
+            .clip(RoundedCornerShape(14.dp))
             .clickable { onClick() }
             .background(if (active) LiveJellyTheme.activeColor.copy(alpha = .12f) else Color.Transparent),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        JellyIcon(
-            icon,
-            size = 31.dp,
-            contentDescription = text,
-            tint = if (active) LiveJellyTheme.activeColor else LiveJellyTheme.iconColor
-        )
+        JellyIcon(icon, size = 25.dp, contentDescription = text)
         Spacer(Modifier.height(2.dp))
         Text(
             text,
@@ -1427,6 +1438,9 @@ private fun SideMenu(
                     JellyIconButton(JellyIcons.Close, "Close", onClick = onClose)
                 }
                 Spacer(Modifier.height(6.dp))
+                MenuRow("Voting", JellyIcons.Vote) { onOpen(Screen.VOTES) }
+                MenuRow("Weather", JellyIcons.Weather) { onOpen(Screen.WEATHER) }
+                MenuRow("Announcements", JellyIcons.Announcement) { onOpen(Screen.ANNOUNCEMENTS) }
                 MenuRow("Saved", JellyIcons.Save) { onOpen(Screen.SAVED) }
                 MenuRow("Settings", JellyIcons.Gear) { onOpen(Screen.SETTINGS) }
                 if (user.isAdmin) {
