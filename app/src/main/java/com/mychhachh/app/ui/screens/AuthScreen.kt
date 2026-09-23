@@ -3,6 +3,7 @@ package com.mychhachh.app.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +38,7 @@ fun AuthScreen(
     var username by remember(mode) { mutableStateOf("") }
     var email by remember(mode, pendingEmail) { mutableStateOf(pendingEmail) }
     var code by remember(mode) { mutableStateOf("") }
+    var termsAccepted by remember(mode) { mutableStateOf(false) }
 
     val title = when (mode) {
         "register" -> "Create account"
@@ -53,21 +55,23 @@ fun AuthScreen(
         else -> "Sign in to My Chhachh"
     }
 
-    Column(
+    Box(
         Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        contentAlignment = Alignment.Center
     ) {
-        Brand(modifier = Modifier.padding(vertical = 8.dp))
-        Text(subtitle, color = JellyMuted, fontSize = 12.sp)
-        Spacer(Modifier.height(14.dp))
-        JellyGlass(Modifier.fillMaxWidth(), padding = 16.dp) {
-            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                PageTitle(title, icon = when (mode) {
-                    "register" -> JellyIcons.Plus
-                    "verify" -> JellyIcons.Mail
-                    "forgot", "reset" -> JellyIcons.Lock
-                    else -> JellyIcons.User
-                })
+        JellyGlass(
+            Modifier.fillMaxWidth().widthIn(max = 420.dp),
+            radius = 22.dp,
+            padding = 18.dp
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    title,
+                    color = JellyInk,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 24.sp
+                )
+                Text(subtitle, color = JellyMuted, fontSize = 11.sp)
 
                 when (mode) {
                     "register" -> {
@@ -75,6 +79,24 @@ fun AuthScreen(
                         OutlinedTextField(username, { username = it.lowercase().filter { ch -> ch.isLetterOrDigit() || ch == '_' } }, label = { Text("Username (a-z, 0-9, _)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), singleLine = true)
                         OutlinedTextField(email, { email = it }, label = { Text("Email address") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), singleLine = true)
                         OutlinedTextField(password, { password = it }, label = { Text("Password (6+ characters)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Checkbox(
+                                checked = termsAccepted,
+                                onCheckedChange = { termsAccepted = it },
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(Modifier.width(7.dp))
+                            Text(
+                                "I agree to the Terms & Conditions and Privacy Policy.",
+                                Modifier.weight(1f),
+                                color = JellyMuted,
+                                fontSize = 10.sp,
+                                lineHeight = 14.sp
+                            )
+                        }
                     }
                     "verify" -> {
                         if (pendingEmail.isNotBlank()) Text(pendingEmail, color = JellyInk, fontWeight = FontWeight.Bold, fontSize = 12.sp)
@@ -94,7 +116,9 @@ fun AuthScreen(
                     }
                 }
 
-                if (!error.isNullOrBlank()) Text(error, color = androidx.compose.ui.graphics.Color(0xFFB23A55), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                if (!error.isNullOrBlank()) {
+                    Text(error, color = androidx.compose.ui.graphics.Color(0xFFB23A55), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
 
                 val buttonText = when (mode) {
                     "register" -> "Sign up with email"
@@ -103,40 +127,58 @@ fun AuthScreen(
                     "reset" -> "Reset Password"
                     else -> "Login"
                 }
-                JellyButton(if (busy) "Please wait…" else buttonText, modifier = Modifier.fillMaxWidth(), primary = true, icon = when (mode) {
-                    "register" -> JellyIcons.Plus
-                    "verify" -> JellyIcons.Check
-                    "forgot", "reset" -> JellyIcons.Lock
-                    else -> JellyIcons.User
-                }) {
-                    if (busy) return@JellyButton
+                val submitEnabled = !busy && when (mode) {
+                    "register" -> name.trim().isNotBlank() && username.length >= 3 && email.isNotBlank() && password.length >= 6 && termsAccepted
+                    "verify" -> code.length == 6
+                    "forgot" -> email.isNotBlank()
+                    "reset" -> code.length == 6 && password.length >= 6 && password == password2
+                    else -> identity.isNotBlank() && password.length >= 6
+                }
+                JellyButton(
+                    if (busy) "Please wait…" else buttonText,
+                    modifier = Modifier.fillMaxWidth(),
+                    primary = true,
+                    icon = when (mode) {
+                        "register" -> JellyIcons.Plus
+                        "verify" -> JellyIcons.Check
+                        "forgot", "reset" -> JellyIcons.Lock
+                        else -> JellyIcons.User
+                    },
+                    enabled = submitEnabled
+                ) {
                     when (mode) {
                         "register" -> onRegister(name.trim(), username.trim(), email.trim(), password)
-                        "verify" -> if (code.length == 6) onVerify(code)
-                        "forgot" -> if (email.isNotBlank()) onForgotSend(email.trim())
-                        "reset" -> if (code.length == 6 && password.length >= 6 && password == password2) onForgotReset(code, password)
+                        "verify" -> onVerify(code)
+                        "forgot" -> onForgotSend(email.trim())
+                        "reset" -> onForgotReset(code, password)
                         else -> onLogin(identity.trim(), password)
                     }
                 }
 
-                if (mode == "verify") JellyButton("Resend Code", modifier = Modifier.fillMaxWidth(), icon = JellyIcons.Mail, onClick = onResend)
-
-                if (mode == "login") {
-                    TextButton(onClick = { onSwitch("forgot") }) { Text("Forgot password?", color = JellyInk, fontWeight = FontWeight.Bold) }
-                }
-                if (mode == "register" || mode == "login") {
-                    Text("I agree to the Terms & Conditions and Privacy Policy.", color = JellyMuted, fontSize = 10.sp)
+                if (mode == "verify") {
+                    JellyButton("Resend Code", modifier = Modifier.fillMaxWidth(), icon = JellyIcons.Mail, onClick = onResend)
                 }
 
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = onBack) { Text("Back", color = JellyInk) }
-                    when (mode) {
-                        "register" -> TextButton(onClick = { onSwitch("login") }) { Text("Already registered? Login", color = JellyInk, fontWeight = FontWeight.Bold) }
-                        "login" -> TextButton(onClick = { onSwitch("register") }) { Text("No account? Create one", color = JellyInk, fontWeight = FontWeight.Bold) }
-                        "verify", "forgot", "reset" -> TextButton(onClick = { onSwitch("login") }) { Text("Back to login", color = JellyInk, fontWeight = FontWeight.Bold) }
+                when (mode) {
+                    "login" -> {
+                        TextButton(onClick = { onSwitch("forgot") }) {
+                            Text("Forgot password?", color = JellyInk, fontWeight = FontWeight.Bold)
+                        }
+                        TextButton(onClick = { onSwitch("register") }) {
+                            Text("No account? Create one", color = JellyInk, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    "register" -> {
+                        TextButton(onClick = { onSwitch("login") }) {
+                            Text("Already registered? Login", color = JellyInk, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    "forgot", "reset" -> {
+                        TextButton(onClick = { onSwitch("login") }) {
+                            Text("Back to login", color = JellyInk, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
         }
-    }
-}
+    }}
