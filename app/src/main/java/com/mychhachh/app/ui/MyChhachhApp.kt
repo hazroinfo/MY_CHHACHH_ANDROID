@@ -891,6 +891,14 @@ fun MyChhachhApp() {
                                         .onFailure { profileError = it.message }
                                 }
                             },
+                            isAdmin = u.isAdmin,
+                            onAdminAction = { action, id, fields ->
+                                scope.launch {
+                                    runCatching { withContext(Dispatchers.IO) { api.adminAction(action, id, fields) } }
+                                        .onFailure { profileError = it.message }
+                                    loadProfile(id)
+                                }
+                            },
                             onLoadRelations = { id, mode -> withContext(Dispatchers.IO) { api.relationUsers(id, mode) } },
                             onLike = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p) } }; loadProfile(selectedId) } },
                             onComment = { openDiscussion(it) },
