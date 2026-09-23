@@ -564,7 +564,95 @@ fun MyChhachhApp() {
                             }
                         }
                     )
-                    Screen.VOTES -> VotesScreen(votes, votesLoading, votesError) { id, side -> if (currentUser == null) { authMode = "login"; route = Screen.AUTH } else scope.launch { runCatching { withContext(Dispatchers.IO) { api.castVote(id, side) } }; loadVotes() } }
+                    Screen.VOTES -> {
+                        val u = currentUser
+                        if (u == null) {
+                            VotesScreen(
+                                items = votes,
+                                loading = votesLoading,
+                                error = votesError,
+                                meId = 0L,
+                                onSearchOpponent = { emptyList() },
+                                onCreateChallenge = { _, _, _ -> authMode = "login"; route = Screen.AUTH },
+                                onCast = { _, _ -> authMode = "login"; route = Screen.AUTH },
+                                onRespond = { _, _ -> authMode = "login"; route = Screen.AUTH },
+                                onStart = { authMode = "login"; route = Screen.AUTH },
+                                onCancel = { authMode = "login"; route = Screen.AUTH },
+                                onLeave = { authMode = "login"; route = Screen.AUTH },
+                                onShare = { authMode = "login"; route = Screen.AUTH },
+                                onStatement = { _, _ -> authMode = "login"; route = Screen.AUTH }
+                            )
+                        } else {
+                            VotesScreen(
+                                items = votes,
+                                loading = votesLoading,
+                                error = votesError,
+                                meId = u.id,
+                                onSearchOpponent = { term -> withContext(Dispatchers.IO) { api.users(term).first } },
+                                onCreateChallenge = { username, hours, line ->
+                                    scope.launch {
+                                        try {
+                                            votesError = null
+                                            withContext(Dispatchers.IO) { api.createVote(username, hours, line) }
+                                        } catch (e: Exception) { votesError = e.message }
+                                        loadVotes()
+                                    }
+                                },
+                                onCast = { id, choiceUserId ->
+                                    scope.launch {
+                                        try {
+                                            votesError = null
+                                            withContext(Dispatchers.IO) { api.castVote(id, choiceUserId) }
+                                        } catch (e: Exception) { votesError = e.message }
+                                        loadVotes()
+                                    }
+                                },
+                                onRespond = { id, decision ->
+                                    scope.launch {
+                                        try {
+                                            votesError = null
+                                            withContext(Dispatchers.IO) { api.respondVote(id, decision) }
+                                        } catch (e: Exception) { votesError = e.message }
+                                        loadVotes()
+                                    }
+                                },
+                                onStart = { id ->
+                                    scope.launch {
+                                        try { withContext(Dispatchers.IO) { api.startVote(id) } }
+                                        catch (e: Exception) { votesError = e.message }
+                                        loadVotes()
+                                    }
+                                },
+                                onCancel = { id ->
+                                    scope.launch {
+                                        try { withContext(Dispatchers.IO) { api.cancelVote(id) } }
+                                        catch (e: Exception) { votesError = e.message }
+                                        loadVotes()
+                                    }
+                                },
+                                onLeave = { id ->
+                                    scope.launch {
+                                        try { withContext(Dispatchers.IO) { api.leaveVote(id) } }
+                                        catch (e: Exception) { votesError = e.message }
+                                        loadVotes()
+                                    }
+                                },
+                                onShare = { id ->
+                                    scope.launch {
+                                        try { withContext(Dispatchers.IO) { api.shareVote(id) } }
+                                        catch (e: Exception) { votesError = e.message }
+                                    }
+                                },
+                                onStatement = { id, text ->
+                                    scope.launch {
+                                        try { withContext(Dispatchers.IO) { api.updateVoteStatement(id, text) } }
+                                        catch (e: Exception) { votesError = e.message }
+                                        loadVotes()
+                                    }
+                                }
+                            )
+                        }
+                    }
                     Screen.SAVED -> SavedScreen(saved, savedLoading, savedError, { open(Screen.PROFILE, it) }, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p.id) } }; loadSaved() } }, { commentPost = it }, ::sharePost, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadSaved() } })
                     Screen.SEARCH -> SearchScreen(searchResult, searchLoading, searchError, searchQuery, { searchQuery = it }, ::doSearch, { if (currentUser != null) open(Screen.PROFILE, it) }, { if (currentUser != null) open(Screen.SHOP_DETAIL, it) })
                     Screen.PROFILE -> currentUser?.let { u -> ProfileScreen(profileData, profileLoading, profileError, u.id, { id -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.followUser(id) } }; loadProfile(id) } }, { id -> open(Screen.CHAT, id) }, { open(Screen.SETTINGS) }, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p.id) } }; loadProfile(selectedId) } }, { commentPost = it }, ::sharePost, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadProfile(selectedId) } }) }
