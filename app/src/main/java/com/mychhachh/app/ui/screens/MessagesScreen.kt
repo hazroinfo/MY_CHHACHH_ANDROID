@@ -72,7 +72,7 @@ fun MessagesScreen(
     }
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
+        contentPadding = PaddingValues(LiveJellyTheme.framePadding.dp, 8.dp, LiveJellyTheme.framePadding.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item { PageTitle("Messages", "Good conversations build a brighter Chhachh", JellyIcons.Message) }
