@@ -1384,15 +1384,21 @@ private fun routeTitle(route: Screen): String = when (route) {
 
 @Composable
 private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: () -> Unit) {
-    JellyGlass(modifier.height(92.dp), radius = 24.dp, padding = 6.dp, onClick = onClick) {
+    JellyGlass(modifier.height(82.dp), radius = 21.dp, padding = 5.dp, onClick = onClick) {
         Column(
             Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            JellyIcon(icon, size = 39.dp)
+            JellyIcon(icon, size = if (icon == JellyIcons.Weather) 37.dp else 34.dp)
             Spacer(Modifier.height(3.dp))
-            Text(text, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 9.sp, maxLines = 1)
+            Text(
+                text,
+                color = Color(0xFF433476),
+                fontWeight = FontWeight.Black,
+                fontSize = 8.8f.sp,
+                maxLines = 1
+            )
         }
     }
 }
@@ -1401,29 +1407,46 @@ private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: ()
 private fun NavItem(text: String, icon: Int, active: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(
         modifier
-            .height(58.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .height(68.dp)
+            .clip(RoundedCornerShape(20.dp))
             .clickable { onClick() }
-            .background(if (active) LiveJellyTheme.activeColor.copy(alpha = .12f) else Color.Transparent),
+            .background(
+                if (active) {
+                    Brush.linearGradient(
+                        listOf(
+                            Color(0xFFFFF0F9).copy(alpha = .68f),
+                            Color.White.copy(alpha = .45f)
+                        )
+                    )
+                } else {
+                    Brush.linearGradient(listOf(Color.Transparent, Color.Transparent))
+                }
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        JellyIcon(icon, size = 25.dp, contentDescription = text)
+        JellyIcon(icon, size = 32.dp, contentDescription = text)
         Spacer(Modifier.height(2.dp))
         Text(
             text,
-            color = if (active) LiveJellyTheme.activeColor else JellyInk,
+            color = Color(0xFF392B72),
             fontWeight = FontWeight.Black,
-            fontSize = 10.sp,
+            fontSize = 9.sp,
             maxLines = 1
         )
-        if (active) Box(
-            Modifier
-                .width(28.dp)
-                .height(3.dp)
-                .clip(RoundedCornerShape(999.dp))
-                .background(LiveJellyTheme.activeColor)
-        )
+        if (active) {
+            Box(
+                Modifier
+                    .width(28.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(Color(0xFFFF67BA), Color(0xFFFF43AA))
+                        )
+                    )
+            )
+        }
     }
 }
 
@@ -1442,45 +1465,80 @@ private fun SideMenu(
     user: User,
     unread: Int,
     announcementUnread: Int,
+    settings: JSONObject,
     onClose: () -> Unit,
     onOpen: (Screen) -> Unit,
     onLogout: () -> Unit
 ) {
-    Box(Modifier.fillMaxSize().background(Color(0x66405070)).clickable { onClose() }) {
-        JellyGlass(
+    val order = settings.optString("theme_menu_items", "votes,saved,settings,theme,admin,logout")
+        .split(",").map { it.trim() }.filter { it.isNotBlank() }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0x3D0A203A))
+            .clickable { onClose() }
+    ) {
+        Box(
             Modifier
                 .fillMaxHeight()
-                .widthIn(max = 300.dp)
-                .fillMaxWidth(.80f)
+                .fillMaxWidth(.88f)
+                .widthIn(max = 350.dp)
+                .clickable(enabled = false) {}
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            Color(0xFFF0FBFF).copy(alpha = .96f),
+                            Color(0xFFE8F0FF).copy(alpha = .93f),
+                            Color(0xFFFDEBF9).copy(alpha = .91f)
+                        )
+                    )
+                )
+                .border(2.dp, Color.White, RoundedCornerShape(0.dp))
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .clickable(enabled = false) {},
-            radius = 0.dp,
-            padding = 16.dp,
-            surfaceColor = LiveJellyTheme.cardColor,
-            surfaceOpacity = .99f
         ) {
-            Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Avatar(user, 52.dp)
-                    Spacer(Modifier.width(8.dp))
-                    Column(Modifier.weight(1f)) {
-                        UserName(user, 15)
-                        Text("@${user.username}", color = JellyMuted, fontSize = 9.5f.sp)
+            JellyIconButton(
+                JellyIcons.Close,
+                "Close",
+                Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 8.dp),
+                onClick = onClose
+            )
+
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(start = 14.dp, end = 14.dp, top = 58.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                order.forEach { key ->
+                    when (key) {
+                        "home" -> MenuRow("Home", JellyIcons.Home) { onOpen(Screen.HOME) }
+                        "people" -> MenuRow("People", JellyIcons.People) { onOpen(Screen.PEOPLE) }
+                        "shop" -> MenuRow("Shop", JellyIcons.Shop) { onOpen(Screen.SHOPS) }
+                        "votes" -> if (settings.optInt("voting", 1) != 0) MenuRow("Voting", JellyIcons.Vote) { onOpen(Screen.VOTES) }
+                        "saved" -> MenuRow("Saved", JellyIcons.Save) { onOpen(Screen.SAVED) }
+                        "map" -> MenuRow("Chhachh Map", JellyIcons.Map) { onOpen(Screen.MAP) }
+                        "messages" -> if (settings.optInt("messaging", 1) != 0) MenuRow("Messages", JellyIcons.Message) { onOpen(Screen.MESSAGES) }
+                        "announcements" -> MenuRow(
+                            if (announcementUnread > 0) "Announcements ($announcementUnread)" else "Announcements",
+                            JellyIcons.Announcement
+                        ) { onOpen(Screen.ANNOUNCEMENTS) }
+                        "notifications" -> MenuRow(
+                            if (unread > 0) "Notifications ($unread)" else "Notifications",
+                            JellyIcons.Bell
+                        ) { onOpen(Screen.NOTIFICATIONS) }
+                        "profile" -> MenuRow("Profile", JellyIcons.User) { onOpen(Screen.PROFILE) }
+                        "settings" -> MenuRow("Settings", JellyIcons.Gear) { onOpen(Screen.SETTINGS) }
+                        "theme" -> if (user.isAdmin && settings.optInt("theme_theme_icon_enabled", 1) != 0) {
+                            MenuRow("Theme Builder", JellyIcons.Palette) { onOpen(Screen.THEME) }
+                        }
+                        "admin" -> if (user.isAdmin) MenuRow("Admin Center", JellyIcons.Shield) { onOpen(Screen.ADMIN) }
+                        "logout" -> {
+                            Spacer(Modifier.weight(1f))
+                            MenuRow("Logout", JellyIcons.Logout, danger = true, onClick = onLogout)
+                        }
                     }
-                    JellyIconButton(JellyIcons.Close, "Close", onClick = onClose)
                 }
-                Spacer(Modifier.height(6.dp))
-                MenuRow("Voting", JellyIcons.Vote) { onOpen(Screen.VOTES) }
-                MenuRow("Weather", JellyIcons.Weather) { onOpen(Screen.WEATHER) }
-                MenuRow("Announcements", JellyIcons.Announcement) { onOpen(Screen.ANNOUNCEMENTS) }
-                MenuRow("Saved", JellyIcons.Save) { onOpen(Screen.SAVED) }
-                MenuRow("Settings", JellyIcons.Gear) { onOpen(Screen.SETTINGS) }
-                if (user.isAdmin) {
-                    MenuRow("Theme", JellyIcons.Palette) { onOpen(Screen.THEME) }
-                    MenuRow("Admin Center", JellyIcons.Shield) { onOpen(Screen.ADMIN) }
-                }
-                Spacer(Modifier.weight(1f))
-                MenuRow("Logout", JellyIcons.Logout, danger = true, onClick = onLogout)
             }
         }
     }
@@ -1493,17 +1551,17 @@ private fun MenuRow(text: String, icon: Int, danger: Boolean = false, onClick: (
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .clickable { onClick() }
-            .padding(horizontal = 8.dp, vertical = 9.dp),
+            .heightIn(min = 46.dp)
+            .padding(horizontal = 7.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val rowColor = if (danger) JellyDanger else LiveJellyTheme.iconColor
-        JellyIcon(icon, size = 26.dp, contentDescription = text, tint = rowColor)
-        Spacer(Modifier.width(10.dp))
+        JellyIcon(icon, size = 34.dp, contentDescription = text)
+        Spacer(Modifier.width(13.dp))
         Text(
             text,
-            color = if (danger) JellyDanger else JellyInk,
-            fontWeight = FontWeight.ExtraBold,
-            fontSize = 13.sp
+            color = if (danger) JellyDanger else Color(0xFF3B2D72),
+            fontWeight = FontWeight.Black,
+            fontSize = 14.sp
         )
     }
 }
