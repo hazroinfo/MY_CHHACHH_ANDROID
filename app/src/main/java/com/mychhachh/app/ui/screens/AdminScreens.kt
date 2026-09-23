@@ -100,7 +100,7 @@ fun AdminCenterScreen(
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item {
-            PageTitle("Admin Center", "Website administration only. Theme Builder is separate.", JellyIcons.Shield)
+            PageTitle("Admin Center", "Website administration only. Theme Builder is a separate menu page.", JellyIcons.Shield)
         }
 
         if (stats.optInt("admin_alerts", 0) > 0) {
@@ -1356,12 +1356,12 @@ fun NativeThemeScreen(
         contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 24.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
-        item { PageTitle("Complete Theme Control", "Logo, jelly style, sizes, colors, spacing and navigation order", JellyIcons.Palette) }
+        item { PageTitle("Theme Builder", "Theme and branding controls only. Admin controls stay in Admin Center.", JellyIcons.Palette) }
 
         item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SectionTitle("Branding")
+                    SectionTitle("Complete Theme Control")
                     OutlinedTextField(siteName, { siteName = it.take(60) }, Modifier.fillMaxWidth(), label = { Text("Website / App name") }, shape = RoundedCornerShape(17.dp), singleLine = true)
                     OutlinedTextField(tagline, { tagline = it.take(120) }, Modifier.fillMaxWidth(), label = { Text("Tagline") }, shape = RoundedCornerShape(17.dp), singleLine = true)
                     ThemeSwitch("Show logo", iconEnabled) { iconEnabled = it }
@@ -1484,7 +1484,7 @@ fun NativeThemeScreen(
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     SectionTitle("Order & Visibility")
-                    Text("Show or hide items and move them up or down, like the V95 Theme Builder.", color = JellyMuted, fontSize = 9.sp)
+                    Text("Logo, every jelly icon, all main frames, sizes, spacing, colors, header/menu order and live background.", color = JellyMuted, fontSize = 9.sp)
 
                     ThemeOrderEditor(
                         title = "Home order",
@@ -1519,7 +1519,7 @@ fun NativeThemeScreen(
         error?.let { item { ErrorCard(it) } }
 
         item {
-            JellyButton("Save Theme", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Palette, enabled = !busy) {
+            JellyButton("Save & Apply Complete Theme", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Palette, enabled = !busy) {
                 onSaveTheme(
                     JSONObject()
                         .put("theme_enabled", if (themeEnabled) 1 else 0)
