@@ -49,7 +49,7 @@ fun ProfileScreen(
     onFollow: (Long) -> Unit,
     onMessage: (Long) -> Unit,
     onSettings: () -> Unit,
-    onUpdateProfile: (JSONObject) -> Unit,
+    onUpdateProfile: (JSONObject, Uri?, Uri?) -> Unit,
     onShop: (Long) -> Unit,
     onBlock: (Long) -> Unit,
     onReport: (Long, String) -> Unit,
@@ -300,8 +300,8 @@ fun ProfileScreen(
         ProfileEditDialog(
             user = user,
             onDismiss = { editProfileOpen = false },
-            onSave = { fields ->
-                onUpdateProfile(fields)
+            onSave = { fields, avatarUri, coverUri ->
+                onUpdateProfile(fields, avatarUri, coverUri)
                 editProfileOpen = false
             }
         )
@@ -404,7 +404,7 @@ fun ProfileScreen(
 private fun ProfileEditDialog(
     user: User,
     onDismiss: () -> Unit,
-    onSave: (JSONObject) -> Unit
+    onSave: (JSONObject, Uri?, Uri?) -> Unit
 ) {
     var name by remember(user.id) { mutableStateOf(user.name) }
     var username by remember(user.id) { mutableStateOf(user.username) }
@@ -423,6 +423,10 @@ private fun ProfileEditDialog(
     var instagram by remember(user.id) { mutableStateOf(user.socialInstagram) }
     var youtube by remember(user.id) { mutableStateOf(user.socialYoutube) }
     var website by remember(user.id) { mutableStateOf(user.socialWebsite) }
+    var avatarUri by remember(user.id) { mutableStateOf<Uri?>(null) }
+    var coverUri by remember(user.id) { mutableStateOf<Uri?>(null) }
+    val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { if (it != null) avatarUri = it }
+    val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { if (it != null) coverUri = it }
 
     val usernameOk = username.matches(Regex("[a-z0-9_]{3,30}"))
     val emailOk = email.isBlank() || email.matches(Regex("[^@\\s]+@[^@\\s]+\\.[^@\\s]+"))
@@ -437,6 +441,20 @@ private fun ProfileEditDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 item { SectionTitle("Basic details") }
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        JellyButton(
+                            if (avatarUri != null) "Profile Photo ✓" else "Change Profile Photo",
+                            Modifier.weight(1f),
+                            icon = JellyIcons.Photo
+                        ) { avatarPicker.launch("image/*") }
+                        JellyButton(
+                            if (coverUri != null) "Cover Photo ✓" else "Change Cover Photo",
+                            Modifier.weight(1f),
+                            icon = JellyIcons.Photo
+                        ) { coverPicker.launch("image/*") }
+                    }
+                }
                 item { OutlinedTextField(name, { name = it.take(80) }, Modifier.fillMaxWidth(), label = { Text("Name") }, singleLine = true, shape = RoundedCornerShape(16.dp)) }
                 item { OutlinedTextField(username, { username = it.lowercase().filter { ch -> ch.isLetterOrDigit() || ch == '_' }.take(30) }, Modifier.fillMaxWidth(), label = { Text("Username (a-z, 0-9, _)") }, singleLine = true, isError = username.isNotBlank() && !usernameOk, shape = RoundedCornerShape(16.dp)) }
                 item {
@@ -519,7 +537,9 @@ private fun ProfileEditDialog(
                         .put("social_facebook", facebook.trim())
                         .put("social_instagram", instagram.trim())
                         .put("social_youtube", youtube.trim())
-                        .put("social_website", website.trim())
+                        .put("social_website", website.trim()),
+                    avatarUri,
+                    coverUri
                 )
             }
         },
