@@ -91,10 +91,17 @@ fun AnnouncementsScreen(
     loading: Boolean,
     error: String?,
     onLike: (Long) -> Unit,
+    onLoadComments: suspend (Long) -> List<Comment>,
+    onAddComment: suspend (Long, String) -> Unit,
     onPublish: (String, Uri?, File?) -> Unit
 ) {
     val context = LocalContext.current
+    val uiScope = rememberCoroutineScope()
     var text by remember { mutableStateOf("") }
+    var commentAnnouncement by remember { mutableStateOf<Announcement?>(null) }
+    var announcementComments by remember { mutableStateOf<List<Comment>>(emptyList()) }
+    var commentsLoading by remember { mutableStateOf(false) }
+    var commentsError by remember { mutableStateOf<String?>(null) }
     var photoUri by remember { mutableStateOf<Uri?>(null) }
     var audioFile by remember { mutableStateOf<File?>(null) }
     var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
@@ -243,11 +250,88 @@ fun AnnouncementsScreen(
                             primary = a.liked,
                             icon = JellyIcons.Heart
                         ) { onLike(a.id) }
-                        if (a.comments > 0) Text("${a.comments} comments", color = JellyMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        JellyButton("Comments ${a.comments}", icon = JellyIcons.Comment) {
+                            commentAnnouncement = a
+                            commentsLoading = true
+                            commentsError = null
+                            uiScope.launch {
+                                try {
+                                    announcementComments = onLoadComments(a.id)
+                                } catch (e: Exception) {
+                                    commentsError = e.message ?: "Comments could not be loaded."
+                                } finally {
+                                    commentsLoading = false
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+
+    commentAnnouncement?.let { announcement ->
+        var draft by remember(announcement.id) { mutableStateOf("") }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { commentAnnouncement = null },
+            title = { Text("Announcement Comments", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                Column(Modifier.fillMaxWidth().heightIn(max = 480.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (commentsLoading) LoadingBlock()
+                    commentsError?.let { ErrorCard(it) }
+                    if (!commentsLoading && announcementComments.isEmpty()) {
+                        Text("No comments yet.", color = JellyMuted, fontSize = 10.5f.sp)
+                    }
+                    if (announcementComments.isNotEmpty()) {
+                        LazyColumn(
+                            Modifier.weight(1f, fill = false).fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            items(announcementComments, key = { "announcement-comment-${it.id}" }) { cm ->
+                                JellyGlass(Modifier.fillMaxWidth(), radius = 15.dp, padding = 8.dp) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Avatar(cm.user, 32.dp)
+                                            Spacer(Modifier.width(6.dp))
+                                            UserName(cm.user, 10)
+                                        }
+                                        Text(cm.text, color = JellyInk, fontSize = 10.5f.sp, lineHeight = 15.sp)
+                                        Text(shortTime(cm.createdAt), color = JellyMuted, fontSize = 8.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    OutlinedTextField(
+                        draft,
+                        { draft = it.take(3000) },
+                        Modifier.fillMaxWidth(),
+                        placeholder = { Text("Write a comment or @mention…") },
+                        minLines = 2,
+                        maxLines = 5,
+                        shape = RoundedCornerShape(17.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                JellyButton("Send", primary = true, icon = JellyIcons.Send, enabled = draft.isNotBlank() && !commentsLoading) {
+                    commentsLoading = true
+                    commentsError = null
+                    uiScope.launch {
+                        try {
+                            onAddComment(announcement.id, draft.trim())
+                            draft = ""
+                            announcementComments = onLoadComments(announcement.id)
+                        } catch (e: Exception) {
+                            commentsError = e.message ?: "Comment could not be sent."
+                        } finally {
+                            commentsLoading = false
+                        }
+                    }
+                }
+            },
+            dismissButton = { JellyButton("Close") { commentAnnouncement = null } }
+        )
     }
 }
 @Composable
