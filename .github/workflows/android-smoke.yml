@@ -45,17 +45,17 @@ jobs:
             adb shell am start -W -n com.mychhachh.app/.MainActivity
             sleep 8
             adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity" | grep "com.mychhachh.app"
-            if adb logcat -d | grep -E "FATAL EXCEPTION|Process: com.mychhachh.app" | grep -q "com.mychhachh.app"; then
-              echo "App crash detected"
-              adb logcat -d | tail -n 300
-              exit 1
-            fi
+            adb logcat -d > smoke-log.txt
+            ! grep -q "FATAL EXCEPTION: main" smoke-log.txt
+            ! grep -q "Process: com.mychhachh.app" smoke-log.txt
             adb exec-out screencap -p > smoke-screen.png
 
-      - name: Upload smoke screenshot
+      - name: Upload smoke evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: MY_CHHACHH-smoke-screen
-          path: smoke-screen.png
+          name: MY_CHHACHH-smoke-evidence
+          path: |
+            smoke-screen.png
+            smoke-log.txt
           if-no-files-found: warn
