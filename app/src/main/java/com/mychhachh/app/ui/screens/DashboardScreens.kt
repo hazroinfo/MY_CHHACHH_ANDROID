@@ -962,41 +962,76 @@ fun MapScreen(
         item {
             JellyGlass(Modifier.fillMaxWidth(), radius = 22.dp) {
                 Column {
-                    AndroidView(
-                        factory = { mapView },
-                        update = { map ->
-                            map.overlays.removeAll { it is Marker || it is Polyline }
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(310.dp)
+                            .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+                    ) {
+                        AndroidView(
+                            factory = { mapView },
+                            update = { map ->
+                                map.overlays.removeAll { it is Marker || it is Polyline }
 
-                            startPoint?.let { point ->
-                                map.overlays.add(Marker(map).apply {
-                                    position = point
-                                    title = "Start"
-                                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                                })
+                                startPoint?.let { point ->
+                                    map.overlays.add(Marker(map).apply {
+                                        position = point
+                                        title = "Start"
+                                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                    })
+                                }
+                                endPoint?.let { point ->
+                                    map.overlays.add(Marker(map).apply {
+                                        position = point
+                                        title = "Destination"
+                                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                    })
+                                }
+                                if (routePoints.size >= 2) {
+                                    map.overlays.add(Polyline().apply { setPoints(routePoints) })
+                                    val maxLat = routePoints.maxOf { it.latitude }
+                                    val minLat = routePoints.minOf { it.latitude }
+                                    val maxLng = routePoints.maxOf { it.longitude }
+                                    val minLng = routePoints.minOf { it.longitude }
+                                    map.zoomToBoundingBox(BoundingBox(maxLat, maxLng, minLat, minLng), true, 60)
+                                } else if (startPoint != null) {
+                                    map.controller.setZoom(14.0)
+                                    map.controller.animateTo(startPoint)
+                                }
+                                map.invalidate()
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        Row(
+                            Modifier.align(Alignment.TopEnd).padding(10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            JellyGlass(
+                                Modifier.size(40.dp),
+                                radius = 13.dp,
+                                onClick = { mapView.controller.zoomOut() }
+                            ) {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text("−", color = JellyInk, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                                }
                             }
-                            endPoint?.let { point ->
-                                map.overlays.add(Marker(map).apply {
-                                    position = point
-                                    title = "Destination"
-                                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                                })
+                            JellyGlass(
+                                Modifier.size(40.dp),
+                                radius = 13.dp,
+                                onClick = { mapView.controller.zoomIn() }
+                            ) {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text("+", color = JellyInk, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                                }
                             }
-                            if (routePoints.size >= 2) {
-                                map.overlays.add(Polyline().apply { setPoints(routePoints) })
-                                val maxLat = routePoints.maxOf { it.latitude }
-                                val minLat = routePoints.minOf { it.latitude }
-                                val maxLng = routePoints.maxOf { it.longitude }
-                                val minLng = routePoints.minOf { it.longitude }
-                                map.zoomToBoundingBox(BoundingBox(maxLat, maxLng, minLat, minLng), true, 60)
-                            } else if (startPoint != null) {
-                                map.controller.setZoom(14.0)
-                                map.controller.animateTo(startPoint)
-                            }
-                            map.invalidate()
-                        },
-                        modifier = Modifier.fillMaxWidth().height(310.dp).clip(RoundedCornerShape(22.dp))
+                        }
+                    }
+                    Text(
+                        "© OpenStreetMap contributors",
+                        Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        color = JellyMuted,
+                        fontSize = 8.sp
                     )
-                    Text("© OpenStreetMap contributors", Modifier.padding(horizontal = 10.dp, vertical = 5.dp), color = JellyMuted, fontSize = 8.sp)
                 }
             }
         }
@@ -1013,39 +1048,57 @@ fun MapScreen(
                             val destination = listOf(shop.location, shop.area, shop.village, shop.city, "Attock Pakistan")
                                 .filter { it.isNotBlank() }
                                 .joinToString(", ")
-                            Row(
-                                Modifier.fillMaxWidth().padding(vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    Modifier.size(46.dp).clip(RoundedCornerShape(99.dp)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (!shop.photo.isNullOrBlank()) {
-                                        AsyncImage(shop.photo, shop.name, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
-                                    } else {
-                                        JellyIcon(JellyIcons.Shop, size = 34.dp)
+                            JellyGlass(Modifier.fillMaxWidth(), radius = 18.dp, padding = 9.dp) {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            Modifier.size(50.dp).clip(RoundedCornerShape(99.dp)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (!shop.photo.isNullOrBlank()) {
+                                                AsyncImage(
+                                                    shop.photo,
+                                                    shop.name,
+                                                    Modifier.fillMaxSize(),
+                                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                                )
+                                            } else {
+                                                JellyIcon(JellyIcons.Shop, size = 36.dp)
+                                            }
+                                        }
+                                        Spacer(Modifier.width(9.dp))
+                                        Column(Modifier.weight(1f)) {
+                                            Text(shop.name, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                                            Text(shop.category.ifBlank { "Local shop" }, color = JellyMuted, fontSize = 9.sp)
+                                            val place = listOf(shop.area, shop.village, shop.city)
+                                                .filter { it.isNotBlank() }
+                                                .joinToString(" · ")
+                                            if (place.isNotBlank()) {
+                                                Text(place, color = JellyMuted, fontSize = 8.7f.sp, maxLines = 2)
+                                            }
+                                        }
                                     }
-                                }
-                                Spacer(Modifier.width(8.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(shop.name, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 11.5f.sp)
-                                    Text(shop.category.ifBlank { "Local shop" }, color = JellyMuted, fontSize = 8.5f.sp)
-                                    val place = listOf(shop.area, shop.village, shop.city).filter { it.isNotBlank() }.joinToString(" · ")
-                                    if (place.isNotBlank()) Text(place, color = JellyMuted, fontSize = 8.3f.sp)
-                                }
-                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    JellyButton("Route", primary = true, icon = JellyIcons.Map) {
-                                        toText = destination
-                                        endPoint = null
-                                        if (startPoint != null || fromText.isNotBlank()) planRoute(destination)
-                                    }
-                                    JellyButton("View", icon = JellyIcons.Eye) { onOpenShop(shop.id) }
-                                    if (shop.whatsapp.isNotBlank()) {
-                                        JellyButton("", icon = JellyIcons.Whatsapp) {
-                                            val digits = shop.whatsapp.filter(Char::isDigit)
-                                            if (digits.isNotBlank()) runCatching {
-                                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$digits")))
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        JellyButton("Route", Modifier.weight(1f), primary = true, icon = JellyIcons.Map) {
+                                            toText = destination
+                                            endPoint = null
+                                            if (startPoint != null || fromText.isNotBlank()) planRoute(destination)
+                                        }
+                                        JellyButton("View", Modifier.weight(1f), icon = JellyIcons.Eye) {
+                                            onOpenShop(shop.id)
+                                        }
+                                        if (shop.whatsapp.isNotBlank()) {
+                                            JellyButton("WhatsApp", Modifier.weight(1f), icon = JellyIcons.Whatsapp) {
+                                                val digits = shop.whatsapp.filter(Char::isDigit)
+                                                if (digits.isNotBlank()) runCatching {
+                                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$digits")))
+                                                }
                                             }
                                         }
                                     }
@@ -1075,9 +1128,13 @@ private fun rememberMapViewWithLifecycle(): MapView {
         Configuration.getInstance().userAgentValue = context.packageName
         MapView(context).apply {
             setTileSource(TileSourceFactory.MAPNIK)
+            setUseDataConnection(true)
             setMultiTouchControls(true)
+            zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
+            minZoomLevel = 9.0
+            maxZoomLevel = 19.0
             controller.setZoom(11.0)
-            controller.setCenter(GeoPoint(33.88333, 72.36667))
+            controller.setCenter(GeoPoint(33.90977, 72.438))
         }
     }
     DisposableEffect(lifecycle, mapView) {
