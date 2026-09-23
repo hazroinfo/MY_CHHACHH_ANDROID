@@ -467,6 +467,15 @@ fun SettingsScreen(
     var village by remember(me.id, me.village) { mutableStateOf(me.village) }
     var area by remember(me.id, me.area) { mutableStateOf(me.area) }
     var bio by remember(me.id, me.bio) { mutableStateOf(me.bio) }
+    var hometown by remember(me.id, me.hometown) { mutableStateOf(me.hometown) }
+    var gender by remember(me.id, me.gender) { mutableStateOf(me.gender) }
+    var relationshipStatus by remember(me.id, me.relationshipStatus) { mutableStateOf(me.relationshipStatus) }
+    var work by remember(me.id, me.work) { mutableStateOf(me.work) }
+    var school by remember(me.id, me.school) { mutableStateOf(me.school) }
+    var facebook by remember(me.id, me.socialFacebook) { mutableStateOf(me.socialFacebook) }
+    var instagram by remember(me.id, me.socialInstagram) { mutableStateOf(me.socialInstagram) }
+    var youtube by remember(me.id, me.socialYoutube) { mutableStateOf(me.socialYoutube) }
+    var website by remember(me.id, me.socialWebsite) { mutableStateOf(me.socialWebsite) }
     var showEmail by remember(me.id, me.showEmail) { mutableStateOf(me.showEmail) }
     var showPhone by remember(me.id, me.showPhone) { mutableStateOf(me.showPhone) }
     var showLocation by remember(me.id, me.showLocation) { mutableStateOf(me.showLocation) }
@@ -555,6 +564,15 @@ fun SettingsScreen(
                     OutlinedTextField(village, { village = it }, Modifier.fillMaxWidth(), label = { Text("Village") }, shape = RoundedCornerShape(17.dp), singleLine = true)
                     OutlinedTextField(area, { area = it }, Modifier.fillMaxWidth(), label = { Text("Mohallah / Area") }, shape = RoundedCornerShape(17.dp), singleLine = true)
                     OutlinedTextField(bio, { bio = it }, Modifier.fillMaxWidth(), label = { Text("Bio") }, shape = RoundedCornerShape(17.dp), minLines = 3, maxLines = 6)
+                    OutlinedTextField(hometown, { hometown = it }, Modifier.fillMaxWidth(), label = { Text("Hometown") }, shape = RoundedCornerShape(17.dp), singleLine = true)
+                    OutlinedTextField(gender, { gender = it }, Modifier.fillMaxWidth(), label = { Text("Gender") }, shape = RoundedCornerShape(17.dp), singleLine = true)
+                    OutlinedTextField(relationshipStatus, { relationshipStatus = it }, Modifier.fillMaxWidth(), label = { Text("Relationship status") }, shape = RoundedCornerShape(17.dp), singleLine = true)
+                    OutlinedTextField(work, { work = it }, Modifier.fillMaxWidth(), label = { Text("Work") }, shape = RoundedCornerShape(17.dp), singleLine = true)
+                    OutlinedTextField(school, { school = it }, Modifier.fillMaxWidth(), label = { Text("School") }, shape = RoundedCornerShape(17.dp), singleLine = true)
+                    OutlinedTextField(facebook, { facebook = it }, Modifier.fillMaxWidth(), label = { Text("Facebook link") }, shape = RoundedCornerShape(17.dp), singleLine = true)
+                    OutlinedTextField(instagram, { instagram = it }, Modifier.fillMaxWidth(), label = { Text("Instagram link") }, shape = RoundedCornerShape(17.dp), singleLine = true)
+                    OutlinedTextField(youtube, { youtube = it }, Modifier.fillMaxWidth(), label = { Text("YouTube link") }, shape = RoundedCornerShape(17.dp), singleLine = true)
+                    OutlinedTextField(website, { website = it }, Modifier.fillMaxWidth(), label = { Text("Website link") }, shape = RoundedCornerShape(17.dp), singleLine = true)
 
                     JellyButton(
                         if (busy) "Saving…" else "Save Profile",
@@ -572,7 +590,16 @@ fun SettingsScreen(
                                 .put("city", city.trim())
                                 .put("village", village.trim())
                                 .put("area", area.trim())
-                                .put("bio", bio.trim()),
+                                .put("bio", bio.trim())
+                                .put("hometown", hometown.trim())
+                                .put("gender", gender.trim())
+                                .put("relationship_status", relationshipStatus.trim())
+                                .put("work", work.trim())
+                                .put("school", school.trim())
+                                .put("social_facebook", facebook.trim())
+                                .put("social_instagram", instagram.trim())
+                                .put("social_youtube", youtube.trim())
+                                .put("social_website", website.trim()),
                             avatarUri
                         )
                     }
