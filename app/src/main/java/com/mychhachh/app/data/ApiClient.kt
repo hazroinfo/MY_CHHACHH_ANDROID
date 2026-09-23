@@ -159,6 +159,71 @@ class ApiClient(private val context: Context) {
         }}
     }
 
+    fun messageGroups(): List<MessageGroup> {
+        val d = get("/api/message-groups")
+        val a = d.optJSONArray("items") ?: JSONArray()
+        return (0 until a.length()).mapNotNull { i ->
+            val o = a.optJSONObject(i) ?: return@mapNotNull null
+            val last = o.optJSONObject("last") ?: JSONObject()
+            val members = o.optJSONArray("members")
+            MessageGroup(
+                id = o.optLong("id"),
+                name = o.optString("name", "Group"),
+                memberCount = members?.length() ?: o.optInt("member_count", 0),
+                preview = last.optString("text", last.optString("message", "Group conversation")),
+                createdAt = last.optString("created_at", o.optString("created_at", ""))
+            )
+        }
+    }
+
+    fun createMessageGroup(name: String, usernames: String): Long {
+        val d = post("/api/message-groups", JSONObject().put("name", name).put("usernames", usernames))
+        return d.optJSONObject("group")?.optLong("id")
+            ?: d.optLong("group_id", 0L)
+            ?: 0L
+    }
+
+    fun groupChat(groupId: Long): Pair<String, List<Message>> {
+        val d = get("/api/group-messages?group=$groupId")
+        val groupName = d.optJSONObject("group")?.optString("name", "Group") ?: "Group"
+        val a = d.optJSONArray("items") ?: JSONArray()
+        val items = (0 until a.length()).mapNotNull { i ->
+            val o = a.optJSONObject(i) ?: return@mapNotNull null
+            Message(
+                id = o.optLong("id"),
+                senderId = o.optLong("user_id", o.optLong("sender_id")),
+                receiverId = 0L,
+                text = o.optString("text", o.optString("message", "")),
+                photo = mediaUrl(o.optString("photo", "")),
+                audio = mediaUrl(o.optString("audio", "")),
+                createdAt = o.optString("created_at", ""),
+                locationLat = o.optString("location_lat", "").toDoubleOrNull(),
+                locationLng = o.optString("location_lng", "").toDoubleOrNull()
+            )
+        }
+        return groupName to items
+    }
+
+    fun sendGroupMessage(groupId: Long, text: String, photo: String = "", locationLat: Double? = null, locationLng: Double? = null): Message {
+        val body = JSONObject().put("group_id", groupId).put("message", text).put("text", text).put("photo", photo)
+        if (locationLat != null && locationLng != null) {
+            body.put("location_lat", locationLat).put("location_lng", locationLng)
+        }
+        val d = post("/api/group-messages", body)
+        val o = d.optJSONObject("message") ?: d.optJSONObject("item") ?: JSONObject()
+        return Message(
+            id = o.optLong("id"),
+            senderId = o.optLong("user_id", o.optLong("sender_id")),
+            receiverId = 0L,
+            text = o.optString("text", o.optString("message", text)),
+            photo = mediaUrl(o.optString("photo", photo)),
+            audio = mediaUrl(o.optString("audio", "")),
+            createdAt = o.optString("created_at", ""),
+            locationLat = o.optString("location_lat", "").toDoubleOrNull() ?: locationLat,
+            locationLng = o.optString("location_lng", "").toDoubleOrNull() ?: locationLng
+        )
+    }
+
     fun chat(withId: Long): Pair<User?, List<Message>> {
         val d = get("/api/messages?with=$withId")
         val u = d.optJSONObject("with")?.toUser()
