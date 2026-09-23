@@ -405,6 +405,19 @@ class ApiClient(private val context: Context) {
         post("/api/delete-account", JSONObject().put("password", password))
     fun blockedUsers(): List<User> =
         (get("/api/blocked-users").optJSONArray("items") ?: JSONArray()).users()
+
+    fun supportTickets(): List<JSONObject> {
+        val a = get("/api/support").optJSONArray("items") ?: JSONArray()
+        return (0 until a.length()).mapNotNull { a.optJSONObject(it) }
+    }
+    fun submitSupport(category: String, subject: String, message: String): JSONObject =
+        post(
+            "/api/support",
+            JSONObject()
+                .put("category", category)
+                .put("subject", subject)
+                .put("message", message)
+        )
     fun toggleBlockUser(id: Long): JSONObject = post("/api/users/$id/block")
 
     fun adminState(): JSONObject = get("/api/admin/state")
