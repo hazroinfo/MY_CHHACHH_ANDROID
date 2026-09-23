@@ -85,118 +85,11 @@ fun HomeScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 10.dp, end = 10.dp, top = 6.dp, bottom = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        contentPadding = PaddingValues(start = 7.dp, end = 7.dp, top = 6.dp, bottom = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item {
-            JellyGlass(Modifier.fillMaxWidth(), radius = 22.dp, padding = 0.dp) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(154.dp)
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    Color(0xFFE8F6FF),
-                                    Color(0xFFF6F8FB),
-                                    Color(0xFFEAF4EE)
-                                )
-                            )
-                        )
-                        .padding(horizontal = 16.dp, vertical = 14.dp)
-                ) {
-                    Column(
-                        Modifier.align(Alignment.CenterStart),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        Text("Welcome to", color = JellyInk, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        Brand(name = "My Chhachh", fontSize = 28)
-                        Text(
-                            "Connect with people for information",
-                            color = JellyMuted,
-                            fontSize = 10.5f.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    Column(
-                        Modifier.align(Alignment.CenterEnd),
-                        horizontalAlignment = Alignment.End
-                    ) {
-                        Text("Good People", color = JellyInk, fontSize = 13.sp, fontWeight = FontWeight.Black)
-                        Text("Brighter Days", color = LiveJellyTheme.activeColor, fontSize = 15.sp, fontWeight = FontWeight.Black)
-                    }
-                }
-            }
-        }
-
-        if (user != null && peopleSuggestions.isNotEmpty()) {
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("People You May Know", Modifier.weight(1f), color = JellyInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
-                        Text("See All ›", color = LiveJellyTheme.activeColor, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { onOpenPeople() })
-                    }
-                    peopleSuggestions.filter { it.id != user.id }.take(2).forEach { person ->
-                        JellyGlass(Modifier.fillMaxWidth(), radius = 18.dp, padding = 10.dp) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Avatar(person, 42.dp)
-                                Spacer(Modifier.width(9.dp))
-                                Column(Modifier.weight(1f)) {
-                                    UserName(person, 12)
-                                    Text("@${person.username}", color = JellyMuted, fontSize = 9.sp)
-                                }
-                                JellyButton(
-                                    if (person.followed) "Following" else "Follow",
-                                    primary = !person.followed
-                                ) { onFollowSuggestion(person.id) }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if (shopSuggestions.isNotEmpty()) {
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Shop Suggestions", Modifier.weight(1f), color = JellyInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
-                        Text("See All ›", color = LiveJellyTheme.activeColor, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { onOpenShops() })
-                    }
-                    shopSuggestions.take(2).forEach { shop ->
-                        JellyGlass(Modifier.fillMaxWidth(), radius = 18.dp, padding = 10.dp) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (!shop.photo.isNullOrBlank()) {
-                                    AsyncImage(
-                                        shop.photo,
-                                        shop.name,
-                                        Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    JellyIcon(JellyIcons.Shop, size = 38.dp)
-                                }
-                                Spacer(Modifier.width(9.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(shop.name, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 12.sp)
-                                    Text("@${shop.username}", color = JellyMuted, fontSize = 9.sp)
-                                }
-                                JellyButton("View Shop") { onOpenShop(shop.id) }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 JellyPill("For You", mode == "global", Modifier.weight(1f)) { onMode("global") }
                 if (user != null) JellyPill("Following", mode == "following", Modifier.weight(1f)) { onMode("following") }
                 JellyPill("Shop Posts", mode == "shops", Modifier.weight(1f)) { onMode("shops") }
@@ -230,9 +123,9 @@ fun HomeScreen(
                             onValueChange = { composing = it },
                             modifier = Modifier.weight(1f),
                             placeholder = { Text("What's on your mind? Use @ to mention", fontSize = 11.sp) },
-                            shape = RoundedCornerShape(16.dp),
-                            minLines = 1,
-                            maxLines = 4
+                            shape = RoundedCornerShape(22.dp),
+                            minLines = 2,
+                            maxLines = 5
                         )
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -515,12 +408,12 @@ private fun ComposerTool(icon: Int, label: String, onClick: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .widthIn(min = 52.dp)
+            .widthIn(min = 64.dp)
             .clip(RoundedCornerShape(14.dp))
             .clickable { onClick() }
-            .heightIn(min = 46.dp).padding(vertical = 2.dp, horizontal = 2.dp)
+            .heightIn(min = 56.dp).padding(vertical = 2.dp, horizontal = 3.dp)
     ) {
-        JellyIcon(icon, size = 24.dp)
+        JellyIcon(icon, size = 27.dp)
         Text(label, color = JellyInk, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
     }
 }
@@ -546,9 +439,9 @@ fun PostCard(
     var reportOpen by remember(post.id) { mutableStateOf(false) }
     val context = LocalContext.current
 
-    JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp) {
+    JellyGlass(Modifier.fillMaxWidth(), radius = 26.dp, padding = 14.dp) {
         Column(Modifier.fillMaxWidth()) {
-            Row(Modifier.fillMaxWidth().padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Avatar(post.user, 42.dp, Modifier.clickable { onProfile() })
                 Spacer(Modifier.width(8.dp))
                 Column(Modifier.weight(1f).clickable { onProfile() }) {
@@ -587,7 +480,7 @@ fun PostCard(
             if (post.text.isNotBlank()) {
                 Text(
                     post.text,
-                    Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                    Modifier.padding(vertical = 9.dp),
                     color = JellyInk,
                     fontSize = 14.sp,
                     lineHeight = 20.sp
