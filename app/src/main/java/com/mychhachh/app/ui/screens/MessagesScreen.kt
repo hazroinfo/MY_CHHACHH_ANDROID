@@ -77,25 +77,54 @@ fun MessagesScreen(
     ) {
         item { PageTitle("Messages", "Good conversations build a brighter Chhachh", JellyIcons.Message) }
         item {
-            JellyGlass(Modifier.fillMaxWidth(), padding = 9.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        OutlinedTextField(
-                            search,
-                            { search = it },
-                            Modifier.weight(1f),
-                            placeholder = { Text("Search conversations…") },
-                            singleLine = true,
-                            shape = RoundedCornerShape(18.dp)
-                        )
-                        JellyButton("New Group", icon = JellyIcons.People) { newGroupOpen = true }
+            JellyGlass(Modifier.fillMaxWidth(), radius = 22.dp, padding = 9.dp) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    JellyGlass(
+                        Modifier.weight(1f).height(48.dp),
+                        radius = 20.dp,
+                        padding = 0.dp,
+                        surfaceColor = LiveJellyTheme.inputColor,
+                        surfaceOpacity = LiveJellyTheme.inputOpacity
+                    ) {
+                        Row(
+                            Modifier.fillMaxSize().padding(horizontal = 9.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            JellyIcon(JellyIcons.Search, size = 26.dp)
+                            Spacer(Modifier.width(6.dp))
+                            androidx.compose.foundation.text.BasicTextField(
+                                value = search,
+                                onValueChange = { search = it },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    color = JellyInk,
+                                    fontSize = 10.5f.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                decorationBox = { inner ->
+                                    Box(contentAlignment = Alignment.CenterStart) {
+                                        if (search.isBlank()) Text("Search conversations…", color = JellyMuted, fontSize = 10.sp, maxLines = 1)
+                                        inner()
+                                    }
+                                }
+                            )
+                            if (search.isNotBlank()) {
+                                JellyIconButton(JellyIcons.Close, "Clear", Modifier.size(32.dp)) { search = "" }
+                            }
+                        }
                     }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        JellyPill("All", filter == "all", Modifier.weight(1f)) { filter = "all" }
-                        JellyPill("Unread", filter == "unread", Modifier.weight(1f)) { filter = "unread" }
-                        JellyPill("Shops", filter == "shops", Modifier.weight(1f)) { filter = "shops" }
-                        JellyPill("Groups", filter == "groups", Modifier.weight(1f)) { filter = "groups" }
-                    }
+                    JellyButton("New Group", Modifier.width(84.dp), icon = JellyIcons.People) { newGroupOpen = true }
+                }
+            }
+        }
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), radius = 22.dp, padding = 8.dp) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    JellyPill("All", filter == "all", Modifier.weight(1f)) { filter = "all" }
+                    JellyPill("Unread", filter == "unread", Modifier.weight(1f)) { filter = "unread" }
+                    JellyPill("Shops", filter == "shops", Modifier.weight(1f)) { filter = "shops" }
+                    JellyPill("Groups", filter == "groups", Modifier.weight(1f)) { filter = "groups" }
                 }
             }
         }
@@ -104,16 +133,26 @@ fun MessagesScreen(
 
         if (filter != "groups") {
             items(directRows, key = { "conversation-${it.user.id}" }) { row ->
-                JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp, onClick = { onOpen(row.user.id) }) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Avatar(row.user, 50.dp)
-                        Spacer(Modifier.width(9.dp))
-                        Column(Modifier.weight(1f)) {
-                            UserName(row.user, 14)
-                            Text(row.preview.ifBlank { "Open conversation" }, color = JellyMuted, fontSize = 10.5f.sp, maxLines = 1)
-                            Text(shortTime(row.createdAt), color = JellyMuted, fontSize = 8.5f.sp)
+                JellyGlass(Modifier.fillMaxWidth(), radius = 19.dp, padding = 12.dp, onClick = { onOpen(row.user.id) }) {
+                    Box(Modifier.fillMaxWidth().heightIn(min = 58.dp)) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Avatar(row.user, 44.dp)
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)) {
+                                UserName(row.user, 14)
+                                Text(row.preview.ifBlank { "Open conversation" }, color = JellyMuted, fontSize = 10.5f.sp, maxLines = 1)
+                            }
+                            Text(shortTime(row.createdAt), color = JellyMuted, fontSize = 10.sp, modifier = Modifier.align(Alignment.Top))
                         }
-                        if (row.unread) Box(Modifier.size(9.dp).clip(RoundedCornerShape(99.dp)).background(JellyPurple))
+                        if (row.unread) {
+                            Box(
+                                Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .size(9.dp)
+                                    .clip(RoundedCornerShape(99.dp))
+                                    .background(JellyPurple)
+                            )
+                        }
                     }
                 }
             }
@@ -121,25 +160,18 @@ fun MessagesScreen(
 
         if (filter == "all" || filter == "groups") {
             items(groupRows, key = { "group-${it.id}" }) { group ->
-                JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp, onClick = { onOpenGroup(group.id) }) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                JellyGlass(Modifier.fillMaxWidth(), radius = 19.dp, padding = 12.dp, onClick = { onOpenGroup(group.id) }) {
+                    Row(Modifier.fillMaxWidth().heightIn(min = 58.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            Modifier.size(50.dp).clip(RoundedCornerShape(99.dp)).background(Color(0xFFE9F6FF)),
+                            Modifier.size(44.dp).clip(RoundedCornerShape(99.dp)).background(Color(0xFFE9F6FF)),
                             contentAlignment = Alignment.Center
-                        ) { JellyIcon(JellyIcons.People, size = 34.dp) }
-                        Spacer(Modifier.width(9.dp))
+                        ) { JellyIcon(JellyIcons.People, size = 30.dp) }
+                        Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(group.name, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                            Text(group.name, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 14.sp, maxLines = 1)
                             Text(group.preview.ifBlank { "Group conversation" }, color = JellyMuted, fontSize = 10.5f.sp, maxLines = 1)
-                            Text(
-                                listOfNotNull(
-                                    group.memberCount.takeIf { it > 0 }?.let { "$it members" },
-                                    shortTime(group.createdAt).takeIf { group.createdAt.isNotBlank() }
-                                ).joinToString(" · "),
-                                color = JellyMuted,
-                                fontSize = 8.5f.sp
-                            )
                         }
+                        Text(shortTime(group.createdAt), color = JellyMuted, fontSize = 10.sp, modifier = Modifier.align(Alignment.Top))
                     }
                 }
             }
