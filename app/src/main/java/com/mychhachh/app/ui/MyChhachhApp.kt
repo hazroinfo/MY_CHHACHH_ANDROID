@@ -397,7 +397,10 @@ fun MyChhachhApp() {
             }
             Screen.PEOPLE -> if (me != null) loadPeople()
             Screen.SHOPS -> if (me != null) loadShops()
-            Screen.MESSAGES -> if (me != null) loadMessages()
+            Screen.MESSAGES -> if (me != null) {
+                loadMessages()
+                if (shops.isEmpty()) loadShops()
+            }
             Screen.NOTIFICATIONS -> if (me != null) loadNotices()
             Screen.ANNOUNCEMENTS -> if (me != null) {
                 loadAnnouncements()
@@ -700,6 +703,7 @@ fun MyChhachhApp() {
                     Screen.MESSAGES -> MessagesScreen(
                         conversations = conversations,
                         groups = messageGroups,
+                        shopOwnerIds = shops.map { it.userId }.toSet(),
                         loading = conversationsLoading,
                         error = conversationsError,
                         onOpen = { open(Screen.CHAT, it) },
