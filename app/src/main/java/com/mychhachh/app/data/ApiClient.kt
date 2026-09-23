@@ -145,6 +145,8 @@ class ApiClient(private val context: Context) {
         (get("/api/users/$id/${if (mode == "following") "following" else "followers"}").optJSONArray("items") ?: JSONArray()).users()
     fun reportProfile(id: Long, reason: String): JSONObject =
         post("/api/report", JSONObject().put("target_type", "profile").put("target_id", id).put("reason", reason))
+    fun reportPost(id: Long, reason: String): JSONObject =
+        post("/api/report", JSONObject().put("target_type", "post").put("target_id", id).put("reason", reason))
 
     fun shops(q: String = ""): List<Shop> {
         val d = get("/api/shops?q=${java.net.URLEncoder.encode(q, "UTF-8")}")
