@@ -13,7 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,6 +38,7 @@ fun MyChhachhApp() {
 
     var booting by remember { mutableStateOf(true) }
     var me by remember { mutableStateOf<User?>(null) }
+    var features by remember { mutableStateOf(JSONObject()) }
     var unread by remember { mutableIntStateOf(0) }
     var announcementUnread by remember { mutableIntStateOf(0) }
     var route by remember { mutableStateOf(Screen.HOME) }
@@ -187,7 +190,7 @@ fun MyChhachhApp() {
     LaunchedEffect(Unit) {
         try {
             val b = withContext(Dispatchers.IO) { api.bootstrap() }
-            me = b.user; unread = b.unread; announcementUnread = b.announcementUnread
+            me = b.user; unread = b.unread; announcementUnread = b.announcementUnread; features = b.features
         } catch (_: Exception) { me = null }
         booting = false
         loadFeed(true)
@@ -244,10 +247,16 @@ fun MyChhachhApp() {
         Column(Modifier.fillMaxSize()) {
             if (route != Screen.AUTH) {
                 if (currentUser == null) GuestHeader(
+                    brandName = features.optString("site_name", "My Chhachh"),
+                    brandTagline = features.optString("site_tagline", "Connect with people for information."),
+                    brandIcon = if (features.optInt("site_icon_enabled", 1) != 0) mediaUrl(features.optString("site_icon", "")) else null,
                     onLogin = { authMode = "login"; authError = null; route = Screen.AUTH },
                     onRegister = { authMode = "register"; authError = null; route = Screen.AUTH }
                 ) else AuthHeader(
                     user = currentUser,
+                    brandName = features.optString("site_name", "My Chhachh"),
+                    brandTagline = features.optString("site_tagline", "Connect with people for information."),
+                    brandIcon = if (features.optInt("site_icon_enabled", 1) != 0) mediaUrl(features.optString("site_icon", "")) else null,
                     route = route,
                     unread = unread,
                     announcementUnread = announcementUnread,
@@ -281,7 +290,7 @@ fun MyChhachhApp() {
                                     val u = withContext(Dispatchers.IO) { api.login(identity, password) }
                                     me = u
                                     val b = withContext(Dispatchers.IO) { api.bootstrap() }
-                                    unread = b.unread; announcementUnread = b.announcementUnread
+                                    unread = b.unread; announcementUnread = b.announcementUnread; features = b.features
                                     route = Screen.HOME; selectedId = 0L; backStack.clear(); feedMode = "global"; loadFeed(true)
                                 } catch (e: ApiException) {
                                     if (e.payload?.optBoolean("verify_required", false) == true) {
@@ -322,7 +331,7 @@ fun MyChhachhApp() {
                                     val u = withContext(Dispatchers.IO) { api.verifyEmail(pendingUserId, code) }
                                     me = u; pendingUserId = 0; pendingEmail = ""
                                     val b = withContext(Dispatchers.IO) { api.bootstrap() }
-                                    unread = b.unread; announcementUnread = b.announcementUnread
+                                    unread = b.unread; announcementUnread = b.announcementUnread; features = b.features
                                     route = Screen.HOME; selectedId = 0L; backStack.clear(); feedMode = "global"; loadFeed(true)
                                 } catch (e: Exception) { authError = e.message ?: "Verification failed." }
                                 authBusy = false
@@ -490,20 +499,17 @@ fun MyChhachhApp() {
 }
 
 @Composable
-private fun GuestHeader(onLogin: () -> Unit, onRegister: () -> Unit) {
+private fun GuestHeader(
+    brandName: String,
+    brandTagline: String,
+    brandIcon: String?,
+    onLogin: () -> Unit,
+    onRegister: () -> Unit
+) {
     Box(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 9.dp)) {
         JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp, padding = 10.dp) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Brand(fontSize = 28)
-                    Text(
-                        "PEOPLE · KNOWLEDGE · COMMUNITIES",
-                        color = JellyMuted,
-                        fontSize = 7.5f.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = .5.sp
-                    )
-                }
+                HeaderBrand(brandName, brandTagline, brandIcon, Modifier.weight(1f), 28)
                 JellyButton("Login", onClick = onLogin)
                 Spacer(Modifier.width(6.dp))
                 JellyButton("Sign up", primary = true, onClick = onRegister)
@@ -514,7 +520,14 @@ private fun GuestHeader(onLogin: () -> Unit, onRegister: () -> Unit) {
 
 @Composable
 private fun AuthHeader(
-    user: User, route: Screen, unread: Int, announcementUnread: Int, weatherText: String,
+    user: User,
+    brandName: String,
+    brandTagline: String,
+    brandIcon: String?,
+    route: Screen,
+    unread: Int,
+    announcementUnread: Int,
+    weatherText: String,
     onMenu: () -> Unit, onSearch: () -> Unit, onNotifications: () -> Unit, onProfile: () -> Unit,
     onWeather: () -> Unit, onVotes: () -> Unit, onAnnouncements: () -> Unit,
     onNav: (Screen) -> Unit
@@ -546,21 +559,7 @@ private fun AuthHeader(
                         JellyIcon(JellyIcons.Menu, size = 39.dp, contentDescription = "Menu")
                     }
 
-                    Column(
-                        Modifier.weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Brand(fontSize = 30)
-                        Text(
-                            "Connect with people for information.",
-                            color = JellyMuted,
-                            fontSize = 8.2f.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = .1.sp,
-                            maxLines = 1
-                        )
-                    }
+                    HeaderBrand(brandName, brandTagline, brandIcon, Modifier.weight(1f), 30)
 
                     Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                         JellyIconButton(JellyIcons.Bell, "Notifications", badge = unread, onClick = onNotifications)
@@ -607,6 +606,44 @@ private fun AuthHeader(
                         NavItem("Messages", JellyIcons.Message, route == Screen.MESSAGES, Modifier.weight(1f)) { onNav(Screen.MESSAGES) }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeaderBrand(
+    name: String,
+    tagline: String,
+    iconUrl: String?,
+    modifier: Modifier = Modifier,
+    fontSize: Int = 30
+) {
+    Row(
+        modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        if (!iconUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = iconUrl,
+                contentDescription = null,
+                modifier = Modifier.size(44.dp),
+                contentScale = ContentScale.Fit
+            )
+            Spacer(Modifier.width(6.dp))
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Brand(name = name.ifBlank { "My Chhachh" }, fontSize = fontSize)
+            if (tagline.isNotBlank()) {
+                Text(
+                    tagline,
+                    color = JellyMuted,
+                    fontSize = 8.2f.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = .1.sp,
+                    maxLines = 1
+                )
             }
         }
     }
