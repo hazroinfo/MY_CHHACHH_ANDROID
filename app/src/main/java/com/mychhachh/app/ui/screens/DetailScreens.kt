@@ -143,10 +143,10 @@ fun ProfileScreen(
                         ) {
                             Box(
                                 Modifier
-                                    .width(LiveJellyTheme.profileAvatarSize.coerceAtMost(90f).dp)
-                                    .offset(y = (-44).dp)
+                                    .width(LiveJellyTheme.profileAvatarSize.dp)
+                                    .offset(y = (-LiveJellyTheme.profileOverlap).dp)
                             ) {
-                                Avatar(u, LiveJellyTheme.profileAvatarSize.coerceAtMost(90f).dp)
+                                Avatar(u, LiveJellyTheme.profileAvatarSize.dp)
                             }
                             Spacer(Modifier.width(9.dp))
                             Column(
@@ -244,8 +244,27 @@ fun ProfileScreen(
                             Triple("Village", u.village, JellyIcons.Village),
                             Triple("Mohalla / Area", u.area, JellyIcons.Mohalla),
                             Triple("From", u.hometown, JellyIcons.Hometown),
-                            Triple("Gender", u.gender.replace('_', ' '), JellyIcons.Gender),
-                            Triple("Relationship", u.relationshipStatus.replace('_', ' '), JellyIcons.Heart),
+                            Triple(
+                                "Gender",
+                                when (u.gender) {
+                                    "male" -> "Male"
+                                    "female" -> "Female"
+                                    "prefer_not_say" -> ""
+                                    else -> u.gender.replace('_', ' ').replaceFirstChar { it.uppercase() }
+                                },
+                                JellyIcons.Gender
+                            ),
+                            Triple(
+                                "Relationship",
+                                when (u.relationshipStatus) {
+                                    "single" -> "Single"
+                                    "married" -> "Married"
+                                    "engaged" -> "Engaged"
+                                    "prefer_not_say" -> ""
+                                    else -> u.relationshipStatus.replace('_', ' ').replaceFirstChar { it.uppercase() }
+                                },
+                                JellyIcons.Heart
+                            ),
                             Triple("Work", u.work, JellyIcons.Work),
                             Triple("School / college", u.school, JellyIcons.School),
                             Triple("Email", u.email, JellyIcons.Mail),
@@ -958,7 +977,7 @@ fun ShopDetailScreen(
                                 Box(
                                     Modifier
                                         .size(LiveJellyTheme.shopAvatarSize.dp)
-                                        .offset(y = (-50).dp)
+                                        .offset(y = (-LiveJellyTheme.shopOverlap).dp)
                                         .clip(RoundedCornerShape(999.dp))
                                         .background(Color.White)
                                         .padding(3.dp),
