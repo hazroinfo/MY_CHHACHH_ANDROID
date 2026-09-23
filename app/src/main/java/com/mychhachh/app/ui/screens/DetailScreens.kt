@@ -616,6 +616,7 @@ fun SettingsScreen(
     error: String?,
     blockedUsers: List<User>,
     verification: JSONObject?,
+    supportTickets: List<JSONObject>,
     onSave: (JSONObject, Uri?) -> Unit,
     onPrivacy: (JSONObject) -> Unit,
     onLocation: (Double, Double) -> Unit,
@@ -623,6 +624,7 @@ fun SettingsScreen(
     onSubmitVerification: (String, String, Uri, Uri?, Uri) -> Unit,
     onRefreshBlocked: () -> Unit,
     onUnblock: (Long) -> Unit,
+    onSubmitSupport: (String, String, String) -> Unit,
     onDeleteAccount: (String) -> Unit,
     onLogout: () -> Unit
 ) {
@@ -713,11 +715,12 @@ fun SettingsScreen(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         when (settingsSection) {
-                            "profile" -> "Account Settings"
-                            "privacy" -> "Privacy & Security"
-                            "security" -> "Password & Blocked Users"
-                            "verification" -> "Identity Verification"
-                            "account" -> "Account"
+                            "privacy" -> "Privacy"
+                            "notifications" -> "Notifications"
+                            "language" -> "Language"
+                            "verification" -> "Verification"
+                            "help" -> "Help & Support"
+                            "delete" -> "Delete Account"
                             else -> "Settings"
                         },
                         color = JellyInk,
@@ -732,11 +735,12 @@ fun SettingsScreen(
             item {
                 JellyGlass(Modifier.fillMaxWidth(), padding = 6.dp) {
                     Column {
-                        SettingsMenuRow("Account Settings", "Profile, contact details and social links", JellyIcons.User) { settingsSection = "profile" }
-                        SettingsMenuRow("Privacy & Security", "Profile visibility, messages and location", JellyIcons.Shield) { settingsSection = "privacy" }
-                        SettingsMenuRow("Password & Blocked Users", "Password and blocked accounts", JellyIcons.Lock) { settingsSection = "security" }
-                        SettingsMenuRow("Identity Verification", "ID card, passport and selfie verification", JellyIcons.Check) { settingsSection = "verification" }
-                        SettingsMenuRow("Account", "Logout or delete your account", JellyIcons.Gear) { settingsSection = "account" }
+                        SettingsMenuRow("Privacy", "Control who can see your information", JellyIcons.Shield) { settingsSection = "privacy" }
+                        SettingsMenuRow("Notifications", "Choose what updates and messages you receive", JellyIcons.Bell) { settingsSection = "notifications" }
+                        SettingsMenuRow("Language", "Choose your preferred language", JellyIcons.Address) { settingsSection = "language" }
+                        SettingsMenuRow("Verification", "Secure your identity and media access", JellyIcons.Check) { settingsSection = "verification" }
+                        SettingsMenuRow("Help & Support", "Private support tickets with Chhachh Team", JellyIcons.Comment) { settingsSection = "help" }
+                        SettingsMenuRow("Delete Account", "Permanently remove your account", JellyIcons.Delete) { settingsSection = "delete" }
                     }
                 }
             }
@@ -842,7 +846,12 @@ fun SettingsScreen(
                             else locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
                         }
                     }
-                    JellyButton("Save Privacy", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Shield) {
+                    JellyButton("Change Password", Modifier.fillMaxWidth(), icon = JellyIcons.Lock) { passwordOpen = true }
+                    JellyButton("Blocked Users (${blockedUsers.size})", Modifier.fillMaxWidth(), icon = JellyIcons.People) {
+                        blockedOpen = true
+                        onRefreshBlocked()
+                    }
+                    JellyButton("Save Changes", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Shield) {
                         onPrivacy(
                             JSONObject()
                                 .put("show_email", showEmail)
@@ -853,6 +862,47 @@ fun SettingsScreen(
                                 .put("profile_visibility", if (privateProfile) "followers" else "public")
                         )
                     }
+                }
+            }
+        }
+
+        if (settingsSection == "notifications") item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionTitle("Notifications")
+                    PrivacySwitch("Allow messages from people", acceptMessages) { acceptMessages = it }
+                    JellyButton("Save Changes", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Check) {
+                        onPrivacy(
+                            JSONObject()
+                                .put("show_email", showEmail)
+                                .put("show_phone", showPhone)
+                                .put("show_location", showLocation)
+                                .put("hide_followers", hideFollowers)
+                                .put("accept_messages", acceptMessages)
+                                .put("profile_visibility", if (privateProfile) "followers" else "public")
+                        )
+                    }
+                }
+            }
+        }
+
+        if (settingsSection == "language") item {
+            val prefs = context.getSharedPreferences("my_chhachh_native", Context.MODE_PRIVATE)
+            var language by remember { mutableStateOf(prefs.getString("language", "en") ?: "en") }
+            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    SectionTitle("Language")
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        JellyPill("English", language == "en", Modifier.weight(1f)) {
+                            language = "en"
+                            prefs.edit().putString("language", "en").apply()
+                        }
+                        JellyPill("اردو", language == "ur", Modifier.weight(1f)) {
+                            language = "ur"
+                            prefs.edit().putString("language", "ur").apply()
+                        }
+                    }
+                    Text("Language preference is saved on this device.", color = JellyMuted, fontSize = 9.5f.sp)
                 }
             }
         }
@@ -941,6 +991,99 @@ fun SettingsScreen(
                                 verifySelfie!!
                             )
                         }
+                    }
+                }
+            }
+        }
+
+        if (settingsSection == "help") item {
+            var category by remember { mutableStateOf("help") }
+            var subject by remember { mutableStateOf("") }
+            var supportMessage by remember { mutableStateOf("") }
+            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    SectionTitle("Help & Support")
+                    Text(
+                        "Send a problem, safety report or feedback directly to the Chhachh Team.",
+                        color = JellyMuted,
+                        fontSize = 10.sp
+                    )
+                    JellyButton(
+                        when (category) {
+                            "technical" -> "Technical problem"
+                            "account" -> "Account problem"
+                            "safety" -> "Safety / abuse"
+                            "feedback" -> "Feedback"
+                            "other" -> "Other"
+                            else -> "General help"
+                        },
+                        Modifier.fillMaxWidth(),
+                        icon = JellyIcons.Info
+                    ) {
+                        category = when (category) {
+                            "help" -> "technical"
+                            "technical" -> "account"
+                            "account" -> "safety"
+                            "safety" -> "feedback"
+                            "feedback" -> "other"
+                            else -> "help"
+                        }
+                    }
+                    OutlinedTextField(
+                        subject,
+                        { subject = it.take(120) },
+                        Modifier.fillMaxWidth(),
+                        label = { Text("Subject") },
+                        shape = RoundedCornerShape(17.dp),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        supportMessage,
+                        { supportMessage = it.take(3000) },
+                        Modifier.fillMaxWidth(),
+                        label = { Text("Message") },
+                        shape = RoundedCornerShape(17.dp),
+                        minLines = 4,
+                        maxLines = 8
+                    )
+                    JellyButton(
+                        if (busy) "Sending…" else "Send to Chhachh Team",
+                        Modifier.fillMaxWidth(),
+                        primary = true,
+                        icon = JellyIcons.Comment,
+                        enabled = !busy && subject.trim().isNotBlank() && supportMessage.trim().length >= 3
+                    ) {
+                        onSubmitSupport(category, subject.trim(), supportMessage.trim())
+                        subject = ""
+                        supportMessage = ""
+                    }
+                    if (supportTickets.isNotEmpty()) {
+                        SectionTitle("My Support Requests")
+                        supportTickets.take(12).forEach { ticket ->
+                            JellyGlass(Modifier.fillMaxWidth(), radius = 16.dp, padding = 9.dp) {
+                                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    Text(ticket.optString("subject", "Help & Support"), color = JellyInk, fontWeight = FontWeight.Black, fontSize = 11.sp)
+                                    Text(ticket.optString("reason", ""), color = JellyInk, fontSize = 9.5f.sp, maxLines = 4)
+                                    Text(ticket.optString("status", "open"), color = JellyMuted, fontSize = 8.5f.sp)
+                                    ticket.optString("admin_reply", "").takeIf { it.isNotBlank() }?.let { reply ->
+                                        Text("Chhachh Team reply", color = JellyInk, fontWeight = FontWeight.Bold, fontSize = 9.sp)
+                                        Text(reply, color = JellyMuted, fontSize = 9.sp, maxLines = 5)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (settingsSection == "delete") item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionTitle("Delete Account")
+                    Text("Permanently remove your account.", color = JellyMuted, fontSize = 10.sp)
+                    JellyButton("Delete Account", Modifier.fillMaxWidth(), icon = JellyIcons.Delete, danger = true) {
+                        deleteOpen = true
                     }
                 }
             }
