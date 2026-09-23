@@ -41,7 +41,11 @@ object LiveJellyTheme {
     var brandColor by mutableStateOf(Color(0xFF7B65D7))
     var brandColor2 by mutableStateOf(DefaultJellyAccent)
     var brandGlow by mutableFloatStateOf(12f)
+    var brandBrightness by mutableFloatStateOf(1f)
+    var brandSaturation by mutableFloatStateOf(1.25f)
     var customIconPalette by mutableStateOf(false)
+    var iconHighlight by mutableStateOf(Color(0xFFF7FDFF))
+    var iconShadow by mutableStateOf(Color(0xFF5F57CC))
     var text by mutableStateOf(DefaultJellyInk)
     var muted by mutableStateOf(DefaultJellyMuted)
     var headerColor by mutableStateOf(Color.White)
@@ -99,7 +103,11 @@ object LiveJellyTheme {
         brandColor = Color(0xFF7B65D7)
         brandColor2 = DefaultJellyAccent
         brandGlow = 12f
+        brandBrightness = 1f
+        brandSaturation = 1.25f
         customIconPalette = false
+        iconHighlight = Color(0xFFF7FDFF)
+        iconShadow = Color(0xFF5F57CC)
         text = DefaultJellyInk
         muted = DefaultJellyMuted
         headerColor = Color.White
@@ -156,7 +164,11 @@ object LiveJellyTheme {
         brandColor = color(settings.optString("theme_brand_color", ""), Color(0xFF7B65D7))
         brandColor2 = color(settings.optString("theme_brand_color2", ""), DefaultJellyAccent)
         brandGlow = settings.optInt("theme_brand_glow", 12).coerceIn(0, 36).toFloat()
+        brandBrightness = settings.optInt("theme_brand_brightness", 100).coerceIn(40, 180) / 100f
+        brandSaturation = settings.optInt("theme_brand_saturation", 125).coerceIn(40, 220) / 100f
         customIconPalette = settings.optString("theme_icon_mode", "multicolor") == "custom"
+        iconHighlight = color(settings.optString("theme_icon_highlight", ""), Color(0xFFF7FDFF))
+        iconShadow = color(settings.optString("theme_icon_shadow", ""), Color(0xFF5F57CC))
         text = color(settings.optString("theme_text_color", ""), DefaultJellyInk)
         muted = color(settings.optString("theme_muted_color", ""), DefaultJellyMuted)
         headerColor = color(settings.optString("theme_header_color", ""), Color.White)
