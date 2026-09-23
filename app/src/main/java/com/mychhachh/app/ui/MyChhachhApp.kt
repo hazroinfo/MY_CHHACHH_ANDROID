@@ -491,7 +491,7 @@ fun MyChhachhApp() {
 
 @Composable
 private fun GuestHeader(onLogin: () -> Unit, onRegister: () -> Unit) {
-    Box(Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 6.dp)) {
+    Box(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 9.dp)) {
         JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp, padding = 10.dp) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -536,14 +536,14 @@ private fun AuthHeader(
     }
 
     Box(Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 6.dp)) {
-        JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp, padding = 9.dp) {
+        JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp, padding = 10.dp) {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(Modifier.fillMaxWidth().height(54.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().height(56.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         Modifier.size(48.dp).clip(RoundedCornerShape(17.dp)).clickable { onMenu() },
                         contentAlignment = Alignment.Center
                     ) {
-                        JellyIcon(JellyIcons.Menu, size = 38.dp, contentDescription = "Menu")
+                        JellyIcon(JellyIcons.Menu, size = 39.dp, contentDescription = "Menu")
                     }
 
                     Column(
@@ -566,7 +566,7 @@ private fun AuthHeader(
                         JellyIconButton(JellyIcons.Bell, "Notifications", badge = unread, onClick = onNotifications)
                     }
                     Spacer(Modifier.width(2.dp))
-                    Box(Modifier.clickable { onProfile() }) { Avatar(user, 42.dp) }
+                    Box(Modifier.clickable { onProfile() }) { Avatar(user, 45.dp) }
                 }
 
                 JellyGlass(
@@ -628,15 +628,15 @@ private fun routeTitle(route: Screen): String = when (route) {
 
 @Composable
 private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: () -> Unit) {
-    JellyGlass(modifier.height(88.dp), radius = 24.dp, padding = 5.dp, onClick = onClick) {
+    JellyGlass(modifier.height(92.dp), radius = 24.dp, padding = 6.dp, onClick = onClick) {
         Column(
             Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            JellyIcon(icon, size = 40.dp)
+            JellyIcon(icon, size = 39.dp)
             Spacer(Modifier.height(3.dp))
-            Text(text, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 9.5f.sp, maxLines = 1)
+            Text(text, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 10.sp, maxLines = 1)
         }
     }
 }
@@ -645,16 +645,16 @@ private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: ()
 private fun NavItem(text: String, icon: Int, active: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(
         modifier
-            .height(72.dp)
+            .height(76.dp)
             .clip(RoundedCornerShape(20.dp))
             .clickable { onClick() }
             .background(if (active) Color(0x66FFF0F9) else Color.Transparent),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        JellyIcon(icon, size = 32.dp, contentDescription = text)
+        JellyIcon(icon, size = 37.dp, contentDescription = text)
         Spacer(Modifier.height(2.dp))
-        Text(text, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 9.2f.sp, maxLines = 1)
+        Text(text, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 10.sp, maxLines = 1)
         if (active) Box(Modifier.width(28.dp).height(4.dp).clip(RoundedCornerShape(999.dp)).background(JellyPink))
     }
 }
