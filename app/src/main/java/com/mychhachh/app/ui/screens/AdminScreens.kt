@@ -1445,7 +1445,7 @@ fun NativeThemeScreen(
 ) {
     val stateKey = settings.toString()
     var siteName by remember(stateKey) { mutableStateOf(settings.optString("site_name", "My Chhachh")) }
-    var tagline by remember(stateKey) { mutableStateOf(settings.optString("site_tagline", "Connect with people for information.")) }
+    var tagline by remember(stateKey) { mutableStateOf(settings.optString("site_tagline", "People • Places • Good Vibes")) }
     var iconEnabled by remember(stateKey) { mutableStateOf(settings.optInt("site_icon_enabled", 1) != 0) }
     var taglineEnabled by remember(stateKey) { mutableStateOf(settings.optInt("site_tagline_enabled", 1) != 0) }
     var iconUri by remember { mutableStateOf<Uri?>(null) }
@@ -1458,6 +1458,13 @@ fun NativeThemeScreen(
     var rainbow by remember(stateKey) { mutableStateOf(settings.optInt("theme_brand_rainbow", 1) != 0) }
     var weatherChip by remember(stateKey) { mutableStateOf(settings.optInt("theme_weather_chip", 0) != 0) }
     var themeIconEnabled by remember(stateKey) { mutableStateOf(settings.optInt("theme_theme_icon_enabled", 1) != 0) }
+    var guestAuthButtons by remember(stateKey) { mutableStateOf(settings.optInt("theme_guest_auth_buttons", 1) != 0) }
+    var guestLoginButton by remember(stateKey) { mutableStateOf(settings.optInt("theme_guest_login_button", 1) != 0) }
+    var guestRegisterButton by remember(stateKey) { mutableStateOf(settings.optInt("theme_guest_register_button", 1) != 0) }
+    var iconMode by remember(stateKey) { mutableStateOf(settings.optString("theme_icon_mode", "multicolor").ifBlank { "multicolor" }) }
+    var brandBrightness by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_brand_brightness", 100).toFloat()) }
+    var brandSaturation by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_brand_saturation", 125).toFloat()) }
+    var brandGlow by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_brand_glow", 12).toFloat()) }
     var jellyDepth by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_jelly_depth", 92).toFloat()) }
     var jellyShine by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_jelly_shine", 96).toFloat()) }
     var jellyBorder by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_jelly_border", 92).toFloat()) }
@@ -1465,41 +1472,50 @@ fun NativeThemeScreen(
     var timeMode by remember(stateKey) { mutableStateOf(settings.optString("theme_time_mode", "auto").ifBlank { "auto" }) }
     var manualWeather by remember(stateKey) { mutableStateOf(settings.optString("theme_manual_weather", "clear").ifBlank { "clear" }) }
 
-    var cardOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_card_opacity", 97).toFloat()) }
-    var headerOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_header_opacity", 97).toFloat()) }
-    var navOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_nav_opacity", 96).toFloat()) }
-    var inputOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_input_opacity", 96).toFloat()) }
-    var blur by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_blur", 18).toFloat()) }
-    var cardRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_card_radius", 22).toFloat()) }
+    var cardOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_card_opacity", 76).toFloat()) }
+    var headerOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_header_opacity", 78).toFloat()) }
+    var navOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_nav_opacity", 74).toFloat()) }
+    var inputOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_input_opacity", 78).toFloat()) }
+    var blur by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_blur", 24).toFloat()) }
+    var cardRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_card_radius", 28).toFloat()) }
     var headerRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_header_radius", 28).toFloat()) }
-    var navRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_nav_radius", 17).toFloat()) }
-    var buttonRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_button_radius", 14).toFloat()) }
-    var inputRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_input_radius", 16).toFloat()) }
-    var shadow by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_shadow", 12).toFloat()) }
+    var navRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_nav_radius", 23).toFloat()) }
+    var buttonRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_button_radius", 18).toFloat()) }
+    var inputRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_input_radius", 20).toFloat()) }
+    var shadow by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_shadow", 22).toFloat()) }
     var fontScale by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_font_scale", 100).toFloat()) }
-    var pageWidth by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_page_width", 940).toFloat()) }
-    var cardPadding by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_card_padding", 18).toFloat()) }
-    var sectionGap by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_section_gap", 14).toFloat()) }
-    var navHeight by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_nav_height", 64).toFloat()) }
+    var pageWidth by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_page_width", 920).toFloat()) }
+    var cardPadding by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_card_padding", 16).toFloat()) }
+    var sectionGap by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_section_gap", 12).toFloat()) }
+    var navHeight by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_nav_height", 72).toFloat()) }
     var buttonHeight by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_button_height", 44).toFloat()) }
-    var profileCover by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_profile_cover_height", 175).toFloat()) }
-    var profileAvatar by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_profile_avatar_size", 92).toFloat()) }
+    var framePadding by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_frame_padding", 10).toFloat()) }
+    var profileCover by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_profile_cover_height", 165).toFloat()) }
+    var profileAvatar by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_profile_avatar_size", 96).toFloat()) }
+    var profileOverlap by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_profile_overlap", 44).toFloat()) }
     var shopCover by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_shop_cover_height", 185).toFloat()) }
-    var shopAvatar by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_shop_avatar_size", 92).toFloat()) }
+    var shopAvatar by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_shop_avatar_size", 96).toFloat()) }
+    var shopOverlap by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_shop_overlap", 50).toFloat()) }
+    var notificationAvatar by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_notification_avatar_size", 46).toFloat()) }
+    var bgStrength by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_bg_strength", 100).toFloat()) }
 
-    var headerColor by remember(stateKey) { mutableStateOf(settings.optString("theme_header_color", "#ffffff")) }
-    var headerText by remember(stateKey) { mutableStateOf(settings.optString("theme_header_text", "#0d1a34")) }
+    var brandColor by remember(stateKey) { mutableStateOf(settings.optString("theme_brand_color", "#7b65d7")) }
+    var brandColor2 by remember(stateKey) { mutableStateOf(settings.optString("theme_brand_color2", "#ff4fb8")) }
+    var headerColor by remember(stateKey) { mutableStateOf(settings.optString("theme_header_color", "#dff4ff")) }
+    var headerText by remember(stateKey) { mutableStateOf(settings.optString("theme_header_text", "#10203d")) }
     var navColor by remember(stateKey) { mutableStateOf(settings.optString("theme_nav_color", "#ffffff")) }
-    var iconColor by remember(stateKey) { mutableStateOf(settings.optString("theme_icon_color", "#10203d")) }
-    var activeColor by remember(stateKey) { mutableStateOf(settings.optString("theme_active_color", "#1683ff")) }
-    var textColor by remember(stateKey) { mutableStateOf(settings.optString("theme_text_color", "#0d1a34")) }
+    var iconColor by remember(stateKey) { mutableStateOf(settings.optString("theme_icon_color", "#8b79ff")) }
+    var iconHighlight by remember(stateKey) { mutableStateOf(settings.optString("theme_icon_highlight", "#f7fdff")) }
+    var iconShadow by remember(stateKey) { mutableStateOf(settings.optString("theme_icon_shadow", "#5f57cc")) }
+    var activeColor by remember(stateKey) { mutableStateOf(settings.optString("theme_active_color", "#ff4fb8")) }
+    var textColor by remember(stateKey) { mutableStateOf(settings.optString("theme_text_color", "#10203d")) }
     var mutedColor by remember(stateKey) { mutableStateOf(settings.optString("theme_muted_color", "#66738b")) }
     var cardColor by remember(stateKey) { mutableStateOf(settings.optString("theme_card_color", "#ffffff")) }
-    var borderColor by remember(stateKey) { mutableStateOf(settings.optString("theme_border_color", "#e8edf2")) }
+    var borderColor by remember(stateKey) { mutableStateOf(settings.optString("theme_border_color", "#ffffff")) }
     var buttonColor by remember(stateKey) { mutableStateOf(settings.optString("theme_button_color", "#1683ff")) }
-    var inputColor by remember(stateKey) { mutableStateOf(settings.optString("theme_input_color", "#f4f7fa")) }
-    var accent by remember(stateKey) { mutableStateOf(settings.optString("theme_accent", "#1683ff")) }
-    var accent2 by remember(stateKey) { mutableStateOf(settings.optString("theme_accent2", "#7c3aed")) }
+    var inputColor by remember(stateKey) { mutableStateOf(settings.optString("theme_input_color", "#f7fbff")) }
+    var accent by remember(stateKey) { mutableStateOf(settings.optString("theme_accent", "#ff4fb8")) }
+    var accent2 by remember(stateKey) { mutableStateOf(settings.optString("theme_accent2", "#6fc8ff")) }
 
     var bgClear by remember(stateKey) { mutableStateOf(settings.optString("theme_bg_clear", "")) }
     var bgClouds by remember(stateKey) { mutableStateOf(settings.optString("theme_bg_clouds", "")) }
@@ -1507,7 +1523,7 @@ fun NativeThemeScreen(
     var bgFog by remember(stateKey) { mutableStateOf(settings.optString("theme_bg_fog", "")) }
     var bgStorm by remember(stateKey) { mutableStateOf(settings.optString("theme_bg_storm", "")) }
     var bgNight by remember(stateKey) { mutableStateOf(settings.optString("theme_bg_night", "")) }
-    var homeOrder by remember(stateKey) { mutableStateOf(settings.optString("theme_home_order", "notice,tabs,composer")) }
+    var homeOrder by remember(stateKey) { mutableStateOf(settings.optString("theme_home_order", "tabs,composer")) }
     var headerItems by remember(stateKey) { mutableStateOf(settings.optString("theme_header_items", "home,people,shop,map,messages")) }
     var menuItems by remember(stateKey) { mutableStateOf(settings.optString("theme_menu_items", "votes,saved,settings,theme,admin,logout")) }
 
@@ -1530,6 +1546,11 @@ fun NativeThemeScreen(
                     JellyButton(if (iconUri != null) "New Logo Selected ✓" else "Choose Logo", Modifier.fillMaxWidth(), icon = JellyIcons.Photo) {
                         iconPicker.launch("image/*")
                     }
+                    SectionTitle("Website name colour strength")
+                    Text("These values are saved in the theme, not just previewed.", color = JellyMuted, fontSize = 9.sp)
+                    ThemeSlider("Name brightness / intensity", brandBrightness, 40f..180f) { brandBrightness = it }
+                    ThemeSlider("Name colour saturation", brandSaturation, 40f..220f) { brandSaturation = it }
+                    ThemeSlider("Name glow strength", brandGlow, 0f..36f) { brandGlow = it }
                     JellyButton("Save Branding", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Check, enabled = !busy && siteName.isNotBlank()) {
                         onSaveBrand(
                             JSONObject()
@@ -1544,6 +1565,35 @@ fun NativeThemeScreen(
                             iconUri
                         )
                     }
+                }
+            }
+        }
+
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionTitle("Every jelly icon")
+                    Text("Change the native icon palette for all jelly icons.", color = JellyMuted, fontSize = 9.sp)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        JellyPill("Multicolor jelly", iconMode == "multicolor", Modifier.weight(1f)) { iconMode = "multicolor" }
+                        JellyPill("One custom jelly palette", iconMode == "custom", Modifier.weight(1f)) { iconMode = "custom" }
+                    }
+                    ThemeColorField("Icon main color", iconColor) { iconColor = it }
+                    ThemeColorField("Icon highlight", iconHighlight) { iconHighlight = it }
+                    ThemeColorField("Icon shadow", iconShadow) { iconShadow = it }
+                    ThemeColorField("Active icon/tab", activeColor) { activeColor = it }
+                    ThemeColorField("Accent", accent) { accent = it }
+                }
+            }
+        }
+
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    SectionTitle("Header & menu controls")
+                    ThemeSwitch("Show logged-out auth buttons", guestAuthButtons) { guestAuthButtons = it }
+                    ThemeSwitch("Show Login button", guestLoginButton) { guestLoginButton = it }
+                    ThemeSwitch("Show Register / Sign up button", guestRegisterButton) { guestRegisterButton = it }
                 }
             }
         }
@@ -1598,27 +1648,32 @@ fun NativeThemeScreen(
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     SectionTitle("Opacity, Shape & Layout")
-                    ThemeSlider("Card opacity", cardOpacity, 45f..100f) { cardOpacity = it }
-                    ThemeSlider("Header opacity", headerOpacity, 45f..100f) { headerOpacity = it }
-                    ThemeSlider("Navigation opacity", navOpacity, 45f..100f) { navOpacity = it }
-                    ThemeSlider("Input opacity", inputOpacity, 45f..100f) { inputOpacity = it }
-                    ThemeSlider("Glass blur", blur, 0f..40f) { blur = it }
-                    ThemeSlider("Card radius", cardRadius, 8f..36f) { cardRadius = it }
-                    ThemeSlider("Header radius", headerRadius, 0f..42f) { headerRadius = it }
-                    ThemeSlider("Navigation radius", navRadius, 6f..32f) { navRadius = it }
-                    ThemeSlider("Button radius", buttonRadius, 6f..32f) { buttonRadius = it }
-                    ThemeSlider("Input radius", inputRadius, 6f..40f) { inputRadius = it }
-                    ThemeSlider("Shadow", shadow, 0f..30f) { shadow = it }
-                    ThemeSlider("Font scale", fontScale, 85f..120f) { fontScale = it }
-                    ThemeSlider("Content width", pageWidth, 760f..1200f) { pageWidth = it }
-                    ThemeSlider("Card padding", cardPadding, 10f..32f) { cardPadding = it }
-                    ThemeSlider("Section spacing", sectionGap, 6f..30f) { sectionGap = it }
-                    ThemeSlider("Navigation height", navHeight, 48f..78f) { navHeight = it }
-                    ThemeSlider("Button height", buttonHeight, 34f..60f) { buttonHeight = it }
-                    ThemeSlider("Profile cover", profileCover, 120f..220f) { profileCover = it }
-                    ThemeSlider("Profile avatar", profileAvatar, 70f..120f) { profileAvatar = it }
-                    ThemeSlider("Shop cover", shopCover, 100f..320f) { shopCover = it }
-                    ThemeSlider("Shop avatar", shopAvatar, 60f..170f) { shopAvatar = it }
+                    ThemeSlider("Card transparency", cardOpacity, 35f..100f) { cardOpacity = it }
+                    ThemeSlider("Header transparency", headerOpacity, 35f..100f) { headerOpacity = it }
+                    ThemeSlider("Navigation transparency", navOpacity, 35f..100f) { navOpacity = it }
+                    ThemeSlider("Input transparency", inputOpacity, 35f..100f) { inputOpacity = it }
+                    ThemeSlider("Glass blur", blur, 0f..50f) { blur = it }
+                    ThemeSlider("Card roundness", cardRadius, 0f..60f) { cardRadius = it }
+                    ThemeSlider("Header roundness", headerRadius, 0f..60f) { headerRadius = it }
+                    ThemeSlider("Navigation roundness", navRadius, 0f..50f) { navRadius = it }
+                    ThemeSlider("Button roundness", buttonRadius, 0f..50f) { buttonRadius = it }
+                    ThemeSlider("Input roundness", inputRadius, 0f..50f) { inputRadius = it }
+                    ThemeSlider("Frame shadow", shadow, 0f..40f) { shadow = it }
+                    ThemeSlider("Font scale", fontScale, 90f..115f) { fontScale = it }
+                    ThemeSlider("Page width", pageWidth, 320f..1400f) { pageWidth = it }
+                    ThemeSlider("Card inner spacing", cardPadding, 6f..40f) { cardPadding = it }
+                    ThemeSlider("Space between frames", sectionGap, 2f..40f) { sectionGap = it }
+                    ThemeSlider("Navigation height", navHeight, 44f..100f) { navHeight = it }
+                    ThemeSlider("Button height", buttonHeight, 32f..72f) { buttonHeight = it }
+                    ThemeSlider("Profile cover height", profileCover, 90f..300f) { profileCover = it }
+                    ThemeSlider("Profile avatar size", profileAvatar, 56f..160f) { profileAvatar = it }
+                    ThemeSlider("Shop cover height", shopCover, 100f..320f) { shopCover = it }
+                    ThemeSlider("Shop logo size", shopAvatar, 60f..170f) { shopAvatar = it }
+                    ThemeSlider("Profile photo overlap", profileOverlap, 0f..80f) { profileOverlap = it }
+                    ThemeSlider("Shop logo overlap", shopOverlap, 0f..90f) { shopOverlap = it }
+                    ThemeSlider("Notification avatar size", notificationAvatar, 32f..72f) { notificationAvatar = it }
+                    ThemeSlider("Page frame padding", framePadding, 0f..28f) { framePadding = it }
+                    ThemeSlider("Background strength", bgStrength, 0f..100f) { bgStrength = it }
                 }
             }
         }
@@ -1626,15 +1681,17 @@ fun NativeThemeScreen(
         item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    SectionTitle("Colors")
-                    ThemeColorField("Header", headerColor) { headerColor = it }
+                    SectionTitle("All frame colors")
+                    ThemeColorField("Website name", brandColor) { brandColor = it }
+                    ThemeColorField("Website name 2", brandColor2) { brandColor2 = it }
+                    ThemeColorField("Header frame", headerColor) { headerColor = it }
                     ThemeColorField("Header text", headerText) { headerText = it }
-                    ThemeColorField("Navigation", navColor) { navColor = it }
+                    ThemeColorField("Navigation frame", navColor) { navColor = it }
                     ThemeColorField("Icon", iconColor) { iconColor = it }
                     ThemeColorField("Active icon", activeColor) { activeColor = it }
-                    ThemeColorField("Main text", textColor) { textColor = it }
+                    ThemeColorField("Text", textColor) { textColor = it }
                     ThemeColorField("Muted text", mutedColor) { mutedColor = it }
-                    ThemeColorField("Card", cardColor) { cardColor = it }
+                    ThemeColorField("Cards / frames", cardColor) { cardColor = it }
                     ThemeColorField("Borders", borderColor) { borderColor = it }
                     ThemeColorField("Buttons", buttonColor) { buttonColor = it }
                     ThemeColorField("Inputs", inputColor) { inputColor = it }
@@ -1708,6 +1765,13 @@ fun NativeThemeScreen(
                         .put("theme_brand_rainbow", if (rainbow) 1 else 0)
                         .put("theme_weather_chip", if (weatherChip) 1 else 0)
                         .put("theme_theme_icon_enabled", if (themeIconEnabled) 1 else 0)
+                        .put("theme_guest_auth_buttons", if (guestAuthButtons) 1 else 0)
+                        .put("theme_guest_login_button", if (guestLoginButton) 1 else 0)
+                        .put("theme_guest_register_button", if (guestRegisterButton) 1 else 0)
+                        .put("theme_icon_mode", iconMode)
+                        .put("theme_brand_brightness", brandBrightness.roundToInt())
+                        .put("theme_brand_saturation", brandSaturation.roundToInt())
+                        .put("theme_brand_glow", brandGlow.roundToInt())
                         .put("theme_jelly_depth", jellyDepth.roundToInt())
                         .put("theme_jelly_shine", jellyShine.roundToInt())
                         .put("theme_jelly_border", jellyBorder.roundToInt())
@@ -1735,10 +1799,19 @@ fun NativeThemeScreen(
                         .put("theme_profile_avatar_size", profileAvatar.roundToInt())
                         .put("theme_shop_cover_height", shopCover.roundToInt())
                         .put("theme_shop_avatar_size", shopAvatar.roundToInt())
+                        .put("theme_profile_overlap", profileOverlap.roundToInt())
+                        .put("theme_shop_overlap", shopOverlap.roundToInt())
+                        .put("theme_notification_avatar_size", notificationAvatar.roundToInt())
+                        .put("theme_frame_padding", framePadding.roundToInt())
+                        .put("theme_bg_strength", bgStrength.roundToInt())
+                        .put("theme_brand_color", brandColor)
+                        .put("theme_brand_color2", brandColor2)
                         .put("theme_header_color", headerColor)
                         .put("theme_header_text", headerText)
                         .put("theme_nav_color", navColor)
                         .put("theme_icon_color", iconColor)
+                        .put("theme_icon_highlight", iconHighlight)
+                        .put("theme_icon_shadow", iconShadow)
                         .put("theme_active_color", activeColor)
                         .put("theme_text_color", textColor)
                         .put("theme_muted_color", mutedColor)
