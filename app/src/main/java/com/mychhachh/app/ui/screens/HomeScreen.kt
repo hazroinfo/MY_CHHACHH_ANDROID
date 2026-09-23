@@ -58,6 +58,7 @@ fun HomeScreen(
     onSave: (Post) -> Unit,
     onEditPost: (Post, String, String) -> Unit,
     onDeletePost: (Post) -> Unit,
+    onReportPost: (Post, String) -> Unit,
     onSearchCheckin: suspend (String) -> List<CheckinPlace>,
     onSearchMentions: suspend (String) -> List<User>,
     onCreatePost: (String, String, String, String, Double?, Double?, Uri?, Uri?) -> Unit,
@@ -296,8 +297,11 @@ fun HomeScreen(
                 onComment = onComment,
                 onShare = onShare,
                 onSave = onSave,
-                onEdit = if (user?.id == post.user.id && post.shopId == 0L) onEditPost else null,
-                onDelete = if (user?.id == post.user.id && post.shopId == 0L) onDeletePost else null
+                onEdit = if ((user?.id == post.user.id || user?.isAdmin == true) && post.shopId == 0L) onEditPost else null,
+                onDelete = if ((user?.id == post.user.id || user?.isAdmin == true) && post.shopId == 0L) onDeletePost else null,
+                onReport = if (user != null && user.id != post.user.id && !user.isAdmin && post.shopId == 0L) {
+                    { p, reason -> onReportPost(p, reason) }
+                } else null
             )
         }
         if (!loading && posts.isEmpty() && error == null) {
@@ -532,12 +536,14 @@ fun PostCard(
     onShare: (Post) -> Unit,
     onSave: (Post) -> Unit,
     onEdit: ((Post, String, String) -> Unit)? = null,
-    onDelete: ((Post) -> Unit)? = null
+    onDelete: ((Post) -> Unit)? = null,
+    onReport: ((Post, String) -> Unit)? = null
 ) {
     var videoOpen by remember(post.id) { mutableStateOf(false) }
     var moreOpen by remember(post.id) { mutableStateOf(false) }
     var editOpen by remember(post.id) { mutableStateOf(false) }
     var deleteConfirm by remember(post.id) { mutableStateOf(false) }
+    var reportOpen by remember(post.id) { mutableStateOf(false) }
     val context = LocalContext.current
 
     JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp) {
@@ -663,6 +669,12 @@ fun PostCard(
                             deleteConfirm = true
                         }
                     }
+                    if (onReport != null) {
+                        JellyButton("Report Post", Modifier.fillMaxWidth(), icon = JellyIcons.Shield, danger = true) {
+                            moreOpen = false
+                            reportOpen = true
+                        }
+                    }
                 }
             },
             confirmButton = {},
@@ -710,12 +722,38 @@ fun PostCard(
             title = { Text("Delete Post", color = JellyInk, fontWeight = FontWeight.Black) },
             text = { Text("Delete this post permanently?", color = JellyInk) },
             confirmButton = {
-                JellyButton("Delete", primary = true, icon = JellyIcons.Delete) {
+                JellyButton("Delete", icon = JellyIcons.Delete, danger = true) {
                     onDelete(post)
                     deleteConfirm = false
                 }
             },
             dismissButton = { JellyButton("Cancel") { deleteConfirm = false } }
+        )
+    }
+
+    if (reportOpen && onReport != null) {
+        var reason by remember(post.id) { mutableStateOf("") }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { reportOpen = false },
+            title = { Text("Report Post", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                OutlinedTextField(
+                    reason,
+                    { reason = it.take(3000) },
+                    Modifier.fillMaxWidth(),
+                    placeholder = { Text("Explain the problem…") },
+                    minLines = 4,
+                    maxLines = 8,
+                    shape = RoundedCornerShape(18.dp)
+                )
+            },
+            confirmButton = {
+                JellyButton("Send Report", primary = true, icon = JellyIcons.Shield, enabled = reason.trim().length >= 3) {
+                    onReport(post, reason.trim())
+                    reportOpen = false
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { reportOpen = false } }
         )
     }
 }
