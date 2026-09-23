@@ -3,6 +3,7 @@ package com.mychhachh.app.ui.screens
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Build
@@ -39,8 +40,10 @@ import org.json.JSONObject
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
+import org.osmdroid.util.BoundingBox
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polyline
 import java.io.File
 
 @Composable
@@ -757,37 +760,239 @@ fun SearchScreen(
 }
 
 @Composable
-fun MapScreen(query: String, onQuery: (String) -> Unit, result: JSONObject?, loading: Boolean, error: String?, onSearch: () -> Unit) {
+fun MapScreen(
+    shops: List<Shop>,
+    onGeocode: suspend (String) -> JSONObject,
+    onRoute: suspend (Double, Double, Double, Double) -> JSONObject,
+    onOpenShop: (Long) -> Unit
+) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val mapView = rememberMapViewWithLifecycle()
-    val lat = result?.optDouble("lat", Double.NaN) ?: Double.NaN
-    val lng = result?.let { it.optDouble("lng", it.optDouble("lon", Double.NaN)) } ?: Double.NaN
-    val label = result?.let { it.optString("display_name", it.optString("name", query)) }.orEmpty()
+
+    var fromText by remember { mutableStateOf("") }
+    var toText by remember { mutableStateOf("") }
+    var startPoint by remember { mutableStateOf<GeoPoint?>(null) }
+    var endPoint by remember { mutableStateOf<GeoPoint?>(null) }
+    var routePoints by remember { mutableStateOf<List<GeoPoint>>(emptyList()) }
+    var status by remember { mutableStateOf("Map ready — choose a start and destination.") }
+    var loading by remember { mutableStateOf(false) }
+    var routeDistance by remember { mutableStateOf<Double?>(null) }
+    var routeDuration by remember { mutableStateOf<Double?>(null) }
+
+    fun placeFrom(d: JSONObject, fallback: String): Pair<GeoPoint, String>? {
+        val obj = d.optJSONArray("items")?.optJSONObject(0) ?: d.optJSONObject("item") ?: d
+        val lat = obj.optDouble("lat", Double.NaN)
+        val lng = obj.optDouble("lng", obj.optDouble("lon", Double.NaN))
+        if (!lat.isFinite() || !lng.isFinite()) return null
+        val label = obj.optString("display_name", obj.optString("name", fallback)).ifBlank { fallback }
+        return GeoPoint(lat, lng) to label
+    }
+
+    fun openNavigation() {
+        val destination = endPoint?.let { "${it.latitude},${it.longitude}" }
+            ?: toText.trim().takeIf { it.isNotBlank() }
+            ?: return
+        val origin = startPoint?.let { "${it.latitude},${it.longitude}" }
+            ?: fromText.trim().takeIf { it.isNotBlank() }
+        val uri = Uri.parse(
+            buildString {
+                append("https://www.google.com/maps/dir/?api=1")
+                if (!origin.isNullOrBlank()) append("&origin=").append(Uri.encode(origin))
+                append("&destination=").append(Uri.encode(destination))
+                append("&travelmode=driving")
+            }
+        )
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+    }
+
+    fun planRoute(destinationOverride: String? = null) {
+        val destinationText = destinationOverride?.trim().orEmpty().ifBlank { toText.trim() }
+        if (destinationText.isBlank()) {
+            status = "Enter a destination."
+            return
+        }
+        scope.launch {
+            loading = true
+            status = "Finding route…"
+            routeDistance = null
+            routeDuration = null
+            try {
+                val start = startPoint ?: run {
+                    val source = fromText.trim()
+                    if (source.isBlank()) throw IllegalArgumentException("Choose starting point or use My location.")
+                    val found = placeFrom(onGeocode(source), source) ?: throw IllegalArgumentException("Starting place could not be found.")
+                    fromText = found.second
+                    found.first.also { startPoint = it }
+                }
+                val foundEnd = placeFrom(onGeocode(destinationText), destinationText)
+                    ?: throw IllegalArgumentException("Destination could not be found.")
+                val finish = foundEnd.first
+                toText = foundEnd.second
+                endPoint = finish
+
+                val d = onRoute(start.latitude, start.longitude, finish.latitude, finish.longitude)
+                val route = d.optJSONObject("route")
+                val geometry = route?.optJSONObject("geometry")
+                val coords = geometry?.optJSONArray("coordinates")
+                val points = mutableListOf<GeoPoint>()
+                if (coords != null) {
+                    for (i in 0 until coords.length()) {
+                        val pair = coords.optJSONArray(i) ?: continue
+                        val lng = pair.optDouble(0, Double.NaN)
+                        val lat = pair.optDouble(1, Double.NaN)
+                        if (lat.isFinite() && lng.isFinite()) points += GeoPoint(lat, lng)
+                    }
+                }
+                routePoints = if (points.size >= 2) points else listOf(start, finish)
+                routeDistance = route?.optDouble("distance", Double.NaN)?.takeIf { it.isFinite() }
+                routeDuration = route?.optDouble("duration", Double.NaN)?.takeIf { it.isFinite() }
+                status = if (route != null) {
+                    val km = ((routeDistance ?: 0.0) / 1000.0)
+                    val mins = kotlin.math.max(1, kotlin.math.round((routeDuration ?: 0.0) / 60.0).toInt())
+                    String.format(java.util.Locale.US, "%.1f km · about %d min by road", km, mins)
+                } else {
+                    "Places found. Open Navigation for live road directions."
+                }
+            } catch (e: Exception) {
+                routePoints = listOfNotNull(startPoint, endPoint)
+                status = e.message ?: "Route could not be found. Check the place name and try again."
+            } finally {
+                loading = false
+            }
+        }
+    }
+
+    fun setCurrentLocation() {
+        val manager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as LocationManager
+        val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+        val location = providers.asSequence()
+            .filter { runCatching { manager.isProviderEnabled(it) }.getOrDefault(false) }
+            .mapNotNull { provider ->
+                runCatching {
+                    if (
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                    ) manager.getLastKnownLocation(provider) else null
+                }.getOrNull()
+            }
+            .maxByOrNull { it.time }
+        if (location != null) {
+            startPoint = GeoPoint(location.latitude, location.longitude)
+            fromText = "My current location"
+            status = "Starting point set to your current location."
+        } else {
+            status = "Current location is not available yet."
+        }
+    }
+
+    val locationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        if (result.values.any { it }) setCurrentLocation()
+        else status = "Location permission was denied."
+    }
 
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
-        item { PageTitle("Map", "Explore Chhachh and search places", JellyIcons.Map) }
+        item { PageTitle("Chhachh Map", "Plan a route between villages, places and local shops", JellyIcons.Map) }
+
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 12.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        JellyIcon(JellyIcons.Map, size = 34.dp)
+                        Spacer(Modifier.width(7.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Chhachh Navigation", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                            Text("Search villages, places and shops around Chhachh / Hazro", color = JellyMuted, fontSize = 9.sp)
+                        }
+                        JellyPill("Chhachh", true) {}
+                    }
+
+                    OutlinedTextField(
+                        fromText,
+                        {
+                            fromText = it
+                            if (it != "My current location") startPoint = null
+                        },
+                        Modifier.fillMaxWidth(),
+                        label = { Text("From") },
+                        placeholder = { Text("Village / place or use current location") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(18.dp)
+                    )
+                    JellyButton("My location", Modifier.fillMaxWidth(), icon = JellyIcons.Pin) {
+                        val granted =
+                            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                        if (granted) setCurrentLocation()
+                        else locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                    }
+                    OutlinedTextField(
+                        toText,
+                        {
+                            toText = it
+                            endPoint = null
+                        },
+                        Modifier.fillMaxWidth(),
+                        label = { Text("To") },
+                        placeholder = { Text("Village, place or shop") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(18.dp)
+                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        JellyButton(
+                            if (loading) "Finding Route…" else "Find Route",
+                            Modifier.weight(1f),
+                            primary = true,
+                            icon = JellyIcons.Map,
+                            enabled = !loading && toText.isNotBlank()
+                        ) { planRoute() }
+                        JellyButton("Open Navigation", Modifier.weight(1f), icon = JellyIcons.Arrow) { openNavigation() }
+                    }
+                    Text(status, color = JellyMuted, fontSize = 9.5f.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
         item {
             JellyGlass(Modifier.fillMaxWidth(), radius = 22.dp) {
                 Column {
                     AndroidView(
                         factory = { mapView },
                         update = { map ->
-                            if (!lat.isNaN() && !lng.isNaN()) {
-                                val point = GeoPoint(lat, lng)
-                                map.overlays.removeAll { it is Marker }
+                            map.overlays.removeAll { it is Marker || it is Polyline }
+
+                            startPoint?.let { point ->
                                 map.overlays.add(Marker(map).apply {
                                     position = point
-                                    title = label.ifBlank { query }
+                                    title = "Start"
                                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                                 })
-                                map.controller.setZoom(16.0)
-                                map.controller.animateTo(point)
-                                map.invalidate()
                             }
+                            endPoint?.let { point ->
+                                map.overlays.add(Marker(map).apply {
+                                    position = point
+                                    title = "Destination"
+                                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                })
+                            }
+                            if (routePoints.size >= 2) {
+                                map.overlays.add(Polyline().apply { setPoints(routePoints) })
+                                val maxLat = routePoints.maxOf { it.latitude }
+                                val minLat = routePoints.minOf { it.latitude }
+                                val maxLng = routePoints.maxOf { it.longitude }
+                                val minLng = routePoints.minOf { it.longitude }
+                                map.zoomToBoundingBox(BoundingBox(maxLat, maxLng, minLat, minLng), true, 60)
+                            } else if (startPoint != null) {
+                                map.controller.setZoom(14.0)
+                                map.controller.animateTo(startPoint)
+                            }
+                            map.invalidate()
                         },
                         modifier = Modifier.fillMaxWidth().height(310.dp).clip(RoundedCornerShape(22.dp))
                     )
@@ -795,36 +1000,69 @@ fun MapScreen(query: String, onQuery: (String) -> Unit, result: JSONObject?, loa
                 }
             }
         }
+
         item {
-            JellyGlass(Modifier.fillMaxWidth(), padding = 9.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    OutlinedTextField(
-                        query,
-                        onQuery,
-                        Modifier.fillMaxWidth(),
-                        placeholder = { Text("Village, mohalla, shop or place") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(17.dp)
-                    )
-                    JellyButton("Find place", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Search, enabled = !loading, onClick = onSearch)
-                }
-            }
-        }
-        if (loading) item { LoadingBlock() }
-        error?.let { item { ErrorCard(it, onSearch) } }
-        if (!lat.isNaN() && !lng.isNaN()) {
-            item {
-                JellyGlass(Modifier.fillMaxWidth(), padding = 12.dp) {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(label.ifBlank { query }, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 13.sp)
-                        Text("${"%.5f".format(lat)}, ${"%.5f".format(lng)}", color = JellyMuted, fontSize = 9.5f.sp)
-                        JellyButton("Open directions", primary = true, icon = JellyIcons.Map) {
-                            val uri = Uri.parse("geo:$lat,$lng?q=$lat,$lng(${Uri.encode(label.ifBlank { query })})")
-                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+            JellyGlass(Modifier.fillMaxWidth(), padding = 11.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionTitle("Route to a shop")
+                    Text("Choose Route for directions or View to open the shop", color = JellyMuted, fontSize = 9.sp)
+                    if (shops.isEmpty()) {
+                        Text("No shops have been added yet.", color = JellyMuted, fontSize = 10.sp)
+                    } else {
+                        shops.take(12).forEach { shop ->
+                            val destination = listOf(shop.location, shop.area, shop.village, shop.city, "Attock Pakistan")
+                                .filter { it.isNotBlank() }
+                                .joinToString(", ")
+                            Row(
+                                Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    Modifier.size(46.dp).clip(RoundedCornerShape(99.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (!shop.photo.isNullOrBlank()) {
+                                        AsyncImage(shop.photo, shop.name, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                                    } else {
+                                        JellyIcon(JellyIcons.Shop, size = 34.dp)
+                                    }
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(shop.name, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 11.5f.sp)
+                                    Text(shop.category.ifBlank { "Local shop" }, color = JellyMuted, fontSize = 8.5f.sp)
+                                    val place = listOf(shop.area, shop.village, shop.city).filter { it.isNotBlank() }.joinToString(" · ")
+                                    if (place.isNotBlank()) Text(place, color = JellyMuted, fontSize = 8.3f.sp)
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    JellyButton("Route", primary = true, icon = JellyIcons.Map) {
+                                        toText = destination
+                                        endPoint = null
+                                        if (startPoint != null || fromText.isNotBlank()) planRoute(destination)
+                                    }
+                                    JellyButton("View", icon = JellyIcons.Eye) { onOpenShop(shop.id) }
+                                    if (shop.whatsapp.isNotBlank()) {
+                                        JellyButton("", icon = JellyIcons.Whatsapp) {
+                                            val digits = shop.whatsapp.filter(Char::isDigit)
+                                            if (digits.isNotBlank()) runCatching {
+                                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$digits")))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
+
+        item {
+            Text(
+                "Find Route draws the route on this map. Open Navigation opens live turn-by-turn directions in Google Maps.",
+                color = JellyMuted,
+                fontSize = 8.5f.sp
+            )
         }
     }
 }
