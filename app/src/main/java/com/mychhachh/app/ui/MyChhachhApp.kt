@@ -888,6 +888,7 @@ fun MyChhachhApp() {
                                 loading = votesLoading,
                                 error = votesError,
                                 meId = 0L,
+                                initialVoteId = selectedId,
                                 onSearchOpponent = { emptyList() },
                                 onCreateChallenge = { _, _, _ -> authMode = "login"; route = Screen.AUTH },
                                 onCast = { _, _ -> authMode = "login"; route = Screen.AUTH },
@@ -896,7 +897,9 @@ fun MyChhachhApp() {
                                 onCancel = { authMode = "login"; route = Screen.AUTH },
                                 onLeave = { authMode = "login"; route = Screen.AUTH },
                                 onShare = { authMode = "login"; route = Screen.AUTH },
-                                onStatement = { _, _ -> authMode = "login"; route = Screen.AUTH }
+                                onStatement = { _, _ -> authMode = "login"; route = Screen.AUTH },
+                                onLoadComments = { emptyList() },
+                                onAddComment = { _, _ -> authMode = "login"; route = Screen.AUTH }
                             )
                         } else {
                             VotesScreen(
@@ -904,6 +907,7 @@ fun MyChhachhApp() {
                                 loading = votesLoading,
                                 error = votesError,
                                 meId = u.id,
+                                initialVoteId = selectedId,
                                 onSearchOpponent = { term -> withContext(Dispatchers.IO) { api.users(term).first } },
                                 onCreateChallenge = { username, hours, line ->
                                     scope.launch {
@@ -965,6 +969,10 @@ fun MyChhachhApp() {
                                         catch (e: Exception) { votesError = e.message }
                                         loadVotes()
                                     }
+                                },
+                                onLoadComments = { id -> withContext(Dispatchers.IO) { api.voteComments(id).comments() } },
+                                onAddComment = { id, text ->
+                                    withContext(Dispatchers.IO) { api.addVoteComment(id, text) }
                                 }
                             )
                         }
