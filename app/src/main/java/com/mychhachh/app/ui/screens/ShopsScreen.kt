@@ -1,5 +1,6 @@
 package com.mychhachh.app.ui.screens
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,71 +42,194 @@ fun ShopsScreen(
     onCreate: (JSONObject, Uri?, Uri?) -> Unit
 ) {
     var createOpen by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     val myShop = shops.firstOrNull { it.userId == meId }
+    val normalized = query.trim().lowercase()
+    val filtered = if (normalized.isBlank()) shops else shops.filter { sh ->
+        listOf(sh.name, sh.username, sh.category, sh.city, sh.village, sh.area)
+            .joinToString(" ")
+            .lowercase()
+            .contains(normalized)
+    }
+    val suggestions = shops
+        .sortedWith(
+            compareByDescending<Shop> { it.promoted }
+                .thenByDescending { if (it.photo.isNullOrBlank()) 0 else 1 }
+                .thenByDescending { if (it.whatsapp.isBlank()) 0 else 1 }
+                .thenBy { it.name.lowercase() }
+        )
+        .take(6)
+
+    fun openWhatsApp(number: String) {
+        val digits = number.filter(Char::isDigit)
+        if (digits.isBlank()) return
+        val uri = Uri.parse("https://wa.me/$digits")
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+    }
 
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
+        item { PageTitle("Shops", "Discover useful shops and services across Chhachh", JellyIcons.Shop) }
+
         item {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.weight(1f)) { PageTitle("Shops", "Discover useful shops and services across Chhachh", JellyIcons.Shop) }
-                if (myShop != null) {
-                    JellyButton("My Shop", primary = true, icon = JellyIcons.Shop) { onOpen(myShop.id) }
-                } else {
-                    JellyButton("Create Shop", primary = true, icon = JellyIcons.Plus) { createOpen = true }
-                }
-            }
-        }
-        item {
-            JellyGlass(Modifier.fillMaxWidth(), padding = 9.dp) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        query,
-                        onQuery,
-                        Modifier.weight(1f),
-                        placeholder = { Text("Search shops, category or village…") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(17.dp)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    JellyButton("Search", icon = JellyIcons.Search, onClick = onSearch)
-                }
-            }
-        }
-        if (loading && shops.isEmpty()) item { LoadingBlock() }
-        error?.let { item { ErrorCard(it, onSearch) } }
-        if (!loading && shops.isEmpty() && error == null) item { EmptyCard("No shops found.", JellyIcons.Shop) }
-        items(shops, key = { "shop-${it.id}" }) { s ->
-            JellyGlass(Modifier.fillMaxWidth(), padding = 10.dp) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.size(58.dp).clip(RoundedCornerShape(99.dp)).clickable { onOpen(s.id) },
-                        contentAlignment = Alignment.Center
+            JellyGlass(Modifier.fillMaxWidth(), padding = 12.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Shop Suggestions", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                            Text("Local businesses you may want to visit", color = JellyMuted, fontSize = 9.5f.sp)
+                        }
+                        if (myShop != null) {
+                            JellyButton("My Shop", primary = true, icon = JellyIcons.Shop) { onOpen(myShop.id) }
+                        } else {
+                            JellyButton("Create Shop", primary = true, icon = JellyIcons.Plus) { createOpen = true }
+                        }
+                    }
+
+                    JellyGlass(
+                        Modifier.fillMaxWidth().height(52.dp),
+                        radius = 18.dp,
+                        padding = 8.dp,
+                        surfaceColor = com.mychhachh.app.ui.theme.LiveJellyTheme.inputColor,
+                        surfaceOpacity = com.mychhachh.app.ui.theme.LiveJellyTheme.inputOpacity
                     ) {
-                        if (!s.photo.isNullOrBlank()) {
-                            AsyncImage(s.photo, s.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                        } else JellyIcon(JellyIcons.Shop, size = 42.dp)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            JellyIcon(JellyIcons.Search, size = 26.dp)
+                            Spacer(Modifier.width(6.dp))
+                            androidx.compose.material3.OutlinedTextField(
+                                query,
+                                {
+                                    onQuery(it)
+                                    if (it.isBlank()) onSearch()
+                                },
+                                Modifier.weight(1f),
+                                placeholder = { Text("Search shops, category or village…") },
+                                singleLine = true,
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                        }
                     }
-                    Spacer(Modifier.width(9.dp))
-                    Column(Modifier.weight(1f).clickable { onOpen(s.id) }) {
-                        Text(s.name, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 14.5f.sp)
-                        if (s.username.isNotBlank()) Text("@${s.username}", color = JellyMuted, fontSize = 10.sp)
-                        if (s.category.isNotBlank()) Text(s.category, color = JellyMuted, fontSize = 9.5f.sp)
-                        val loc = listOf(s.area, s.village, s.city).filter { it.isNotBlank() }.joinToString(" • ")
-                        if (loc.isNotBlank()) Text(loc, color = JellyMuted, fontSize = 9.5f.sp)
-                    }
-                    if (s.userId != meId) {
-                        JellyButton(
-                            if (s.followed) "Following" else "Follow",
-                            primary = !s.followed,
-                            icon = JellyIcons.Follow
-                        ) { onFollow(s.id) }
+
+                    if (suggestions.isEmpty()) {
+                        Text("No shop suggestions right now.", color = JellyMuted, fontSize = 10.sp)
+                    } else {
+                        suggestions.forEach { sh ->
+                            val place = listOf(sh.village, sh.city).filter { it.isNotBlank() }.joinToString(" · ")
+                            val reason = when {
+                                sh.promoted -> "Featured"
+                                sh.village.isNotBlank() -> "Near your village"
+                                sh.area.isNotBlank() -> "Near you"
+                                sh.city.isNotBlank() -> "In your city"
+                                sh.category.isNotBlank() -> sh.category
+                                else -> "Suggested shop"
+                            }
+                            JellyGlass(Modifier.fillMaxWidth(), radius = 18.dp, padding = 10.dp) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        Modifier
+                                            .size(56.dp)
+                                            .clip(RoundedCornerShape(99.dp))
+                                            .clickable { onOpen(sh.id) },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (!sh.photo.isNullOrBlank()) {
+                                            AsyncImage(sh.photo, sh.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                                        } else {
+                                            JellyIcon(JellyIcons.Shop, size = 40.dp)
+                                        }
+                                    }
+                                    Spacer(Modifier.width(9.dp))
+                                    Column(Modifier.weight(1f).clickable { onOpen(sh.id) }) {
+                                        Text(sh.name, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                                        if (sh.username.isNotBlank()) Text("@${sh.username}", color = JellyMuted, fontSize = 9.5f.sp)
+                                        val categoryPlace = listOf(sh.category, place).filter { it.isNotBlank() }.joinToString(" · ")
+                                        if (categoryPlace.isNotBlank()) Text(categoryPlace, color = JellyMuted, fontSize = 9.sp)
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            JellyIcon(if (sh.promoted) JellyIcons.Star else JellyIcons.Pin, size = 16.dp)
+                                            Spacer(Modifier.width(3.dp))
+                                            Text(reason, color = JellyMuted, fontSize = 8.5f.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                        JellyButton("View Shop", icon = JellyIcons.Eye) { onOpen(sh.id) }
+                                        if (sh.whatsapp.isNotBlank()) {
+                                            JellyButton("WhatsApp", icon = JellyIcons.WhatsApp) { openWhatsApp(sh.whatsapp) }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
+
+        item {
+            JellyGlass(Modifier.fillMaxWidth(), padding = 12.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("All Shops", Modifier.weight(1f), color = JellyInk, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                        Text(filtered.size.toString(), color = JellyMuted, fontWeight = FontWeight.Black, fontSize = 11.sp)
+                    }
+
+                    if (loading && shops.isEmpty()) {
+                        LoadingBlock()
+                    } else if (filtered.isEmpty() && error == null) {
+                        Text("No shops yet.", color = JellyMuted, fontSize = 10.sp)
+                    } else {
+                        filtered.forEach { sh ->
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    Modifier
+                                        .size(46.dp)
+                                        .clip(RoundedCornerShape(99.dp))
+                                        .clickable { onOpen(sh.id) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (!sh.photo.isNullOrBlank()) {
+                                        AsyncImage(sh.photo, sh.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                                    } else {
+                                        JellyIcon(JellyIcons.Shop, size = 34.dp)
+                                    }
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Column(Modifier.weight(1f).clickable { onOpen(sh.id) }) {
+                                    Text(
+                                        sh.name + if (sh.promoted) " · Promoted" else "",
+                                        color = JellyInk,
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 12.sp
+                                    )
+                                    val line = listOf(
+                                        if (sh.username.isNotBlank()) "@${sh.username}" else "",
+                                        sh.category.ifBlank { "Shop" }
+                                    ).filter { it.isNotBlank() }.joinToString(" · ")
+                                    if (line.isNotBlank()) Text(line, color = JellyMuted, fontSize = 9.sp)
+                                    val place = listOf(sh.village, sh.city).filter { it.isNotBlank() }.joinToString(" · ")
+                                    if (place.isNotBlank()) Text(place, color = JellyMuted, fontSize = 8.5f.sp)
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                    JellyButton("View", icon = JellyIcons.Eye) { onOpen(sh.id) }
+                                    if (sh.whatsapp.isNotBlank()) {
+                                        JellyButton("WhatsApp", icon = JellyIcons.WhatsApp) { openWhatsApp(sh.whatsapp) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        error?.let { item { ErrorCard(it, onSearch) } }
     }
 
     if (createOpen) {
