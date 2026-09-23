@@ -874,7 +874,7 @@ private fun ProfileCount(
 ) {
     Column(
         modifier
-            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
+            .then(if (onClick != null) Modifier.clickable { onClick?.invoke() } else Modifier)
             .padding(vertical = 3.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -892,7 +892,7 @@ private fun ShopInfoCard(
     onClick: (() -> Unit)? = null
 ) {
     JellyGlass(
-        modifier.then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
+        modifier.then(if (onClick != null) Modifier.clickable { onClick?.invoke() } else Modifier),
         radius = 17.dp,
         padding = 9.dp
     ) {
