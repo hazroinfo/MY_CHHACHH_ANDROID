@@ -175,6 +175,7 @@ fun MessagesScreen(
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun ChatScreen(
     me: User,
