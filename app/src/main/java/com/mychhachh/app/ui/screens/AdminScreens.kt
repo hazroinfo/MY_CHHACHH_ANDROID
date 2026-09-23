@@ -233,7 +233,7 @@ fun AdminCenterScreen(
                                 verificationDecision = "approved"
                                 verificationNote = o.optString("admin_note", "")
                             }
-                            JellyButton("Reject", Modifier.weight(1f), icon = JellyIcons.Close) {
+                            JellyButton("Reject", Modifier.weight(1f), icon = JellyIcons.Close, danger = true) {
                                 verificationTarget = o.optLong("id")
                                 verificationDecision = "rejected"
                                 verificationNote = o.optString("admin_note", "")
@@ -265,17 +265,17 @@ fun AdminCenterScreen(
                         if (o.optString("admin_reply").isNotBlank()) {
                             Text("Previous reply: ${o.optString("admin_reply")}", color = JellyMuted, fontSize = 9.5f.sp, maxLines = 4)
                         }
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (reporterId > 0) {
                                 JellyButton("Reporter", Modifier.weight(1f), icon = JellyIcons.User) { onProfile(reporterId) }
                             }
                             if (targetType == "profile" && targetId > 0) {
                                 JellyButton("Reported Profile", Modifier.weight(1f), icon = JellyIcons.Shield) { onProfile(targetId) }
                             }
-                            JellyButton("Reply", Modifier.weight(1f), icon = JellyIcons.Reply) {
-                                replyTarget = o.optLong("id")
-                                replyText = o.optString("admin_reply", "")
-                            }
+                        }
+                        JellyButton("Reply", Modifier.fillMaxWidth(), icon = JellyIcons.Reply) {
+                            replyTarget = o.optLong("id")
+                            replyText = o.optString("admin_reply", "")
                         }
                     }
                 }
@@ -294,7 +294,7 @@ fun AdminCenterScreen(
                                 onAction(if (shopPost) "promote_shop_post" else "promote_post", o.optLong("id"), JSONObject())
                             }
                             if (!shopPost) {
-                                JellyButton("Delete", icon = JellyIcons.Delete) {
+                                JellyButton("Delete", icon = JellyIcons.Delete, danger = true) {
                                     onAction("delete_post", o.optLong("id"), JSONObject())
                                 }
                             }
@@ -308,16 +308,16 @@ fun AdminCenterScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(o.optString("name", "Shop"), color = JellyInk, fontWeight = FontWeight.Black, fontSize = 13.sp)
                         Text("@${o.optString("username", "")}", color = JellyMuted, fontSize = 9.sp)
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            JellyButton(if (o.optInt("active", 1) == 0) "Enable" else "Disable") {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            JellyButton(if (o.optInt("active", 1) == 0) "Enable" else "Disable", Modifier.weight(1f)) {
                                 onAction("toggle_shop", o.optLong("id"), JSONObject())
                             }
-                            JellyButton("Promote", icon = JellyIcons.Star) {
+                            JellyButton("Promote", Modifier.weight(1f), icon = JellyIcons.Star) {
                                 onAction("promote_shop", o.optLong("id"), JSONObject())
                             }
-                            JellyButton("Delete", icon = JellyIcons.Delete) {
-                                onAction("delete_shop", o.optLong("id"), JSONObject())
-                            }
+                        }
+                        JellyButton("Delete Shop", Modifier.fillMaxWidth(), icon = JellyIcons.Delete, danger = true) {
+                            onAction("delete_shop", o.optLong("id"), JSONObject())
                         }
                     }
                 }
@@ -351,7 +351,7 @@ fun AdminCenterScreen(
                             JellyButton("Cancel", Modifier.weight(1f)) {
                                 onAction("vote_cancel", o.optLong("id"), JSONObject())
                             }
-                            JellyButton("Delete", Modifier.weight(1f), icon = JellyIcons.Delete) {
+                            JellyButton("Delete", Modifier.weight(1f), icon = JellyIcons.Delete, danger = true) {
                                 onAction("vote_delete", o.optLong("id"), JSONObject())
                             }
                         }
