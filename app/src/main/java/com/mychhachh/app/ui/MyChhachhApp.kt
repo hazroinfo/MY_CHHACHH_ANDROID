@@ -690,14 +690,72 @@ fun MyChhachhApp() {
                     Screen.SAVED -> SavedScreen(saved, savedLoading, savedError, { open(Screen.PROFILE, it) }, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p.id) } }; loadSaved() } }, { commentPost = it }, ::sharePost, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadSaved() } })
                     Screen.SEARCH -> SearchScreen(searchResult, searchLoading, searchError, searchQuery, { searchQuery = it }, ::doSearch, { if (currentUser != null) open(Screen.PROFILE, it) }, { if (currentUser != null) open(Screen.SHOP_DETAIL, it) })
                     Screen.PROFILE -> currentUser?.let { u -> ProfileScreen(profileData, profileLoading, profileError, u.id, { id -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.followUser(id) } }; loadProfile(id) } }, { id -> open(Screen.CHAT, id) }, { open(Screen.SETTINGS) }, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p.id) } }; loadProfile(selectedId) } }, { commentPost = it }, ::sharePost, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadProfile(selectedId) } }) }
-                    Screen.SHOP_DETAIL -> ShopDetailScreen(shopData, shopDetailLoading, shopDetailError,
-                        { id -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.toggleShopFollow(id) } }; loadShop(id) } },
-                        { open(Screen.PROFILE, it) },
-                        { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p.id) } }; loadShop(selectedId) } },
-                        { commentPost = it },
-                        ::sharePost,
-                        { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadShop(selectedId) } }
-                    )
+                    Screen.SHOP_DETAIL -> currentUser?.let { u ->
+                        ShopDetailScreen(
+                            data = shopData,
+                            loading = shopDetailLoading,
+                            error = shopDetailError,
+                            meId = u.id,
+                            onFollow = { id ->
+                                scope.launch {
+                                    runCatching { withContext(Dispatchers.IO) { api.toggleShopFollow(id) } }
+                                        .onFailure { shopDetailError = it.message }
+                                    loadShop(id)
+                                }
+                            },
+                            onProfile = { open(Screen.PROFILE, it) },
+                            onMessage = { open(Screen.CHAT, it) },
+                            onUpdate = { id, fields, photoUri, coverUri ->
+                                scope.launch {
+                                    try {
+                                        shopDetailError = null
+                                        val body = JSONObject(fields.toString())
+                                        withContext(Dispatchers.IO) {
+                                            photoUri?.let { body.put("photo", api.uploadUri(it, "shop")) }
+                                            coverUri?.let { body.put("cover_photo", api.uploadUri(it, "shop-cover")) }
+                                            api.updateShop(id, body)
+                                        }
+                                        loadShop(id)
+                                        loadShops()
+                                    } catch (e: Exception) {
+                                        shopDetailError = e.message ?: "Shop could not be updated."
+                                    }
+                                }
+                            },
+                            onDelete = { id ->
+                                scope.launch {
+                                    try {
+                                        withContext(Dispatchers.IO) { api.deleteShop(id) }
+                                        route = Screen.SHOPS
+                                        selectedId = 0L
+                                        backStack.clear()
+                                        loadShops()
+                                    } catch (e: Exception) {
+                                        shopDetailError = e.message ?: "Shop could not be deleted."
+                                    }
+                                }
+                            },
+                            onCreatePost = { id, text, privacy, photoUri, videoUri ->
+                                scope.launch {
+                                    try {
+                                        shopDetailError = null
+                                        withContext(Dispatchers.IO) {
+                                            val photo = photoUri?.let { api.uploadUri(it, "shop-post-image") }.orEmpty()
+                                            val video = videoUri?.let { api.uploadUri(it, "shop-post-video") }.orEmpty()
+                                            api.createShopPost(id, text, privacy, photo, video)
+                                        }
+                                        loadShop(id)
+                                    } catch (e: Exception) {
+                                        shopDetailError = e.message ?: "Shop post could not be published."
+                                    }
+                                }
+                            },
+                            onLike = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p.id) } }; loadShop(selectedId) } },
+                            onComment = { commentPost = it },
+                            onShare = ::sharePost,
+                            onSave = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadShop(selectedId) } }
+                        )
+                    }
                     Screen.MAP -> MapScreen(mapQuery, { mapQuery = it }, mapData, mapLoading, mapError, {
                         if (mapQuery.isNotBlank()) scope.launch { mapLoading = true; mapError = null; try { val d = withContext(Dispatchers.IO) { api.geocode(mapQuery) }; mapData = d.optJSONArray("items")?.optJSONObject(0) ?: d.optJSONObject("item") ?: d } catch (e: Exception) { mapError = e.message }; mapLoading = false }
                     })
