@@ -1,7 +1,11 @@
 package com.mychhachh.app.ui.screens
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.media.MediaRecorder
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -22,6 +26,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,6 +40,7 @@ import com.mychhachh.app.ui.theme.JellyInk
 import com.mychhachh.app.ui.theme.JellyMuted
 import com.mychhachh.app.ui.theme.JellyPurple
 import kotlinx.coroutines.launch
+import java.io.File
 
 @Composable
 fun MessagesScreen(
@@ -184,7 +190,7 @@ fun ChatScreen(
     loading: Boolean,
     error: String?,
     onSearchLocation: suspend (String) -> List<CheckinPlace>,
-    onSend: (String, Uri?, CheckinPlace?) -> Unit,
+    onSend: (String, Uri?, File?, CheckinPlace?) -> Unit,
     headerTitle: String? = null,
     headerSubtitle: String? = null
 ) {
@@ -192,12 +198,51 @@ fun ChatScreen(
     val scope = rememberCoroutineScope()
     var text by remember { mutableStateOf("") }
     var photoUri by remember { mutableStateOf<Uri?>(null) }
+    var audioFile by remember { mutableStateOf<File?>(null) }
+    var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
+    var recording by remember { mutableStateOf(false) }
     var selectedPlace by remember { mutableStateOf<CheckinPlace?>(null) }
     var emojiOpen by remember { mutableStateOf(false) }
     var locationOpen by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) photoUri = uri
+    }
+
+    fun startVoiceRecording() {
+        val file = File(context.cacheDir, "message-${System.currentTimeMillis()}.m4a")
+        val r = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(context) else @Suppress("DEPRECATION") MediaRecorder()
+        r.setAudioSource(MediaRecorder.AudioSource.MIC)
+        r.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+        r.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+        r.setAudioEncodingBitRate(128000)
+        r.setAudioSamplingRate(44100)
+        r.setMaxDuration(300000)
+        r.setOutputFile(file.absolutePath)
+        r.prepare()
+        r.start()
+        recorder = r
+        audioFile = file
+        recording = true
+    }
+
+    fun stopVoiceRecording() {
+        val r = recorder ?: return
+        runCatching { r.stop() }
+        runCatching { r.release() }
+        recorder = null
+        recording = false
+    }
+
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) runCatching { startVoiceRecording() }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            if (recording) stopVoiceRecording()
+            runCatching { recorder?.release() }
+        }
     }
 
     LaunchedEffect(messages.size) {
@@ -278,12 +323,13 @@ fun ChatScreen(
             }
         }
 
-        if (photoUri != null || selectedPlace != null) {
+        if (photoUri != null || audioFile != null || selectedPlace != null) {
             JellyGlass(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), padding = 8.dp) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         listOfNotNull(
                             photoUri?.let { "Photo ready" },
+                            audioFile?.let { if (recording) "Recording voice…" else "Voice ready" },
                             selectedPlace?.let { "Location: ${it.name.split(",").firstOrNull().orEmpty()}" }
                         ).joinToString(" · "),
                         Modifier.weight(1f),
@@ -292,7 +338,10 @@ fun ChatScreen(
                         fontWeight = FontWeight.Bold
                     )
                     JellyButton("Remove") {
+                        if (recording) stopVoiceRecording()
+                        runCatching { audioFile?.delete() }
                         photoUri = null
+                        audioFile = null
                         selectedPlace = null
                     }
                 }
@@ -302,6 +351,14 @@ fun ChatScreen(
         JellyGlass(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 7.dp), padding = 7.dp) {
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 JellyIconButton(JellyIcons.Photo, "Photo") { photoPicker.launch("image/*") }
+                JellyIconButton(JellyIcons.Announcement, if (recording) "Stop voice" else "Voice") {
+                    if (recording) {
+                        stopVoiceRecording()
+                    } else {
+                        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                        if (granted) runCatching { startVoiceRecording() } else micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                    }
+                }
                 Box {
                     JellyIconButton(JellyIcons.Feeling, "Emoji") { emojiOpen = !emojiOpen }
                 }
@@ -315,10 +372,11 @@ fun ChatScreen(
                 )
                 JellyIconButton(JellyIcons.Map, "Location") { locationOpen = true }
                 JellyIconButton(JellyIcons.Send, "Send") {
-                    if (text.isNotBlank() || photoUri != null || selectedPlace != null) {
-                        onSend(text.trim(), photoUri, selectedPlace)
+                    if (!recording && (text.isNotBlank() || photoUri != null || audioFile != null || selectedPlace != null)) {
+                        onSend(text.trim(), photoUri, audioFile, selectedPlace)
                         text = ""
                         photoUri = null
+                        audioFile = null
                         selectedPlace = null
                         emojiOpen = false
                     }
