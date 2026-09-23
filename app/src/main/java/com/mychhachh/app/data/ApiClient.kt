@@ -344,7 +344,13 @@ class ApiClient(private val context: Context) {
     }
 
     fun likePost(id: Long): JSONObject = post("/api/posts/$id/like")
+    fun likePost(postItem: Post): JSONObject =
+        if (postItem.shopId > 0) post("/api/shop-posts/${postItem.id}/like") else likePost(postItem.id)
+
     fun sharePost(id: Long): JSONObject = post("/api/posts/$id/share")
+    fun sharePost(postItem: Post): JSONObject =
+        if (postItem.shopId > 0) post("/api/shop-posts/${postItem.id}/share") else sharePost(postItem.id)
+
     fun savePost(id: Long): JSONObject = post("/api/posts/$id/save")
     fun updatePost(id: Long, text: String, privacy: String): JSONObject =
         patch("/api/posts/$id", JSONObject().put("text", text).put("privacy", privacy))
@@ -356,7 +362,19 @@ class ApiClient(private val context: Context) {
     }
 
     fun postComments(postId: Long): JSONArray = get("/api/posts/$postId/comments").optJSONArray("items") ?: JSONArray()
+    fun postComments(postItem: Post): JSONArray =
+        get(if (postItem.shopId > 0) "/api/shop-posts/${postItem.id}/comments" else "/api/posts/${postItem.id}/comments")
+            .optJSONArray("items") ?: JSONArray()
+
     fun addComment(postId: Long, text: String): JSONObject = post("/api/posts/$postId/comments", JSONObject().put("text", text))
+    fun addComment(postItem: Post, text: String, parentId: Long = 0L): JSONObject {
+        val body = JSONObject().put("text", text)
+        if (parentId > 0) body.put("parent_id", parentId)
+        val path = if (postItem.shopId > 0) "/api/shop-posts/${postItem.id}/comments" else "/api/posts/${postItem.id}/comments"
+        return post(path, body)
+    }
+
+    fun likeComment(commentId: Long): JSONObject = post("/api/comments/$commentId/like")
 
     fun profileMe(): User = get("/api/me").optJSONObject("user")?.toUser() ?: throw ApiException("Profile unavailable")
     fun updateProfile(fields: JSONObject): User = patch("/api/profile", fields).optJSONObject("user")?.toUser() ?: profileMe()
