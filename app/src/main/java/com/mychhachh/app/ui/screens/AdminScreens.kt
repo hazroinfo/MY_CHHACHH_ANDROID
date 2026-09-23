@@ -1917,14 +1917,10 @@ private fun TrafficKpi(label: String, value: String, note: String, modifier: Mod
 }
 
 private fun parseThemeColor(value: String): Color {
-    val hex = value.trim().removePrefix("#")
+    val hex = value.trim()
     return runCatching {
-        val rgb = hex.toLong(16)
-        when (hex.length) {
-            6 -> Color(0xFF000000L or rgb)
-            8 -> Color(rgb)
-            else -> Color.White
-        }
+        val normalized = if (hex.startsWith("#")) hex else "#$hex"
+        Color(android.graphics.Color.parseColor(normalized))
     }.getOrDefault(Color.White)
 }
 
