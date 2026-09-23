@@ -427,7 +427,32 @@ fun MyChhachhApp() {
                     Screen.MESSAGES -> MessagesScreen(conversations, conversationsLoading, conversationsError) { open(Screen.CHAT, it) }
                     Screen.CHAT -> currentUser?.let { u -> ChatScreen(u, chatOther, chatMessages, chatLoading, chatError, { txt -> scope.launch { try { val m = withContext(Dispatchers.IO) { api.sendMessage(selectedId, txt) }; chatMessages = chatMessages + m } catch (e: Exception) { chatError = e.message } } }) }
                     Screen.NOTIFICATIONS -> NotificationsScreen(notices, noticesLoading, noticesError, { scope.launch { runCatching { withContext(Dispatchers.IO) { api.markNotificationsRead() } }; unread = 0; loadNotices() } }, { open(Screen.PROFILE, it) })
-                    Screen.ANNOUNCEMENTS -> AnnouncementsScreen(announcements, announcementsLoading, announcementsError) { id -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.toggleAnnouncementLike(id) } }; loadAnnouncements() } }
+                    Screen.ANNOUNCEMENTS -> AnnouncementsScreen(
+                        items = announcements,
+                        loading = announcementsLoading,
+                        error = announcementsError,
+                        onLike = { id ->
+                            scope.launch {
+                                runCatching { withContext(Dispatchers.IO) { api.toggleAnnouncementLike(id) } }
+                                loadAnnouncements()
+                            }
+                        },
+                        onPublish = { text, photoUri, audioFile ->
+                            scope.launch {
+                                try {
+                                    announcementsError = null
+                                    withContext(Dispatchers.IO) {
+                                        val photo = photoUri?.let { api.uploadUri(it, "announcement-image") }.orEmpty()
+                                        val audio = audioFile?.let { api.upload(it, "audio/mp4", "announcement-audio") }.orEmpty()
+                                        api.createAnnouncement(text = text, photo = photo, audio = audio)
+                                    }
+                                    loadAnnouncements()
+                                } catch (e: Exception) {
+                                    announcementsError = e.message ?: "Announcement could not be published."
+                                }
+                            }
+                        }
+                    )
                     Screen.VOTES -> VotesScreen(votes, votesLoading, votesError) { id, side -> if (currentUser == null) { authMode = "login"; route = Screen.AUTH } else scope.launch { runCatching { withContext(Dispatchers.IO) { api.castVote(id, side) } }; loadVotes() } }
                     Screen.SAVED -> SavedScreen(saved, savedLoading, savedError, { open(Screen.PROFILE, it) }, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p.id) } }; loadSaved() } }, { commentPost = it }, ::sharePost, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadSaved() } })
                     Screen.SEARCH -> SearchScreen(searchResult, searchLoading, searchError, searchQuery, { searchQuery = it }, ::doSearch, { if (currentUser != null) open(Screen.PROFILE, it) }, { if (currentUser != null) open(Screen.SHOP_DETAIL, it) })
