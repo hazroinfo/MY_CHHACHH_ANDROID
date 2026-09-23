@@ -84,10 +84,27 @@ fun JellyGlass(
     val opacity = surfaceOpacity ?: LiveJellyTheme.cardOpacity
     val base = surfaceColor ?: LiveJellyTheme.cardColor
     var m = modifier
-        .shadow(LiveJellyTheme.shadow.dp, shape, ambientColor = Color(0x12203355), spotColor = Color(0x14203355))
+        .shadow(
+            13.dp,
+            shape,
+            ambientColor = Color(0x29455F89),
+            spotColor = Color(0x29455F89)
+        )
         .clip(shape)
-        .background(base.copy(alpha = opacity))
-        .border(1.dp, LiveJellyTheme.borderColor.copy(alpha = .98f), shape)
+        .background(
+            if (surfaceColor != null) {
+                Brush.linearGradient(listOf(base.copy(alpha = opacity), base.copy(alpha = opacity)))
+            } else {
+                Brush.linearGradient(
+                    listOf(
+                        Color.White.copy(alpha = .88f),
+                        Color(0xFFDEF7FF).copy(alpha = .72f),
+                        Color(0xFFF9E7F9).copy(alpha = .61f)
+                    )
+                )
+            }
+        )
+        .border(2.dp, Color.White.copy(alpha = .94f), shape)
     if (onClick != null) m = m.clickable { onClick() }
     Box(m.padding(padding), content = content)
 }
@@ -100,11 +117,25 @@ fun JellyPill(text: String, selected: Boolean, modifier: Modifier = Modifier, on
             .clip(shape)
             .clickable { onClick() }
             .background(
-                if (selected) Brush.horizontalGradient(listOf(LiveJellyTheme.buttonColor, LiveJellyTheme.accent, LiveJellyTheme.accent2))
-                else Brush.linearGradient(listOf(LiveJellyTheme.cardColor, LiveJellyTheme.cardColor))
+                if (selected) {
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color(0xFFFF6EC0),
+                            Color(0xFFFF4CAD),
+                            Color(0xFFB671F1)
+                        )
+                    )
+                } else {
+                    Brush.linearGradient(
+                        listOf(
+                            Color.White.copy(alpha = .66f),
+                            Color.White.copy(alpha = .66f)
+                        )
+                    )
+                }
             )
-            .border(1.dp, if (selected) LiveJellyTheme.buttonColor else LiveJellyTheme.borderColor, shape)
-            .height(48.dp),
+            .border(1.5.dp, Color.White.copy(alpha = .94f), shape)
+            .height(43.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -135,29 +166,30 @@ fun JellyButton(
             .clip(shape)
             .clickable(enabled = enabled) { onClick() }
             .background(
-                if (primary) Brush.horizontalGradient(
-                    listOf(
-                        LiveJellyTheme.buttonColor.copy(alpha = alpha),
-                        LiveJellyTheme.accent.copy(alpha = alpha),
-                        LiveJellyTheme.accent2.copy(alpha = alpha)
-                    )
-                )
-                else Brush.linearGradient(
-                    listOf(
-                        LiveJellyTheme.cardColor.copy(alpha = alpha),
-                        LiveJellyTheme.cardColor.copy(alpha = alpha)
-                    )
-                )
-            )
-            .border(
-                1.dp,
                 when {
-                    !enabled -> LiveJellyTheme.borderColor.copy(alpha = .55f)
-                    primary -> LiveJellyTheme.buttonColor
-                    else -> LiveJellyTheme.borderColor
-                },
-                shape
+                    primary -> Brush.horizontalGradient(
+                        listOf(
+                            Color(0xFF5ED9FF).copy(alpha = alpha),
+                            Color(0xFF7E8DFF).copy(alpha = alpha),
+                            Color(0xFFBD70F4).copy(alpha = alpha),
+                            Color(0xFFFF68B8).copy(alpha = alpha)
+                        )
+                    )
+                    danger -> Brush.linearGradient(
+                        listOf(
+                            Color(0xFFFFEEF4).copy(alpha = .72f * alpha),
+                            Color(0xFFFFEEF4).copy(alpha = .72f * alpha)
+                        )
+                    )
+                    else -> Brush.linearGradient(
+                        listOf(
+                            Color.White.copy(alpha = .66f * alpha),
+                            Color.White.copy(alpha = .66f * alpha)
+                        )
+                    )
+                }
             )
+            .border(1.5.dp, Color.White.copy(alpha = .94f * alpha), shape)
             .heightIn(min = LiveJellyTheme.buttonHeight.dp)
             .padding(horizontal = 13.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -173,7 +205,7 @@ fun JellyButton(
                 when {
                     primary -> Color.White
                     danger -> JellyDanger
-                    else -> JellyInk
+                    else -> Color(0xFF443578)
                 }
             ).copy(alpha = alpha),
             fontWeight = FontWeight.ExtraBold,
@@ -251,7 +283,7 @@ fun Avatar(user: User, size: Dp = 48.dp, modifier: Modifier = Modifier) {
             .size(size)
             .clip(shape)
             .background(Brush.linearGradient(listOf(Color(0xFFEEFBFF), Color(0xFFDDCEFF))))
-            .border(1.5f.dp, Color.White, shape),
+            .border(3.dp, Color.White.copy(alpha = .98f), shape),
         contentAlignment = Alignment.Center
     ) {
         if (!user.avatar.isNullOrBlank()) {
