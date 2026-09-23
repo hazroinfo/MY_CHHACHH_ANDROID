@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import com.mychhachh.app.data.*
 import com.mychhachh.app.ui.components.*
@@ -129,6 +130,7 @@ fun MyChhachhApp() {
     var adminQuery by remember { mutableStateOf("") }
     var adminLoading by remember { mutableStateOf(false) }
     var adminError by remember { mutableStateOf<String?>(null) }
+    var adminTraffic by remember { mutableStateOf<JSONObject?>(null) }
     var themeBusy by remember { mutableStateOf(false) }
     var themeError by remember { mutableStateOf<String?>(null) }
 
@@ -243,6 +245,36 @@ fun MyChhachhApp() {
             catch (e: Exception) { settingsError = e.message }
         }
     }
+    suspend fun fetchAdminSection(section: String, query: String): JSONObject {
+        return when (section) {
+            "posts" -> {
+                val normal = api.adminList("posts", query = query)
+                val shop = api.adminList("shop_posts", query = query)
+                val combined = JSONArray()
+                val n = normal.optJSONArray("items") ?: JSONArray()
+                val sh = shop.optJSONArray("items") ?: JSONArray()
+                for (i in 0 until n.length()) combined.put(n.optJSONObject(i))
+                for (i in 0 until sh.length()) {
+                    sh.optJSONObject(i)?.let { row ->
+                        row.put("shop_post", true)
+                        combined.put(row)
+                    }
+                }
+                JSONObject()
+                    .put("items", combined)
+                    .put("normal_meta", normal.optJSONObject("meta"))
+                    .put("shop_meta", shop.optJSONObject("meta"))
+            }
+            "notices", "features", "installer", "ads", "social", "adminprofile", "overview" ->
+                JSONObject().put("items", JSONArray())
+            "traffic" -> {
+                adminTraffic = api.adminTraffic()
+                JSONObject().put("items", JSONArray())
+            }
+            else -> api.adminList(section, query = query)
+        }
+    }
+
     fun loadAdmin(loadState: Boolean = true) {
         if (me?.isAdmin != true) return
         scope.launch {
@@ -251,7 +283,7 @@ fun MyChhachhApp() {
             try {
                 val result = withContext(Dispatchers.IO) {
                     val state = if (loadState) api.adminState() else null
-                    val list = api.adminList(adminSection, query = adminQuery)
+                    val list = fetchAdminSection(adminSection, adminQuery)
                     state to list
                 }
                 if (result.first != null) adminState = result.first
@@ -1055,6 +1087,8 @@ fun MyChhachhApp() {
                         AdminCenterScreen(
                             state = adminState,
                             list = adminList,
+                            me = currentUser,
+                            traffic = adminTraffic,
                             section = adminSection,
                             query = adminQuery,
                             loading = adminLoading,
@@ -1064,7 +1098,7 @@ fun MyChhachhApp() {
                                 scope.launch {
                                     adminLoading = true
                                     adminError = null
-                                    try { adminList = withContext(Dispatchers.IO) { api.adminList(it, query = adminQuery) } }
+                                    try { adminList = withContext(Dispatchers.IO) { fetchAdminSection(it, adminQuery) } }
                                     catch (e: Exception) { adminError = e.message }
                                     adminLoading = false
                                 }
@@ -1078,7 +1112,7 @@ fun MyChhachhApp() {
                                     try {
                                         withContext(Dispatchers.IO) { api.adminAction(action, id, fields) }
                                         val result = withContext(Dispatchers.IO) {
-                                            api.adminState() to api.adminList(adminSection, query = adminQuery)
+                                            api.adminState() to fetchAdminSection(adminSection, adminQuery)
                                         }
                                         adminState = result.first
                                         adminList = result.second
@@ -1088,7 +1122,58 @@ fun MyChhachhApp() {
                                     adminLoading = false
                                 }
                             },
-                            onProfile = { open(Screen.PROFILE, it) }
+                            onProfile = { open(Screen.PROFILE, it) },
+                            onTheme = { open(Screen.THEME) },
+                            onAnnouncements = { open(Screen.ANNOUNCEMENTS) },
+                            onPublishAnnouncement = { type, text, photoUri, audioUri ->
+                                scope.launch {
+                                    adminLoading = true
+                                    adminError = null
+                                    try {
+                                        withContext(Dispatchers.IO) {
+                                            val body = JSONObject()
+                                                .put("notice_type", type)
+                                                .put("text", text)
+                                            photoUri?.let {
+                                                val url = api.uploadUri(it, "announcement-image")
+                                                if (url.isNotBlank()) body.put("photo", url)
+                                            }
+                                            audioUri?.let {
+                                                val url = api.uploadUri(it, "announcement-audio")
+                                                if (url.isNotBlank()) body.put("audio", url)
+                                            }
+                                            api.adminAction("admin_notice_post", fields = body)
+                                        }
+                                        adminState = withContext(Dispatchers.IO) { api.adminState() }
+                                    } catch (e: Exception) {
+                                        adminError = e.message ?: "Announcement could not be published."
+                                    }
+                                    adminLoading = false
+                                }
+                            },
+                            onPublishAdminPost = { text, photoUri, videoUri ->
+                                scope.launch {
+                                    adminLoading = true
+                                    adminError = null
+                                    try {
+                                        withContext(Dispatchers.IO) {
+                                            val body = JSONObject().put("text", text)
+                                            photoUri?.let {
+                                                val url = api.uploadUri(it, "post-image")
+                                                if (url.isNotBlank()) body.put("photo", url)
+                                            }
+                                            videoUri?.let {
+                                                val url = api.uploadUri(it, "post-video")
+                                                if (url.isNotBlank()) body.put("video", url)
+                                            }
+                                            api.adminAction("admin_post", fields = body)
+                                        }
+                                    } catch (e: Exception) {
+                                        adminError = e.message ?: "Admin post could not be published."
+                                    }
+                                    adminLoading = false
+                                }
+                            }
                         )
                     }
                     Screen.THEME -> if (currentUser?.isAdmin == true) {
