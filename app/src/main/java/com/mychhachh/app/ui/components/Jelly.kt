@@ -65,7 +65,7 @@ fun JellyIcon(
         contentDescription = contentDescription,
         modifier = modifier.size(size),
         contentScale = ContentScale.Fit,
-        colorFilter = ColorFilter.tint(tint ?: LiveJellyTheme.iconColor)
+        colorFilter = tint?.let { ColorFilter.tint(it) }
     )
 }
 
@@ -164,15 +164,7 @@ fun JellyButton(
         horizontalArrangement = Arrangement.Center
     ) {
         icon?.let {
-            JellyIcon(
-                it,
-                size = 22.dp,
-                tint = when {
-                    primary -> Color.White
-                    danger -> JellyDanger
-                    else -> LiveJellyTheme.iconColor
-                }
-            )
+            JellyIcon(it, size = 22.dp)
             Spacer(Modifier.width(5.dp))
         }
         Text(
