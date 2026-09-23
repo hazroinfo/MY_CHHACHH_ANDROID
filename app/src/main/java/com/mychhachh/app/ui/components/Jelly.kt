@@ -66,13 +66,28 @@ fun JellyIcon(
     contentDescription: String? = null,
     tint: Color? = null
 ) {
-    androidx.compose.foundation.Image(
-        painter = painterResource(icon),
-        contentDescription = contentDescription,
-        modifier = modifier.size(size),
-        contentScale = ContentScale.Fit,
-        colorFilter = (tint ?: if (LiveJellyTheme.customIconPalette) LiveJellyTheme.iconColor else null)?.let { ColorFilter.tint(it) }
-    )
+    Box(modifier.size(size), contentAlignment = Alignment.Center) {
+        if (LiveJellyTheme.customIconPalette && tint == null) {
+            Canvas(Modifier.fillMaxSize()) {
+                drawCircle(
+                    color = LiveJellyTheme.iconShadow.copy(alpha = .16f),
+                    radius = this.size.minDimension * .43f
+                )
+                drawCircle(
+                    color = LiveJellyTheme.iconHighlight.copy(alpha = .22f),
+                    radius = this.size.minDimension * .30f,
+                    center = Offset(this.size.width * .40f, this.size.height * .36f)
+                )
+            }
+        }
+        androidx.compose.foundation.Image(
+            painter = painterResource(icon),
+            contentDescription = contentDescription,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Fit,
+            colorFilter = (tint ?: if (LiveJellyTheme.customIconPalette) LiveJellyTheme.iconColor else null)?.let { ColorFilter.tint(it) }
+        )
+    }
 }
 
 @Composable
@@ -257,6 +272,14 @@ fun JellyIconButton(
     }
 }
 
+private fun tunedBrandColor(source: Color): Color {
+    val saturation = LiveJellyTheme.brandSaturation
+    val brightness = LiveJellyTheme.brandBrightness
+    val gray = (source.red + source.green + source.blue) / 3f
+    fun channel(v: Float): Float = ((gray + (v - gray) * saturation) * brightness).coerceIn(0f, 1f)
+    return Color(channel(source.red), channel(source.green), channel(source.blue), source.alpha)
+}
+
 @Composable
 fun Brand(name: String = "My Chhachh", modifier: Modifier = Modifier, fontSize: Int = 27) {
     Text(
@@ -266,15 +289,15 @@ fun Brand(name: String = "My Chhachh", modifier: Modifier = Modifier, fontSize: 
             brush = if (LiveJellyTheme.rainbowBrand) {
                 Brush.horizontalGradient(
                     listOf(
-                        Color(0xFFFF47B3),
-                        Color(0xFFFFB642),
-                        Color(0xFF62DC9D),
-                        Color(0xFF56C9FF),
-                        Color(0xFF8B75F5)
+                        tunedBrandColor(Color(0xFFFF47B3)),
+                        tunedBrandColor(Color(0xFFFFB642)),
+                        tunedBrandColor(Color(0xFF62DC9D)),
+                        tunedBrandColor(Color(0xFF56C9FF)),
+                        tunedBrandColor(Color(0xFF8B75F5))
                     )
                 )
             } else {
-                Brush.horizontalGradient(listOf(LiveJellyTheme.brandColor, LiveJellyTheme.brandColor2))
+                Brush.horizontalGradient(listOf(tunedBrandColor(LiveJellyTheme.brandColor), tunedBrandColor(LiveJellyTheme.brandColor2)))
             },
             fontSize = (fontSize * LiveJellyTheme.fontScale).sp,
             fontWeight = FontWeight.Black,
