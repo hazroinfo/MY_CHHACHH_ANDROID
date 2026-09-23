@@ -107,7 +107,7 @@ fun JellyGlass(
     val depth = (LiveJellyTheme.jellyDepth / 100f).coerceIn(0f, 1f)
     val shine = (LiveJellyTheme.jellyShine / 100f).coerceIn(0f, 1f)
     val borderStrength = (LiveJellyTheme.jellyBorder / 100f).coerceIn(0f, 1f)
-    val shadowDp = (4f + LiveJellyTheme.shadow * depth).dp
+    val shadowDp = (4f + 10f * depth).dp
     var m = modifier
         .shadow(
             shadowDp,
@@ -122,16 +122,35 @@ fun JellyGlass(
             } else {
                 Brush.linearGradient(
                     listOf(
-                        Color.White.copy(alpha = .62f + .30f * shine),
-                        Color(0xFFDEF7FF).copy(alpha = .54f + .22f * shine),
-                        Color(0xFFF9E7F9).copy(alpha = .47f + .18f * shine)
+                        Color.White.copy(alpha = .88f),
+                        Color(0xFFDEF7FF).copy(alpha = .72f),
+                        Color(0xFFF9E7F9).copy(alpha = .61f)
                     )
                 )
             }
         )
-        .border((1f + borderStrength).dp, Color.White.copy(alpha = .48f + .50f * borderStrength), shape)
+        .border((1.08f + borderStrength).dp, Color.White.copy(alpha = .94f), shape)
     if (onClick != null) m = m.clickable { onClick() }
-    Box(m.padding(padding), content = content)
+    Box(m.padding(padding)) {
+        if (surfaceColor == null) {
+            Box(
+                Modifier
+                    .fillMaxWidth(.90f)
+                    .fillMaxHeight(.23f)
+                    .align(Alignment.TopCenter)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = .38f * shine),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+        }
+        content()
+    }
 }
 
 @Composable
