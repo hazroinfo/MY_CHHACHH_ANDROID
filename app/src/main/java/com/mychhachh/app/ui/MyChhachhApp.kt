@@ -191,6 +191,7 @@ fun MyChhachhApp() {
         } catch (_: Exception) { me = null }
         booting = false
         loadFeed(true)
+        loadWeather()
     }
 
     LaunchedEffect(feedMode) { if (!booting) loadFeed(true) }
@@ -246,7 +247,14 @@ fun MyChhachhApp() {
                     onLogin = { authMode = "login"; authError = null; route = Screen.AUTH },
                     onRegister = { authMode = "register"; authError = null; route = Screen.AUTH }
                 ) else AuthHeader(
-                    user = currentUser, route = route, unread = unread, announcementUnread = announcementUnread,
+                    user = currentUser,
+                    route = route,
+                    unread = unread,
+                    announcementUnread = announcementUnread,
+                    weatherText = weatherData?.optJSONObject("current")?.let { current ->
+                        val temp = current.optDouble("temperature_2m", Double.NaN)
+                        if (temp.isNaN()) "Weather" else "${temp.toInt()}°C · Weather"
+                    } ?: "Weather",
                     onMenu = { if (isPrimaryRoute) menuOpen = true else goBack() },
                     onSearch = { open(Screen.SEARCH) },
                     onNotifications = { open(Screen.NOTIFICATIONS) },
@@ -365,14 +373,14 @@ fun MyChhachhApp() {
                         onComment = { p -> commentPost = p },
                         onShare = ::sharePost,
                         onSave = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadFeed(true) } },
-                        onCreatePost = { text, privacy, photoUri, videoUri ->
+                        onCreatePost = { text, privacy, feeling, checkin, photoUri, videoUri ->
                             scope.launch {
                                 try {
                                     feedError = null
                                     withContext(Dispatchers.IO) {
                                         val photo = photoUri?.let { api.uploadUri(it, "post-image") }.orEmpty()
                                         val video = videoUri?.let { api.uploadUri(it, "post-video") }.orEmpty()
-                                        api.createPost(text, privacy, photo = photo, video = video)
+                                        api.createPost(text, privacy, checkin = checkin, feeling = feeling, photo = photo, video = video)
                                     }
                                     loadFeed(true)
                                 } catch (e: Exception) { feedError = e.message ?: "Post could not be published." }
@@ -481,7 +489,7 @@ private fun GuestHeader(onLogin: () -> Unit, onRegister: () -> Unit) {
 
 @Composable
 private fun AuthHeader(
-    user: User, route: Screen, unread: Int, announcementUnread: Int,
+    user: User, route: Screen, unread: Int, announcementUnread: Int, weatherText: String,
     onMenu: () -> Unit, onSearch: () -> Unit, onNotifications: () -> Unit, onProfile: () -> Unit,
     onWeather: () -> Unit, onVotes: () -> Unit, onAnnouncements: () -> Unit,
     onNav: (Screen) -> Unit
@@ -520,11 +528,11 @@ private fun AuthHeader(
                     ) {
                         Brand(fontSize = 30)
                         Text(
-                            "PEOPLE · KNOWLEDGE · COMMUNITIES",
+                            "Connect with people for information.",
                             color = JellyMuted,
-                            fontSize = 7.2f.sp,
+                            fontSize = 8.2f.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = .45.sp,
+                            letterSpacing = .1.sp,
                             maxLines = 1
                         )
                     }
@@ -546,7 +554,7 @@ private fun AuthHeader(
                         JellyIcon(JellyIcons.Search, size = 34.dp)
                         Spacer(Modifier.width(7.dp))
                         Text(
-                            "Search people, shops or posts",
+                            "Search people, posts, places...",
                             Modifier.weight(1f),
                             color = JellyMuted,
                             fontSize = 14.sp,
@@ -558,7 +566,7 @@ private fun AuthHeader(
 
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     QuickHeader("Voting", JellyIcons.Vote, Modifier.weight(1f), onVotes)
-                    QuickHeader("Weather", JellyIcons.Pin, Modifier.weight(1f), onWeather)
+                    QuickHeader(weatherText, JellyIcons.Pin, Modifier.weight(1f), onWeather)
                     Box(Modifier.weight(1f)) {
                         QuickHeader("Announcements", JellyIcons.Announcement, Modifier.fillMaxWidth(), onAnnouncements)
                         if (announcementUnread > 0) CountBadge(announcementUnread, Modifier.align(Alignment.TopEnd))
