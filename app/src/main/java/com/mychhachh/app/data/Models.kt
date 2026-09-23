@@ -206,4 +206,5 @@ fun JSONObject.toComment(): Comment {
 
 fun JSONArray.users(): List<User> = (0 until length()).mapNotNull { optJSONObject(it)?.toUser() }
 fun JSONArray.posts(): List<Post> = (0 until length()).mapNotNull { optJSONObject(it)?.toPost() }
+fun JSONArray.comments(): List<Comment> = (0 until length()).mapNotNull { optJSONObject(it)?.toComment() }
 fun JSONArray.shops(): List<Shop> = (0 until length()).mapNotNull { optJSONObject(it)?.toShop() }
