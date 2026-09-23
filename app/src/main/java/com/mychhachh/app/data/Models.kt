@@ -65,6 +65,7 @@ data class Shop(
     val city: String,
     val village: String,
     val area: String,
+    val location: String = "",
     val phone: String,
     val whatsapp: String,
     val locationUrl: String = "",
@@ -133,7 +134,7 @@ fun JSONObject.toPost(): Post {
 fun JSONObject.toShop(): Shop = Shop(
     id = optLong("id"), userId = optLong("user_id"), name = optString("name", "Shop"), username = optString("username", ""),
     category = optString("category", ""), description = optString("description", ""), photo = mediaUrl(optString("photo", "")), cover = mediaUrl(optString("cover_photo", "")),
-    city = optString("city", ""), village = optString("village", ""), area = optString("area", ""), phone = optString("phone", ""), whatsapp = optString("whatsapp", ""),
+    city = optString("city", ""), village = optString("village", ""), area = optString("area", ""), location = optString("location", ""), phone = optString("phone", ""), whatsapp = optString("whatsapp", ""),
     locationUrl = optString("location_url", optString("map_url", optString("google_maps_url", optString("location_link", "")))),
     followers = optInt("followers", 0), products = optInt("products", 0), followed = optBoolean("following", optBoolean("followed", false))
 )
