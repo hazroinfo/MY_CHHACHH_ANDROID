@@ -321,6 +321,10 @@ fun MyChhachhApp() {
     LaunchedEffect(route, selectedId, me?.id) {
         if (booting) return@LaunchedEffect
         when (route) {
+            Screen.HOME -> if (me != null) {
+                if (people.isEmpty()) loadPeople()
+                if (shops.isEmpty()) loadShops()
+            }
             Screen.PEOPLE -> if (me != null) loadPeople()
             Screen.SHOPS -> if (me != null) loadShops()
             Screen.MESSAGES -> if (me != null) loadMessages()
@@ -506,9 +510,19 @@ fun MyChhachhApp() {
                     )
                     Screen.HOME -> HomeScreen(
                         currentUser, feedMode, posts, feedLoading, feedError, nextBefore > 0,
+                        peopleSuggestions = people,
+                        shopSuggestions = shops,
                         onMode = { feedMode = it },
                         onLogin = { authMode = "login"; route = Screen.AUTH }, onRegister = { authMode = "register"; route = Screen.AUTH },
                         onProfile = { if (currentUser != null) open(Screen.PROFILE, it) else { authMode = "login"; route = Screen.AUTH } },
+                        onOpenPeople = { open(Screen.PEOPLE) },
+                        onOpenShop = { open(Screen.SHOP_DETAIL, it) },
+                        onFollowSuggestion = { id ->
+                            scope.launch {
+                                runCatching { withContext(Dispatchers.IO) { api.followUser(id) } }
+                                loadPeople()
+                            }
+                        },
                         onLike = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p) } }; loadFeed(true) } },
                         onComment = { p -> openDiscussion(p) },
                         onShare = ::sharePost,
