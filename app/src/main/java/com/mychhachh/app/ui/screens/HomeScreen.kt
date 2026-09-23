@@ -44,6 +44,8 @@ fun HomeScreen(
     onComment: (Post) -> Unit,
     onShare: (Post) -> Unit,
     onSave: (Post) -> Unit,
+    onEditPost: (Post, String, String) -> Unit,
+    onDeletePost: (Post) -> Unit,
     onCreatePost: (String, String, String, String, Uri?, Uri?) -> Unit,
     onLoadMore: () -> Unit
 ) {
@@ -160,7 +162,18 @@ fun HomeScreen(
         if (loading && posts.isEmpty()) item { LoadingBlock() }
         error?.let { item { ErrorCard(it) } }
         items(posts, key = { "post-${it.id}" }) { post ->
-            PostCard(post, user != null, onLogin, { onProfile(post.user.id) }, onLike, onComment, onShare, onSave)
+            PostCard(
+                post = post,
+                loggedIn = user != null,
+                onLogin = onLogin,
+                onProfile = { onProfile(post.user.id) },
+                onLike = onLike,
+                onComment = onComment,
+                onShare = onShare,
+                onSave = onSave,
+                onEdit = if (user?.id == post.user.id) onEditPost else null,
+                onDelete = if (user?.id == post.user.id) onDeletePost else null
+            )
         }
         if (!loading && posts.isEmpty() && error == null) {
             item { EmptyCard(if (mode == "shops") "No shop posts yet." else "No posts yet.") }
@@ -247,10 +260,14 @@ fun PostCard(
     onLike: (Post) -> Unit,
     onComment: (Post) -> Unit,
     onShare: (Post) -> Unit,
-    onSave: (Post) -> Unit
+    onSave: (Post) -> Unit,
+    onEdit: ((Post, String, String) -> Unit)? = null,
+    onDelete: ((Post) -> Unit)? = null
 ) {
     var videoOpen by remember(post.id) { mutableStateOf(false) }
     var moreOpen by remember(post.id) { mutableStateOf(false) }
+    var editOpen by remember(post.id) { mutableStateOf(false) }
+    var deleteConfirm by remember(post.id) { mutableStateOf(false) }
 
     JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp) {
         Column(Modifier.fillMaxWidth()) {
@@ -348,10 +365,71 @@ fun PostCard(
                         onSave(post)
                         moreOpen = false
                     }
+                    if (onEdit != null) {
+                        JellyButton("Edit Post", Modifier.fillMaxWidth(), icon = JellyIcons.Edit) {
+                            moreOpen = false
+                            editOpen = true
+                        }
+                    }
+                    if (onDelete != null) {
+                        JellyButton("Delete Post", Modifier.fillMaxWidth(), icon = JellyIcons.Delete) {
+                            moreOpen = false
+                            deleteConfirm = true
+                        }
+                    }
                 }
             },
             confirmButton = {},
             dismissButton = { JellyButton("Close") { moreOpen = false } }
+        )
+    }
+
+    if (editOpen && onEdit != null) {
+        var editText by remember(post.id) { mutableStateOf(post.text) }
+        var editPrivacy by remember(post.id) { mutableStateOf(post.privacy) }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { editOpen = false },
+            title = { Text("Edit Post", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = editText,
+                        onValueChange = { editText = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3,
+                        maxLines = 7,
+                        shape = RoundedCornerShape(18.dp)
+                    )
+                    JellyButton(
+                        if (editPrivacy == "followers") "Followers" else "Everyone",
+                        icon = JellyIcons.Eye
+                    ) {
+                        editPrivacy = if (editPrivacy == "followers") "public" else "followers"
+                    }
+                }
+            },
+            confirmButton = {
+                JellyButton("Save", primary = true, icon = JellyIcons.Check) {
+                    onEdit(post, editText.trim(), editPrivacy)
+                    editOpen = false
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { editOpen = false } }
+        )
+    }
+
+    if (deleteConfirm && onDelete != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { deleteConfirm = false },
+            title = { Text("Delete Post", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = { Text("Delete this post permanently?", color = JellyInk) },
+            confirmButton = {
+                JellyButton("Delete", primary = true, icon = JellyIcons.Delete) {
+                    onDelete(post)
+                    deleteConfirm = false
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { deleteConfirm = false } }
         )
     }
 }
