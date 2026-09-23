@@ -1179,9 +1179,8 @@ private fun AuthHeader(
         return
     }
 
-    Box(Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 6.dp)) {
-        JellyGlass(Modifier.fillMaxWidth(), radius = LiveJellyTheme.headerRadius.dp, padding = 10.dp) {
-            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Box(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 6.dp)) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(Modifier.fillMaxWidth().height(56.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         Modifier.size(48.dp).clip(RoundedCornerShape(17.dp)).clickable { onMenu() },
@@ -1237,7 +1236,6 @@ private fun AuthHeader(
                         NavItem("Messages", JellyIcons.Message, route == Screen.MESSAGES, Modifier.weight(1f)) { onNav(Screen.MESSAGES) }
                     }
                 }
-            }
         }
     }
 }
