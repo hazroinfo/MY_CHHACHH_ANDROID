@@ -96,7 +96,7 @@ class MainActivity : ComponentActivity() {
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
-            geolocationEnabled = true
+            setGeolocationEnabled(true)
             allowContentAccess = true
             allowFileAccess = true
             mediaPlaybackRequiresUserGesture = false
