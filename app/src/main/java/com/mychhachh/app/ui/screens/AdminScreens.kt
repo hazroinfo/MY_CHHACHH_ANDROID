@@ -1356,7 +1356,7 @@ fun NativeThemeScreen(
         contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 24.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
-        item { PageTitle("Theme", "Live website and native app appearance controls", JellyIcons.Palette) }
+        item { PageTitle("Complete Theme Control", "Logo, jelly style, sizes, colors, spacing and navigation order", JellyIcons.Palette) }
 
         item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
@@ -1482,11 +1482,36 @@ fun NativeThemeScreen(
 
         item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     SectionTitle("Order & Visibility")
-                    OutlinedTextField(homeOrder, { homeOrder = it }, Modifier.fillMaxWidth(), label = { Text("Home order") }, supportingText = { Text("notice,tabs,composer") }, shape = RoundedCornerShape(17.dp))
-                    OutlinedTextField(headerItems, { headerItems = it }, Modifier.fillMaxWidth(), label = { Text("Native header items order") }, supportingText = { Text("home,people,shop,map,messages") }, shape = RoundedCornerShape(17.dp))
-                    OutlinedTextField(menuItems, { menuItems = it }, Modifier.fillMaxWidth(), label = { Text("Native menu items order") }, supportingText = { Text("votes,saved,settings,theme,admin,logout") }, shape = RoundedCornerShape(17.dp))
+                    Text("Show or hide items and move them up or down, like the V95 Theme Builder.", color = JellyMuted, fontSize = 9.sp)
+
+                    ThemeOrderEditor(
+                        title = "Home order",
+                        value = homeOrder,
+                        allowed = listOf("notice", "tabs", "composer"),
+                        labels = mapOf("notice" to "Notice", "tabs" to "Feed tabs", "composer" to "Post composer"),
+                        onValue = { homeOrder = it }
+                    )
+                    ThemeOrderEditor(
+                        title = "Header navigation",
+                        value = headerItems,
+                        allowed = listOf("home", "people", "shop", "map", "messages"),
+                        labels = mapOf("home" to "Home", "people" to "People", "shop" to "Shop", "map" to "Map", "messages" to "Messages"),
+                        onValue = { headerItems = it }
+                    )
+                    ThemeOrderEditor(
+                        title = "Side menu",
+                        value = menuItems,
+                        allowed = listOf("home", "people", "shop", "votes", "saved", "map", "messages", "announcements", "notifications", "profile", "settings", "theme", "admin", "logout"),
+                        labels = mapOf(
+                            "home" to "Home", "people" to "People", "shop" to "Shop", "votes" to "Voting",
+                            "saved" to "Saved", "map" to "Map", "messages" to "Messages", "announcements" to "Announcements",
+                            "notifications" to "Notifications", "profile" to "Profile", "settings" to "Settings",
+                            "theme" to "Theme Builder", "admin" to "Admin Center", "logout" to "Logout"
+                        ),
+                        onValue = { menuItems = it }
+                    )
                 }
             }
         }
@@ -1618,16 +1643,114 @@ private fun TrafficKpi(label: String, value: String, note: String, modifier: Mod
     }
 }
 
+private fun parseThemeColor(value: String): Color {
+    val hex = value.trim().removePrefix("#")
+    return runCatching {
+        val rgb = hex.toLong(16)
+        when (hex.length) {
+            6 -> Color(0xFF000000L or rgb)
+            8 -> Color(rgb)
+            else -> Color.White
+        }
+    }.getOrDefault(Color.White)
+}
+
 @Composable
 private fun ThemeColorField(label: String, value: String, onValue: (String) -> Unit) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = { onValue(it.take(7)) },
-        modifier = Modifier.fillMaxWidth(),
-        label = { Text("$label #RRGGBB") },
-        singleLine = true,
-        shape = RoundedCornerShape(17.dp)
-    )
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        JellyGlass(
+            Modifier.size(50.dp),
+            radius = 15.dp,
+            padding = 5.dp
+        ) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(parseThemeColor(value), RoundedCornerShape(11.dp))
+            )
+        }
+        OutlinedTextField(
+            value = value,
+            onValueChange = {
+                val cleaned = it.filter { ch -> ch == '#' || ch.isDigit() || ch.lowercaseChar() in 'a'..'f' }.take(7)
+                onValue(cleaned)
+            },
+            modifier = Modifier.weight(1f),
+            label = { Text(label) },
+            supportingText = { Text("#RRGGBB") },
+            singleLine = true,
+            shape = RoundedCornerShape(17.dp)
+        )
+    }
+}
+
+@Composable
+private fun ThemeOrderEditor(
+    title: String,
+    value: String,
+    allowed: List<String>,
+    labels: Map<String, String>,
+    onValue: (String) -> Unit
+) {
+    val active = value.split(',').map { it.trim() }.filter { it in allowed }.distinct()
+    val all = active + allowed.filter { it !in active }
+
+    JellyGlass(Modifier.fillMaxWidth(), radius = 18.dp, padding = 9.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(title, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 11.sp)
+            Text("Show / hide and move", color = JellyMuted, fontSize = 8.sp)
+
+            all.forEach { key ->
+                val enabled = key in active
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Switch(
+                        checked = enabled,
+                        onCheckedChange = { checked ->
+                            val next = active.toMutableList()
+                            if (checked && key !in next) next.add(key)
+                            if (!checked) next.remove(key)
+                            onValue(next.joinToString(","))
+                        }
+                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        labels[key] ?: key,
+                        Modifier.weight(1f),
+                        color = JellyInk,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp
+                    )
+                    if (enabled) {
+                        val index = active.indexOf(key)
+                        JellyButton("↑", enabled = index > 0) {
+                            if (index > 0) {
+                                val next = active.toMutableList()
+                                val moved = next.removeAt(index)
+                                next.add(index - 1, moved)
+                                onValue(next.joinToString(","))
+                            }
+                        }
+                        Spacer(Modifier.width(4.dp))
+                        JellyButton("↓", enabled = index in 0 until active.lastIndex) {
+                            if (index in 0 until active.lastIndex) {
+                                val next = active.toMutableList()
+                                val moved = next.removeAt(index)
+                                next.add(index + 1, moved)
+                                onValue(next.joinToString(","))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
