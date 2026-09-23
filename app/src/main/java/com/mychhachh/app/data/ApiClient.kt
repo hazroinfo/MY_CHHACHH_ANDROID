@@ -155,6 +155,7 @@ class ApiClient(private val context: Context) {
     }
     fun shop(id: Long): JSONObject = get("/api/shops/$id")
     fun toggleShopFollow(id: Long): JSONObject = post("/api/shops/$id/follow")
+    fun shopFollowers(id: Long): List<User> = (get("/api/shops/$id/followers").optJSONArray("items") ?: JSONArray()).users()
     fun createShop(fields: JSONObject): JSONObject = post("/api/shops", fields)
     fun updateShop(id: Long, fields: JSONObject): JSONObject = patch("/api/shops/$id", fields)
     fun deleteShop(id: Long): JSONObject = delete("/api/shops/$id")
