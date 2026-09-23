@@ -102,12 +102,12 @@ fun AdminCenterScreen(
                         "votes" to "Voting",
                         "activity" to "Activity"
                     )
-                    sections.chunked(4).forEach { row ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    sections.chunked(2).forEach { row ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             row.forEach { (key, label) ->
                                 JellyPill(label, section == key, Modifier.weight(1f)) { onSection(key) }
                             }
-                            repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+                            repeat(2 - row.size) { Spacer(Modifier.weight(1f)) }
                         }
                     }
                     JellyButton("Refresh", Modifier.fillMaxWidth(), icon = JellyIcons.Search, onClick = onRefresh)
@@ -141,7 +141,7 @@ fun AdminCenterScreen(
                                 }
                                 JellyButton("Profile") { onProfile(u.id) }
                             }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 JellyButton(
                                     if (u.verified) "Remove Tick" else "Blue Tick",
                                     Modifier.weight(1f),
@@ -152,49 +152,60 @@ fun AdminCenterScreen(
                                     Modifier.weight(1f),
                                     icon = JellyIcons.Shield
                                 ) { onAction("toggle_user", u.id, JSONObject()) }
+                            }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 JellyButton("Warning", Modifier.weight(1f), icon = JellyIcons.Bell) {
                                     warningTarget = u.id
                                     warningText = ""
                                 }
-                            }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                listOf(
-                                    "allow_comments" to "Comments",
-                                    "allow_likes" to "Likes",
-                                    "allow_messages" to "Messages",
-                                    "allow_posts" to "Posts"
-                                ).forEach { (key, label) ->
-                                    JellyButton(label, Modifier.weight(1f)) {
-                                        onAction("user_setting", u.id, JSONObject().put("key", key))
-                                    }
-                                }
-                            }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                JellyButton("Photo", Modifier.weight(1f)) {
-                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_photo_upload"))
-                                }
-                                JellyButton("Video", Modifier.weight(1f)) {
-                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_video_upload"))
-                                }
-                                JellyButton("Follows", Modifier.weight(1f)) {
-                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_follows"))
-                                }
                                 JellyButton(
-                                    if (o.optBoolean("promoted", false)) "Stop Promote" else "Promote",
+                                    if (o.optBoolean("promoted", false)) "Stop Promotion" else "Promote",
                                     Modifier.weight(1f),
                                     icon = JellyIcons.Star
                                 ) {
                                     onAction("promote_user", u.id, JSONObject())
                                 }
                             }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                JellyButton("Comments", Modifier.weight(1f)) {
+                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_comments"))
+                                }
+                                JellyButton("Likes", Modifier.weight(1f)) {
+                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_likes"))
+                                }
+                            }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                JellyButton("Messages", Modifier.weight(1f)) {
+                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_messages"))
+                                }
+                                JellyButton("Posts", Modifier.weight(1f)) {
+                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_posts"))
+                                }
+                            }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                JellyButton("Photo", Modifier.weight(1f), icon = JellyIcons.Photo) {
+                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_photo_upload"))
+                                }
+                                JellyButton("Video", Modifier.weight(1f), icon = JellyIcons.Video) {
+                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_video_upload"))
+                                }
+                            }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                JellyButton("Follows", Modifier.weight(1f), icon = JellyIcons.Follow) {
+                                    onAction("user_setting", u.id, JSONObject().put("key", "allow_follows"))
+                                }
                                 JellyButton("Publish as User", Modifier.weight(1f), icon = JellyIcons.Edit) {
                                     userPostTarget = u.id
                                     userPostText = ""
                                 }
-                                JellyButton("Delete Account", Modifier.weight(1f), icon = JellyIcons.Delete) {
-                                    deleteUserTarget = u.id
-                                }
+                            }
+                            JellyButton(
+                                "Delete Account",
+                                Modifier.fillMaxWidth(),
+                                icon = JellyIcons.Delete,
+                                danger = true
+                            ) {
+                                deleteUserTarget = u.id
                             }
                         }
                     }
