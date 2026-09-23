@@ -1,6 +1,9 @@
 package com.mychhachh.app.ui.screens
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,6 +24,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,7 +79,41 @@ fun HomeScreen(
     var feelingDialog by remember { mutableStateOf(false) }
     var checkinDialog by remember { mutableStateOf(false) }
     var mentionDialog by remember { mutableStateOf(false) }
+    var checkinLocationStatus by remember { mutableStateOf<String?>(null) }
     val uiScope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    fun attachCurrentCheckin() {
+        val manager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as LocationManager
+        val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+        val location = providers.asSequence()
+            .filter { runCatching { manager.isProviderEnabled(it) }.getOrDefault(false) }
+            .mapNotNull { provider ->
+                runCatching {
+                    if (
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                    ) manager.getLastKnownLocation(provider) else null
+                }.getOrNull()
+            }
+            .maxByOrNull { it.time }
+        if (location != null) {
+            checkin = "My current location"
+            checkinLat = location.latitude
+            checkinLng = location.longitude
+            checkinLocationStatus = "Location attached to this post"
+            checkinDialog = false
+        } else {
+            checkinLocationStatus = "Location is not supported."
+        }
+    }
+
+    val checkinLocationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        if (result.values.any { it }) attachCurrentCheckin()
+        else checkinLocationStatus = "Location permission was denied."
+    }
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) { photoUri = uri; videoUri = null }
     }
@@ -204,7 +242,7 @@ fun HomeScreen(
         )
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { feelingDialog = false },
-            title = { Text("Feeling", color = JellyInk, fontWeight = FontWeight.Black) },
+            title = { Text("Choose a feeling", color = JellyInk, fontWeight = FontWeight.Black) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     feelings.forEach { (emoji, label) ->
@@ -320,7 +358,16 @@ fun HomeScreen(
             title = { Text("Check in", color = JellyInk, fontWeight = FontWeight.Black) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Choose a real place or use your phone location.", color = JellyMuted, fontSize = 10.5f.sp)
+                    Text("Choose a location from the search results or use current location.", color = JellyMuted, fontSize = 10.5f.sp)
+                    JellyButton("Use current location", Modifier.fillMaxWidth(), icon = JellyIcons.Pin) {
+                        checkinLocationStatus = "Getting your current location…"
+                        val granted =
+                            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                        if (granted) attachCurrentCheckin()
+                        else checkinLocationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                    }
+                    checkinLocationStatus?.let { Text(it, color = JellyMuted, fontSize = 9.sp) }
                     OutlinedTextField(
                         value = query,
                         onValueChange = { query = it },
