@@ -285,13 +285,47 @@ class ApiClient(private val context: Context) {
         val d = get("/api/votes?limit=40")
         val a = d.optJSONArray("items") ?: JSONArray()
         return (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { o ->
-            val u1 = (o.optJSONObject("user1") ?: o.optJSONObject("challenger") ?: o.optJSONObject("left_user"))?.toUser()
-            val u2 = (o.optJSONObject("user2") ?: o.optJSONObject("opponent") ?: o.optJSONObject("right_user"))?.toUser()
-            Vote(o.optLong("id"), o.optString("title", o.optString("question", "Voting")), o.optString("status", "active"), u1, u2,
-                o.optInt("votes1", o.optInt("left_votes", o.optInt("challenger_votes", 0))), o.optInt("votes2", o.optInt("right_votes", o.optInt("opponent_votes", 0))), o.optString("created_at", ""))
+            val u1 = (o.optJSONObject("left") ?: o.optJSONObject("user1") ?: o.optJSONObject("challenger") ?: o.optJSONObject("left_user"))?.toUser()
+            val u2 = (o.optJSONObject("right") ?: o.optJSONObject("user2") ?: o.optJSONObject("opponent") ?: o.optJSONObject("right_user"))?.toUser()
+            Vote(
+                id = o.optLong("id"),
+                title = o.optString("title", o.optString("question", "Voting")),
+                status = o.optString("status", "active"),
+                user1 = u1,
+                user2 = u2,
+                votes1 = if (o.isNull("left_votes")) 0 else o.optInt("left_votes", o.optInt("votes1", 0)),
+                votes2 = if (o.isNull("right_votes")) 0 else o.optInt("right_votes", o.optInt("votes2", 0)),
+                createdAt = o.optString("created_at", ""),
+                leftUserId = o.optLong("left_user_id", u1?.id ?: 0L),
+                rightUserId = o.optLong("right_user_id", u2?.id ?: 0L),
+                leftText = o.optString("left_text", ""),
+                rightText = o.optString("right_text", ""),
+                myChoice = o.optLong("my_choice", 0L),
+                winnerUserId = o.optLong("winner_user_id", 0L),
+                resultRevealed = o.optBoolean("result_revealed", o.optString("status") != "active"),
+                durationHours = o.optInt("duration_hours", 24),
+                startsAt = o.optString("starts_at", ""),
+                endsAt = o.optString("ends_at", "")
+            )
         }}
     }
-    fun castVote(id: Long, side: Int): JSONObject = post("/api/votes/$id/cast", JSONObject().put("side", side).put("choice", side))
+
+    fun createVote(opponentUsername: String, durationHours: Int, leftText: String): JSONObject =
+        post("/api/votes", JSONObject().put("opponent_username", opponentUsername.removePrefix("@")).put("duration_hours", durationHours).put("left_text", leftText))
+    fun castVote(id: Long, choiceUserId: Long): JSONObject =
+        post("/api/votes/$id/cast", JSONObject().put("choice_user_id", choiceUserId))
+    fun respondVote(id: Long, decision: String): JSONObject =
+        post("/api/votes/$id/respond", JSONObject().put("decision", decision))
+    fun startVote(id: Long): JSONObject = post("/api/votes/$id/start")
+    fun cancelVote(id: Long): JSONObject = post("/api/votes/$id/cancel")
+    fun leaveVote(id: Long): JSONObject = post("/api/votes/$id/leave")
+    fun shareVote(id: Long, privacy: String = "followers"): JSONObject =
+        post("/api/votes/$id/share", JSONObject().put("privacy", privacy))
+    fun updateVoteStatement(id: Long, text: String): JSONObject =
+        post("/api/votes/$id/statement", JSONObject().put("text", text))
+    fun voteComments(id: Long): JSONArray = get("/api/votes/$id/comments").optJSONArray("items") ?: JSONArray()
+    fun addVoteComment(id: Long, text: String): JSONObject =
+        post("/api/votes/$id/comments", JSONObject().put("text", text))
 
     fun saved(): List<Post> = (get("/api/saved").optJSONArray("items") ?: JSONArray()).posts()
 
