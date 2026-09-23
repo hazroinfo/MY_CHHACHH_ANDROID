@@ -697,7 +697,42 @@ fun MyChhachhApp() {
                     }
                     Screen.SAVED -> SavedScreen(saved, savedLoading, savedError, { open(Screen.PROFILE, it) }, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p.id) } }; loadSaved() } }, { commentPost = it }, ::sharePost, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadSaved() } })
                     Screen.SEARCH -> SearchScreen(searchResult, searchLoading, searchError, searchQuery, { searchQuery = it }, ::doSearch, { if (currentUser != null) open(Screen.PROFILE, it) }, { if (currentUser != null) open(Screen.SHOP_DETAIL, it) })
-                    Screen.PROFILE -> currentUser?.let { u -> ProfileScreen(profileData, profileLoading, profileError, u.id, { id -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.followUser(id) } }; loadProfile(id) } }, { id -> open(Screen.CHAT, id) }, { open(Screen.SETTINGS) }, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p.id) } }; loadProfile(selectedId) } }, { commentPost = it }, ::sharePost, { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadProfile(selectedId) } }) }
+                    Screen.PROFILE -> currentUser?.let { u ->
+                        ProfileScreen(
+                            data = profileData,
+                            loading = profileLoading,
+                            error = profileError,
+                            meId = u.id,
+                            onFollow = { id ->
+                                scope.launch {
+                                    runCatching { withContext(Dispatchers.IO) { api.followUser(id) } }
+                                        .onFailure { profileError = it.message }
+                                    loadProfile(id)
+                                }
+                            },
+                            onMessage = { id -> open(Screen.CHAT, id) },
+                            onEdit = { open(Screen.SETTINGS) },
+                            onShop = { id -> open(Screen.SHOP_DETAIL, id) },
+                            onBlock = { id ->
+                                scope.launch {
+                                    runCatching { withContext(Dispatchers.IO) { api.toggleBlockUser(id) } }
+                                        .onFailure { profileError = it.message }
+                                    loadProfile(id)
+                                }
+                            },
+                            onReport = { id, reason ->
+                                scope.launch {
+                                    runCatching { withContext(Dispatchers.IO) { api.reportProfile(id, reason) } }
+                                        .onFailure { profileError = it.message }
+                                }
+                            },
+                            onLoadRelations = { id, mode -> withContext(Dispatchers.IO) { api.relationUsers(id, mode) } },
+                            onLike = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p.id) } }; loadProfile(selectedId) } },
+                            onComment = { commentPost = it },
+                            onShare = ::sharePost,
+                            onSave = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.savePost(p.id) } }; loadProfile(selectedId) } }
+                        )
+                    }
                     Screen.SHOP_DETAIL -> currentUser?.let { u ->
                         ShopDetailScreen(
                             data = shopData,
