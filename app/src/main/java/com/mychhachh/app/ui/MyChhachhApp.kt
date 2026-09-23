@@ -409,7 +409,7 @@ fun MyChhachhApp() {
                         val temp = current.optDouble("temperature_2m", Double.NaN)
                         if (temp.isNaN()) "Weather" else "${temp.toInt()}°C · Weather"
                     } ?: "Weather",
-                    onMenu = { if (isPrimaryRoute) menuOpen = true else goBack() },
+                    onMenu = { menuOpen = true },
                     onSearch = { open(Screen.SEARCH) },
                     onNotifications = { open(Screen.NOTIFICATIONS) },
                     onProfile = { open(Screen.PROFILE, currentUser.id) },
@@ -1228,22 +1228,6 @@ private fun AuthHeader(
     settings: JSONObject,
     onNav: (Screen) -> Unit
 ) {
-    val primary = route == Screen.HOME || route == Screen.PEOPLE || route == Screen.SHOPS || route == Screen.MAP || route == Screen.MESSAGES
-
-    if (!primary) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            JellyIconButton(JellyIcons.Arrow, "Back", onClick = onMenu)
-            Spacer(Modifier.width(6.dp))
-            Text(routeTitle(route), Modifier.weight(1f), color = JellyInk, fontWeight = FontWeight.Black, fontSize = 20.sp)
-            if (route != Screen.SEARCH) JellyIconButton(JellyIcons.Search, "Search", onClick = onSearch)
-            if (route != Screen.NOTIFICATIONS) JellyIconButton(JellyIcons.Bell, "Notifications", badge = unread, onClick = onNotifications)
-        }
-        return
-    }
-
     val navOrder = settings.optString("theme_header_items", "home,people,shop,map,messages")
         .split(",").map { it.trim() }.filter { it.isNotBlank() }
     val votingEnabled = settings.optInt("voting", 1) != 0
