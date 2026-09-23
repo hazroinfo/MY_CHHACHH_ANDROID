@@ -361,6 +361,7 @@ class ApiClient(private val context: Context) {
         return post("/api/posts", body)
     }
 
+    fun postDetail(postId: Long): JSONObject = get("/api/posts/$postId")
     fun postComments(postId: Long): JSONArray = get("/api/posts/$postId/comments").optJSONArray("items") ?: JSONArray()
     fun postComments(postItem: Post): JSONArray =
         get(if (postItem.shopId > 0) "/api/shop-posts/${postItem.id}/comments" else "/api/posts/${postItem.id}/comments")
