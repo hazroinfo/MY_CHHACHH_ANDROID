@@ -516,6 +516,7 @@ fun MyChhachhApp() {
                         onLogin = { authMode = "login"; route = Screen.AUTH }, onRegister = { authMode = "register"; route = Screen.AUTH },
                         onProfile = { if (currentUser != null) open(Screen.PROFILE, it) else { authMode = "login"; route = Screen.AUTH } },
                         onOpenPeople = { open(Screen.PEOPLE) },
+                        onOpenShops = { open(Screen.SHOPS) },
                         onOpenShop = { open(Screen.SHOP_DETAIL, it) },
                         onFollowSuggestion = { id ->
                             scope.launch {
