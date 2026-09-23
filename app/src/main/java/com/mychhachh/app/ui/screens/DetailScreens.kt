@@ -34,6 +34,7 @@ import com.mychhachh.app.ui.components.*
 import com.mychhachh.app.ui.theme.JellyInk
 import com.mychhachh.app.ui.theme.JellyMuted
 import org.json.JSONObject
+import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreen(
@@ -210,7 +211,7 @@ fun ProfileScreen(
                                         Modifier.weight(1f),
                                         icon = JellyIcons.Shield
                                     ) { onBlock(u.id) }
-                                    JellyButton("Report", Modifier.weight(1f), icon = JellyIcons.Error) { reportOpen = true }
+                                    JellyButton("Report", Modifier.weight(1f), icon = JellyIcons.Shield) { reportOpen = true }
                                 }
                             }
                         }
