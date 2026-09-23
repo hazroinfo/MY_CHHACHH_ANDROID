@@ -247,9 +247,19 @@ fun MyChhachhApp() {
                     onRegister = { authMode = "register"; authError = null; route = Screen.AUTH }
                 ) else AuthHeader(
                     user = currentUser, route = route, unread = unread, announcementUnread = announcementUnread,
-                    onMenu = { if (isPrimaryRoute) menuOpen = true else goBack() }, onSearch = { open(Screen.SEARCH) }, onNotifications = { open(Screen.NOTIFICATIONS) },
-                    onProfile = { open(Screen.PROFILE, currentUser.id) }, onWeather = { open(Screen.WEATHER) }, onVotes = { open(Screen.VOTES) },
-                    onAnnouncements = { open(Screen.ANNOUNCEMENTS) }
+                    onMenu = { if (isPrimaryRoute) menuOpen = true else goBack() },
+                    onSearch = { open(Screen.SEARCH) },
+                    onNotifications = { open(Screen.NOTIFICATIONS) },
+                    onProfile = { open(Screen.PROFILE, currentUser.id) },
+                    onWeather = { open(Screen.WEATHER) },
+                    onVotes = { open(Screen.VOTES) },
+                    onAnnouncements = { open(Screen.ANNOUNCEMENTS) },
+                    onNav = {
+                        route = it
+                        selectedId = 0L
+                        backStack.clear()
+                        menuOpen = false
+                    }
                 )
             }
             Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -408,14 +418,6 @@ fun MyChhachhApp() {
                     Screen.WEATHER -> WeatherScreen(weatherData, weatherLoading, weatherError, ::loadWeather)
                 }
             }
-            if (currentUser != null && isPrimaryRoute && route != Screen.AUTH) {
-                PrimaryBottomNav(route = route, onNav = {
-                    route = it
-                    selectedId = 0L
-                    backStack.clear()
-                    menuOpen = false
-                })
-            }
         }
 
         if (menuOpen && currentUser != null) {
@@ -456,14 +458,24 @@ fun MyChhachhApp() {
 
 @Composable
 private fun GuestHeader(onLogin: () -> Unit, onRegister: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Brand(modifier = Modifier.weight(1f), fontSize = 25)
-        JellyButton("Login", onClick = onLogin)
-        Spacer(Modifier.width(6.dp))
-        JellyButton("Sign up", primary = true, onClick = onRegister)
+    Box(Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 6.dp)) {
+        JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp, padding = 10.dp) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Brand(fontSize = 28)
+                    Text(
+                        "PEOPLE · KNOWLEDGE · COMMUNITIES",
+                        color = JellyMuted,
+                        fontSize = 7.5f.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = .5.sp
+                    )
+                }
+                JellyButton("Login", onClick = onLogin)
+                Spacer(Modifier.width(6.dp))
+                JellyButton("Sign up", primary = true, onClick = onRegister)
+            }
+        }
     }
 }
 
@@ -471,24 +483,80 @@ private fun GuestHeader(onLogin: () -> Unit, onRegister: () -> Unit) {
 private fun AuthHeader(
     user: User, route: Screen, unread: Int, announcementUnread: Int,
     onMenu: () -> Unit, onSearch: () -> Unit, onNotifications: () -> Unit, onProfile: () -> Unit,
-    onWeather: () -> Unit, onVotes: () -> Unit, onAnnouncements: () -> Unit
+    onWeather: () -> Unit, onVotes: () -> Unit, onAnnouncements: () -> Unit,
+    onNav: (Screen) -> Unit
 ) {
     val primary = route == Screen.HOME || route == Screen.PEOPLE || route == Screen.SHOPS || route == Screen.MAP || route == Screen.MESSAGES
-    Column(
-        Modifier.fillMaxWidth().background(Color(0xF7F7FBFF)).padding(horizontal = 10.dp, vertical = 5.dp),
-        verticalArrangement = Arrangement.spacedBy(5.dp)
-    ) {
-        if (primary) {
-            Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
-                JellyIconButton(JellyIcons.Menu, "Menu", onClick = onMenu)
-                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { Brand(fontSize = 24) }
-                JellyIconButton(JellyIcons.Search, "Search", onClick = onSearch)
-                JellyIconButton(JellyIcons.Bell, "Notifications", badge = unread, onClick = onNotifications)
-                Spacer(Modifier.width(3.dp))
-                Box(Modifier.clickable { onProfile() }) { Avatar(user, 34.dp) }
-            }
-            if (route == Screen.HOME) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+
+    if (!primary) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            JellyIconButton(JellyIcons.Arrow, "Back", onClick = onMenu)
+            Spacer(Modifier.width(6.dp))
+            Text(routeTitle(route), Modifier.weight(1f), color = JellyInk, fontWeight = FontWeight.Black, fontSize = 20.sp)
+            if (route != Screen.SEARCH) JellyIconButton(JellyIcons.Search, "Search", onClick = onSearch)
+            if (route != Screen.NOTIFICATIONS) JellyIconButton(JellyIcons.Bell, "Notifications", badge = unread, onClick = onNotifications)
+        }
+        return
+    }
+
+    Box(Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 6.dp)) {
+        JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp, padding = 9.dp) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth().height(54.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(48.dp).clip(RoundedCornerShape(17.dp)).clickable { onMenu() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        JellyIcon(JellyIcons.Menu, size = 38.dp, contentDescription = "Menu")
+                    }
+
+                    Column(
+                        Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Brand(fontSize = 30)
+                        Text(
+                            "PEOPLE · KNOWLEDGE · COMMUNITIES",
+                            color = JellyMuted,
+                            fontSize = 7.2f.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = .45.sp,
+                            maxLines = 1
+                        )
+                    }
+
+                    Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                        JellyIconButton(JellyIcons.Bell, "Notifications", badge = unread, onClick = onNotifications)
+                    }
+                    Spacer(Modifier.width(2.dp))
+                    Box(Modifier.clickable { onProfile() }) { Avatar(user, 42.dp) }
+                }
+
+                JellyGlass(
+                    Modifier.fillMaxWidth().height(58.dp),
+                    radius = 999.dp,
+                    padding = 8.dp,
+                    onClick = onSearch
+                ) {
+                    Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                        JellyIcon(JellyIcons.Search, size = 34.dp)
+                        Spacer(Modifier.width(7.dp))
+                        Text(
+                            "Search people, shops or posts",
+                            Modifier.weight(1f),
+                            color = JellyMuted,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        JellyIcon(JellyIcons.Filter, size = 32.dp)
+                    }
+                }
+
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     QuickHeader("Voting", JellyIcons.Vote, Modifier.weight(1f), onVotes)
                     QuickHeader("Weather", JellyIcons.Pin, Modifier.weight(1f), onWeather)
                     Box(Modifier.weight(1f)) {
@@ -496,14 +564,16 @@ private fun AuthHeader(
                         if (announcementUnread > 0) CountBadge(announcementUnread, Modifier.align(Alignment.TopEnd))
                     }
                 }
-            }
-        } else {
-            Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
-                JellyIconButton(JellyIcons.Arrow, "Back", onClick = onMenu)
-                Spacer(Modifier.width(6.dp))
-                Text(routeTitle(route), Modifier.weight(1f), color = JellyInk, fontWeight = FontWeight.Black, fontSize = 20.sp)
-                if (route != Screen.SEARCH) JellyIconButton(JellyIcons.Search, "Search", onClick = onSearch)
-                if (route != Screen.NOTIFICATIONS) JellyIconButton(JellyIcons.Bell, "Notifications", badge = unread, onClick = onNotifications)
+
+                JellyGlass(Modifier.fillMaxWidth(), radius = 25.dp, padding = 4.dp) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        NavItem("Home", JellyIcons.Home, route == Screen.HOME, Modifier.weight(1f)) { onNav(Screen.HOME) }
+                        NavItem("People", JellyIcons.People, route == Screen.PEOPLE, Modifier.weight(1f)) { onNav(Screen.PEOPLE) }
+                        NavItem("Shop", JellyIcons.Shop, route == Screen.SHOPS, Modifier.weight(1f)) { onNav(Screen.SHOPS) }
+                        NavItem("Map", JellyIcons.Map, route == Screen.MAP, Modifier.weight(1f)) { onNav(Screen.MAP) }
+                        NavItem("Messages", JellyIcons.Message, route == Screen.MESSAGES, Modifier.weight(1f)) { onNav(Screen.MESSAGES) }
+                    }
+                }
             }
         }
     }
@@ -524,50 +594,35 @@ private fun routeTitle(route: Screen): String = when (route) {
 }
 
 @Composable
-private fun PrimaryBottomNav(route: Screen, onNav: (Screen) -> Unit) {
-    Box(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 5.dp)) {
-        JellyGlass(Modifier.fillMaxWidth(), radius = 22.dp, padding = 2.dp) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                NavItem("Home", JellyIcons.Home, route == Screen.HOME) { onNav(Screen.HOME) }
-                NavItem("People", JellyIcons.People, route == Screen.PEOPLE) { onNav(Screen.PEOPLE) }
-                NavItem("Shop", JellyIcons.Shop, route == Screen.SHOPS) { onNav(Screen.SHOPS) }
-                NavItem("Map", JellyIcons.Map, route == Screen.MAP) { onNav(Screen.MAP) }
-                NavItem("Messages", JellyIcons.Message, route == Screen.MESSAGES) { onNav(Screen.MESSAGES) }
-            }
-        }
-    }
-}
-
-@Composable
 private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: () -> Unit) {
-    JellyGlass(modifier.height(42.dp), radius = 15.dp, padding = 2.dp, onClick = onClick) {
-        Row(
+    JellyGlass(modifier.height(88.dp), radius = 24.dp, padding = 5.dp, onClick = onClick) {
+        Column(
             Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            JellyIcon(icon, size = 22.dp)
-            Spacer(Modifier.width(3.dp))
-            Text(text, color = JellyInk, fontWeight = FontWeight.ExtraBold, fontSize = 8.5f.sp, maxLines = 1)
+            JellyIcon(icon, size = 40.dp)
+            Spacer(Modifier.height(3.dp))
+            Text(text, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 9.5f.sp, maxLines = 1)
         }
     }
 }
 
 @Composable
-private fun NavItem(text: String, icon: Int, active: Boolean, onClick: () -> Unit) {
+private fun NavItem(text: String, icon: Int, active: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(
-        Modifier
-            .width(64.dp)
-            .height(52.dp)
-            .clip(RoundedCornerShape(16.dp))
+        modifier
+            .height(72.dp)
+            .clip(RoundedCornerShape(20.dp))
             .clickable { onClick() }
-            .background(if (active) Color(0x88F7ECFF) else Color.Transparent),
+            .background(if (active) Color(0x66FFF0F9) else Color.Transparent),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        JellyIcon(icon, size = 25.dp, contentDescription = text)
-        Text(text, color = JellyInk, fontWeight = FontWeight.ExtraBold, fontSize = 8.sp, maxLines = 1)
-        if (active) Box(Modifier.width(22.dp).height(2.5f.dp).clip(RoundedCornerShape(999.dp)).background(JellyPink))
+        JellyIcon(icon, size = 32.dp, contentDescription = text)
+        Spacer(Modifier.height(2.dp))
+        Text(text, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 9.2f.sp, maxLines = 1)
+        if (active) Box(Modifier.width(28.dp).height(4.dp).clip(RoundedCornerShape(999.dp)).background(JellyPink))
     }
 }
 
@@ -607,13 +662,7 @@ private fun SideMenu(
                     JellyIconButton(JellyIcons.Close, "Close", onClick = onClose)
                 }
                 Spacer(Modifier.height(6.dp))
-                MenuRow("Home", JellyIcons.Home) { onOpen(Screen.HOME) }
-                MenuRow("My Profile", JellyIcons.User) { onOpen(Screen.PROFILE) }
-                MenuRow("Notifications${if (unread > 0) " ($unread)" else ""}", JellyIcons.Bell) { onOpen(Screen.NOTIFICATIONS) }
-                MenuRow("Announcements${if (announcementUnread > 0) " ($announcementUnread)" else ""}", JellyIcons.Announcement) { onOpen(Screen.ANNOUNCEMENTS) }
-                MenuRow("Voting", JellyIcons.Vote) { onOpen(Screen.VOTES) }
                 MenuRow("Saved", JellyIcons.Save) { onOpen(Screen.SAVED) }
-                MenuRow("Search", JellyIcons.Search) { onOpen(Screen.SEARCH) }
                 MenuRow("Settings", JellyIcons.Gear) { onOpen(Screen.SETTINGS) }
                 Spacer(Modifier.weight(1f))
                 MenuRow("Logout", JellyIcons.Logout, onLogout)
