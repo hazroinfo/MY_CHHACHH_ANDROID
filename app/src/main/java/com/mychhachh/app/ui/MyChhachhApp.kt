@@ -1048,7 +1048,7 @@ fun MyChhachhApp() {
                                         val body = JSONObject(fields.toString())
                                         withContext(Dispatchers.IO) {
                                             iconUri?.let {
-                                                val icon = api.uploadUri(it, "site-icon")
+                                                val icon = api.uploadUri(it, "site-brand-icon")
                                                 if (icon.isNotBlank()) body.put("site_icon", icon)
                                             }
                                             val d = api.saveBranding(body)
