@@ -62,7 +62,8 @@ data class Post(
     val feeling: String?,
     val checkin: String?,
     val checkinLat: Double? = null,
-    val checkinLng: Double? = null
+    val checkinLng: Double? = null,
+    val shopId: Long = 0L
 )
 
 data class CheckinPlace(
@@ -164,7 +165,10 @@ fun JSONObject.toPost(): Post {
         likes = optInt("likes", 0), comments = optInt("comments", 0), views = optInt("views", 0), shares = optInt("shares", 0),
         liked = optBoolean("liked", false), saved = optBoolean("saved", false),
         feeling = optString("feeling", "").takeIf { it.isNotBlank() && it != "null" },
-        checkin = optString("checkin", "").takeIf { it.isNotBlank() && it != "null" }
+        checkin = optString("checkin", "").takeIf { it.isNotBlank() && it != "null" },
+        checkinLat = optString("checkin_lat", "").toDoubleOrNull(),
+        checkinLng = optString("checkin_lng", "").toDoubleOrNull(),
+        shopId = optLong("shop_id", 0L)
     )
 }
 
