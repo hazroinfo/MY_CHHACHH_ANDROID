@@ -454,7 +454,41 @@ fun MyChhachhApp() {
                         onLoadMore = { loadFeed(false) }
                     )
                     Screen.PEOPLE -> currentUser?.let { u -> PeopleScreen(u.id, people, peopleLoading, peopleError, peopleQuery, { peopleQuery = it }, ::loadPeople, { open(Screen.PROFILE, it) }, { id -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.followUser(id) } }; loadPeople() } }) }
-                    Screen.SHOPS -> ShopsScreen(shops, shopsLoading, shopsError, shopQuery, { shopQuery = it }, ::loadShops, { open(Screen.SHOP_DETAIL, it) }, { id -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.toggleShopFollow(id) } }; loadShops() } })
+                    Screen.SHOPS -> currentUser?.let { u ->
+                        ShopsScreen(
+                            meId = u.id,
+                            shops = shops,
+                            loading = shopsLoading,
+                            error = shopsError,
+                            query = shopQuery,
+                            onQuery = { shopQuery = it },
+                            onSearch = ::loadShops,
+                            onOpen = { open(Screen.SHOP_DETAIL, it) },
+                            onFollow = { id ->
+                                scope.launch {
+                                    runCatching { withContext(Dispatchers.IO) { api.toggleShopFollow(id) } }
+                                        .onFailure { shopsError = it.message }
+                                    loadShops()
+                                }
+                            },
+                            onCreate = { fields, photoUri, coverUri ->
+                                scope.launch {
+                                    try {
+                                        shopsError = null
+                                        val body = JSONObject(fields.toString())
+                                        withContext(Dispatchers.IO) {
+                                            photoUri?.let { body.put("photo", api.uploadUri(it, "shop")) }
+                                            coverUri?.let { body.put("cover_photo", api.uploadUri(it, "shop-cover")) }
+                                            api.createShop(body)
+                                        }
+                                        loadShops()
+                                    } catch (e: Exception) {
+                                        shopsError = e.message ?: "Shop could not be created."
+                                    }
+                                }
+                            }
+                        )
+                    }
                     Screen.MESSAGES -> MessagesScreen(
                         conversations = conversations,
                         groups = messageGroups,
