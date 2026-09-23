@@ -18,10 +18,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -69,7 +71,7 @@ fun JellyIcon(
         contentDescription = contentDescription,
         modifier = modifier.size(size),
         contentScale = ContentScale.Fit,
-        colorFilter = tint?.let { ColorFilter.tint(it) }
+        colorFilter = (tint ?: if (LiveJellyTheme.customIconPalette) LiveJellyTheme.iconColor else null)?.let { ColorFilter.tint(it) }
     )
 }
 
@@ -272,11 +274,18 @@ fun Brand(name: String = "My Chhachh", modifier: Modifier = Modifier, fontSize: 
                     )
                 )
             } else {
-                Brush.horizontalGradient(listOf(LiveJellyTheme.accent, LiveJellyTheme.accent2))
+                Brush.horizontalGradient(listOf(LiveJellyTheme.brandColor, LiveJellyTheme.brandColor2))
             },
             fontSize = (fontSize * LiveJellyTheme.fontScale).sp,
             fontWeight = FontWeight.Black,
-            letterSpacing = (-1f).sp
+            letterSpacing = (-1f).sp,
+            shadow = if (LiveJellyTheme.brandGlow > 0f) {
+                Shadow(
+                    color = LiveJellyTheme.brandColor2.copy(alpha = .38f),
+                    offset = Offset.Zero,
+                    blurRadius = LiveJellyTheme.brandGlow
+                )
+            } else null
         ),
         maxLines = 1,
         overflow = TextOverflow.Ellipsis
