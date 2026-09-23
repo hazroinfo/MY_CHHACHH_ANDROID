@@ -186,6 +186,7 @@ fun AnnouncementsScreen(
         contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
+        item { PageTitle("Announcements", "Voice notices and important updates from people across Chhachh", JellyIcons.Announcement) }
         item {
             JellyGlass(Modifier.fillMaxWidth(), padding = 13.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -194,7 +195,7 @@ fun AnnouncementsScreen(
                         Spacer(Modifier.width(7.dp))
                         Column {
                             Text("Make an Announcement", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 15.sp)
-                            Text("Record your voice, add text or a photo.", color = JellyMuted, fontSize = 10.sp)
+                            Text("Record your voice. You can also add a short message or photo.", color = JellyMuted, fontSize = 10.sp)
                         }
                     }
                     OutlinedTextField(
@@ -670,6 +671,7 @@ fun SavedScreen(
         contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
+        item { PageTitle("Saved", "Posts and videos you saved for later", JellyIcons.Save) }
         if (loading && posts.isEmpty()) item { LoadingBlock() }
         error?.let { item { ErrorCard(it) } }
         if (!loading && posts.isEmpty() && error == null) item { EmptyCard("You have not saved any posts or videos yet.", JellyIcons.Save) }
