@@ -1527,7 +1527,7 @@ private fun AuthHeader(
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (searchText.isBlank()) {
                                 Text(
-                                    if (route == Screen.PEOPLE) "Search people…" else "Search people, posts, places…",
+                                    "Search people, posts, places…",
                                     color = Color(0xFF858EB1),
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.SemiBold,
