@@ -388,6 +388,7 @@ fun MyChhachhApp() {
                             }
                         },
                         onSearchCheckin = { term -> withContext(Dispatchers.IO) { api.geocodePlaces(term) } },
+                        onSearchMentions = { term -> withContext(Dispatchers.IO) { api.users(term).first } },
                         onCreatePost = { text, privacy, feeling, checkin, checkinLat, checkinLng, photoUri, videoUri ->
                             scope.launch {
                                 try {
