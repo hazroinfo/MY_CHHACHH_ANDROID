@@ -119,6 +119,7 @@ fun MyChhachhApp() {
     var settingsBusy by remember { mutableStateOf(false) }
     var settingsError by remember { mutableStateOf<String?>(null) }
     var blockedUsers by remember { mutableStateOf<List<User>>(emptyList()) }
+    var verificationState by remember { mutableStateOf<JSONObject?>(null) }
 
     var adminState by remember { mutableStateOf<JSONObject?>(null) }
     var adminList by remember { mutableStateOf<JSONObject?>(null) }
@@ -227,6 +228,12 @@ fun MyChhachhApp() {
             catch (e: Exception) { settingsError = e.message }
         }
     }
+    fun loadVerification() {
+        scope.launch {
+            try { verificationState = withContext(Dispatchers.IO) { api.verificationStatus() } }
+            catch (e: Exception) { settingsError = e.message }
+        }
+    }
     fun loadAdmin(loadState: Boolean = true) {
         if (me?.isAdmin != true) return
         scope.launch {
@@ -308,7 +315,10 @@ fun MyChhachhApp() {
             Screen.CHAT -> if (me != null && selectedId > 0) loadChat(selectedId)
             Screen.GROUP_CHAT -> if (me != null && selectedId > 0) loadGroupChat(selectedId)
             Screen.WEATHER -> loadWeather()
-            Screen.SETTINGS -> if (me != null) loadBlockedUsers()
+            Screen.SETTINGS -> if (me != null) {
+                loadBlockedUsers()
+                loadVerification()
+            }
             Screen.ADMIN -> if (me?.isAdmin == true) loadAdmin(true)
             Screen.THEME -> if (me?.isAdmin == true) loadAdmin(true)
             else -> Unit
@@ -870,6 +880,7 @@ fun MyChhachhApp() {
                             busy = settingsBusy,
                             error = settingsError,
                             blockedUsers = blockedUsers,
+                            verification = verificationState,
                             onSave = { fields, avatarUri ->
                                 scope.launch {
                                     settingsBusy = true
@@ -906,6 +917,25 @@ fun MyChhachhApp() {
                                 scope.launch {
                                     try { withContext(Dispatchers.IO) { api.changePassword(current, next) } }
                                     catch (e: Exception) { settingsError = e.message }
+                                }
+                            },
+                            onSubmitVerification = { phone, type, frontUri, backUri, selfieUri ->
+                                scope.launch {
+                                    settingsBusy = true
+                                    settingsError = null
+                                    try {
+                                        withContext(Dispatchers.IO) {
+                                            val front = api.uploadUri(frontUri, "id-front")
+                                            val back = backUri?.let { api.uploadUri(it, "id-back") }.orEmpty()
+                                            val selfie = api.uploadUri(selfieUri, "selfie")
+                                            api.submitVerification(phone, type, front, back, selfie)
+                                        }
+                                        verificationState = withContext(Dispatchers.IO) { api.verificationStatus() }
+                                        me = withContext(Dispatchers.IO) { api.profileMe() }
+                                    } catch (e: Exception) {
+                                        settingsError = e.message ?: "Verification could not be submitted."
+                                    }
+                                    settingsBusy = false
                                 }
                             },
                             onRefreshBlocked = ::loadBlockedUsers,
