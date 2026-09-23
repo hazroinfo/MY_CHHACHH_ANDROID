@@ -95,7 +95,7 @@ fun AdminCenterScreen(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 24.dp),
+        contentPadding = PaddingValues(LiveJellyTheme.framePadding.dp, 8.dp, LiveJellyTheme.framePadding.dp, 24.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item {
@@ -1534,7 +1534,7 @@ fun NativeThemeScreen(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(10.dp, 8.dp, 10.dp, 24.dp),
+        contentPadding = PaddingValues(LiveJellyTheme.framePadding.dp, 8.dp, LiveJellyTheme.framePadding.dp, 24.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item { PageTitle("Theme Builder", "Theme and branding controls only. Admin controls stay in Admin Center.", JellyIcons.Palette) }
