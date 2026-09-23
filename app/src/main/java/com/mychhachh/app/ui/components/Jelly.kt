@@ -44,6 +44,7 @@ object JellyIcons {
     val Mention = R.drawable.jelly_mention; val Delete = R.drawable.jelly_delete; val Check = R.drawable.jelly_check
     val Reply = R.drawable.jelly_reply; val Crown = R.drawable.jelly_crown; val Lock = R.drawable.jelly_lock
     val Send = R.drawable.jelly_send; val Close = R.drawable.jelly_close; val Save = R.drawable.jelly_save
+    val Weather = R.drawable.jelly_weather
     val Follow = R.drawable.jelly_follow; val More = R.drawable.jelly_more; val Arrow = R.drawable.jelly_arrow
     val City = R.drawable.jelly_city; val Village = R.drawable.jelly_village; val Mohalla = R.drawable.jelly_mohalla
     val Hometown = R.drawable.jelly_hometown; val Gender = R.drawable.jelly_gender; val Work = R.drawable.jelly_work
