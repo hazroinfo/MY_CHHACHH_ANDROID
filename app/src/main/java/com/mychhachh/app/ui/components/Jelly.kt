@@ -72,12 +72,14 @@ fun JellyGlass(
     radius: Dp? = null,
     padding: Dp = 0.dp,
     onClick: (() -> Unit)? = null,
+    surfaceColor: Color? = null,
+    surfaceOpacity: Float? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
     val actualRadius = radius ?: LiveJellyTheme.cardRadius.dp
     val shape = RoundedCornerShape(actualRadius)
-    val opacity = LiveJellyTheme.cardOpacity
-    val base = LiveJellyTheme.cardColor
+    val opacity = surfaceOpacity ?: LiveJellyTheme.cardOpacity
+    val base = surfaceColor ?: LiveJellyTheme.cardColor
     var m = modifier
         .shadow(LiveJellyTheme.shadow.dp, shape, ambientColor = Color(0x124E5B90), spotColor = Color(0x164E5B90))
         .clip(shape)
