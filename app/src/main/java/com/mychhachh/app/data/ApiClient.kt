@@ -106,6 +106,12 @@ class ApiClient(private val context: Context) {
         return d.optJSONObject("user")?.toUser() ?: throw ApiException("Login response did not contain the user.")
     }
 
+    fun googleAuth(credential: String): User {
+        val d = post("/api/auth/google", JSONObject().put("credential", credential))
+        return d.optJSONObject("user")?.toUser()
+            ?: throw ApiException(d.optString("error", "Google sign-in failed."))
+    }
+
     fun register(name: String, username: String, email: String, password: String): JSONObject = post(
         "/api/register", JSONObject().put("name", name).put("username", username).put("email", email).put("password", password).put("terms_accepted", true)
     )
