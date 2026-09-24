@@ -1063,13 +1063,13 @@ private fun PostAction(icon: Int, label: String, count: Int, modifier: Modifier 
         Text(
             label,
             color = Color(0xFF4C4176),
-            fontSize = (if (screenWidth <= 360) 8.75f else 9.5f).sp,
+            fontSize = (if (screenWidth <= 700) 9f else 10f).sp,
             fontWeight = FontWeight.Black,
             maxLines = 1
         )
         if (count > 0) {
             Spacer(Modifier.width(2.dp))
-            Text(count.toString(), color = Color(0xFF4C4176), fontSize = 8.5f.sp, fontWeight = FontWeight.Black)
+            Text(count.toString(), color = Color(0xFF4C4176), fontSize = (if (screenWidth <= 700) 9f else 10f).sp, fontWeight = FontWeight.Black)
         }
     }
 }
@@ -1087,10 +1087,10 @@ private fun PostStat(icon: Int, label: String, count: Int, modifier: Modifier = 
         val compact = screenWidth <= 390
         JellyIcon(icon, size = if (compact) 25.dp else 28.dp)
         Spacer(Modifier.width(if (compact) 2.dp else 3.dp))
-        Text(label, color = Color(0xFF4C4176), fontSize = (if (screenWidth <= 360) 8.75f else 9.5f).sp, fontWeight = FontWeight.Black, maxLines = 1)
+        Text(label, color = Color(0xFF4C4176), fontSize = (if (screenWidth <= 700) 9f else 10f).sp, fontWeight = FontWeight.Black, maxLines = 1)
         if (count > 0) {
             Spacer(Modifier.width(2.dp))
-            Text(count.toString(), color = Color(0xFF4C4176), fontSize = 8.5f.sp, fontWeight = FontWeight.Black)
+            Text(count.toString(), color = Color(0xFF4C4176), fontSize = (if (screenWidth <= 700) 9f else 10f).sp, fontWeight = FontWeight.Black)
         }
     }
 }
