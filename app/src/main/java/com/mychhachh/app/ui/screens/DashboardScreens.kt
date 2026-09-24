@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -47,6 +48,13 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
 import java.io.File
+
+@Composable
+private fun v95FramePadding() = if (LocalConfiguration.current.screenWidthDp <= 700) {
+    minOf(LiveJellyTheme.framePadding, 8f).dp
+} else {
+    LiveJellyTheme.framePadding.dp
+}
 
 @Composable
 fun NotificationsScreen(
@@ -75,7 +83,7 @@ fun NotificationsScreen(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(minOf(LiveJellyTheme.framePadding, 8f).dp, 8.dp, minOf(LiveJellyTheme.framePadding, 8f).dp, 18.dp),
+        contentPadding = PaddingValues(v95FramePadding(), 8.dp, v95FramePadding(), 18.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item { PageTitle("Notifications", "Stay updated with your Chhachh community", JellyIcons.Bell) }
@@ -212,7 +220,7 @@ fun AnnouncementsScreen(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(minOf(LiveJellyTheme.framePadding, 8f).dp, 8.dp, minOf(LiveJellyTheme.framePadding, 8f).dp, 18.dp),
+        contentPadding = PaddingValues(v95FramePadding(), 8.dp, v95FramePadding(), 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item { PageTitle("Announcements", "Voice notices and important updates from people across Chhachh", JellyIcons.Announcement) }
@@ -576,7 +584,7 @@ fun VotesScreen(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(minOf(LiveJellyTheme.framePadding, 8f).dp, 8.dp, minOf(LiveJellyTheme.framePadding, 8f).dp, 18.dp),
+        contentPadding = PaddingValues(v95FramePadding(), 8.dp, v95FramePadding(), 18.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         if (detailVoteId > 0L) {
@@ -1290,7 +1298,7 @@ fun SavedScreen(
 ) {
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(minOf(LiveJellyTheme.framePadding, 8f).dp, 8.dp, minOf(LiveJellyTheme.framePadding, 8f).dp, 18.dp),
+        contentPadding = PaddingValues(v95FramePadding(), 8.dp, v95FramePadding(), 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item { PageTitle("Saved", "Posts and videos you saved for later", JellyIcons.Save) }
@@ -1322,7 +1330,7 @@ fun SearchScreen(
 ) {
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(minOf(LiveJellyTheme.framePadding, 8f).dp, 8.dp, minOf(LiveJellyTheme.framePadding, 8f).dp, 18.dp),
+        contentPadding = PaddingValues(v95FramePadding(), 8.dp, v95FramePadding(), 18.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item { PageTitle("Search", "Fast search across My Chhachh", JellyIcons.Search) }
@@ -1577,7 +1585,7 @@ fun MapScreen(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(minOf(LiveJellyTheme.framePadding, 8f).dp, 8.dp, minOf(LiveJellyTheme.framePadding, 8f).dp, 18.dp),
+        contentPadding = PaddingValues(v95FramePadding(), 8.dp, v95FramePadding(), 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item { PageTitle("Chhachh Map", "Plan a route between villages, places and local shops", JellyIcons.Map) }
@@ -1846,7 +1854,7 @@ private fun rememberMapViewWithLifecycle(): MapView {
 fun WeatherScreen(data: JSONObject?, loading: Boolean, error: String?, onRefresh: () -> Unit) {
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(minOf(LiveJellyTheme.framePadding, 8f).dp, 8.dp, minOf(LiveJellyTheme.framePadding, 8f).dp, 18.dp),
+        contentPadding = PaddingValues(v95FramePadding(), 8.dp, v95FramePadding(), 18.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
