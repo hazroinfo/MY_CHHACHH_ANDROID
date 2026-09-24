@@ -108,7 +108,15 @@ fun ProfileScreen(
         error?.let { item { ErrorCard(it) } }
         user?.let { u ->
             item {
-                JellyGlass(Modifier.fillMaxWidth(), padding = LiveJellyTheme.cardPadding.dp) {
+                JellyGlass(
+                    Modifier.fillMaxWidth(),
+                    padding = LiveJellyTheme.cardPadding.dp,
+                    gradientColors = listOf(
+                        Color.White.copy(alpha = .73f),
+                        Color(0xFFE3F5FF).copy(alpha = .50f)
+                    ),
+                    showShine = false
+                ) {
                     Column(Modifier.fillMaxWidth()) {
                         Box(
                             Modifier
@@ -994,7 +1002,15 @@ fun ShopDetailScreen(
         shop?.let { s ->
             val own = s.userId == meId
             item {
-                JellyGlass(Modifier.fillMaxWidth(), padding = LiveJellyTheme.cardPadding.dp) {
+                JellyGlass(
+                    Modifier.fillMaxWidth(),
+                    padding = LiveJellyTheme.cardPadding.dp,
+                    gradientColors = listOf(
+                        Color.White.copy(alpha = .73f),
+                        Color(0xFFE3F5FF).copy(alpha = .50f)
+                    ),
+                    showShine = false
+                ) {
                     Column {
                         Box(
                             Modifier
