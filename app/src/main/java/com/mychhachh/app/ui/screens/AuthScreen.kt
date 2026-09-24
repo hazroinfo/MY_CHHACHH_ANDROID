@@ -114,9 +114,9 @@ fun AuthScreen(
         contentAlignment = Alignment.Center
     ) {
         JellyGlass(
-            Modifier.fillMaxWidth().widthIn(max = 430.dp),
+            Modifier.fillMaxWidth().widthIn(max = 420.dp),
             radius = 26.dp,
-            padding = 18.dp
+            padding = 22.dp
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 Text(
