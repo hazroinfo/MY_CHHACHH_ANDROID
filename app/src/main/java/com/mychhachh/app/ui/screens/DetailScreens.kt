@@ -93,7 +93,7 @@ fun ProfileScreen(
         error?.let { item { ErrorCard(it) } }
         user?.let { u ->
             item {
-                JellyGlass(Modifier.fillMaxWidth(), padding = 0.dp) {
+                JellyGlass(Modifier.fillMaxWidth(), padding = LiveJellyTheme.cardPadding.dp) {
                     Column(Modifier.fillMaxWidth()) {
                         Box(
                             Modifier
@@ -979,7 +979,7 @@ fun ShopDetailScreen(
         shop?.let { s ->
             val own = s.userId == meId
             item {
-                JellyGlass(Modifier.fillMaxWidth(), padding = 0.dp) {
+                JellyGlass(Modifier.fillMaxWidth(), padding = LiveJellyTheme.cardPadding.dp) {
                     Column {
                         Box(
                             Modifier
