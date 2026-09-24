@@ -113,7 +113,7 @@ internal fun V95Tab(text: String, active: Boolean, modifier: Modifier = Modifier
 
 @Composable
 internal fun V95GuestCard(c: V95Controller) {
-    V95GlassCard(radius = 22.dp, padding = 12.dp) {
+    V95GlassCard(radius = 28.dp, padding = 16.dp) {
         Text(
             c.t("Welcome to My Chhachh", "My Chhachh میں خوش آمدید"),
             color = V95Ink,
@@ -186,7 +186,7 @@ internal fun V95Tool(text: String, icon: Int, modifier: Modifier, onClick: () ->
 
 @Composable
 internal fun V95PostCard(c: V95Controller, post: Post) {
-    V95GlassCard(radius = 22.dp, padding = 14.dp) {
+    V95GlassCard(radius = 28.dp, padding = 14.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             V95Avatar(post.user, 42.dp, Modifier.clickable { c.openProfile(post.user) })
             Spacer(Modifier.width(10.dp))
