@@ -89,7 +89,7 @@ internal class V95Controller(context: Context) {
 
     fun t(en: String, ur: String) = if (language == "ur") ur else en
 
-    fun setLanguage(value: String) {
+    fun changeLanguage(value: String) {
         language = if (value == "ur") "ur" else "en"
         app.getSharedPreferences("my_chhachh_v95", Context.MODE_PRIVATE).edit().putString("lang", language).apply()
     }
