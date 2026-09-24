@@ -12,6 +12,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import androidx.compose.ui.platform.LocalContext
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.CustomCredential
+import androidx.credentials.CredentialManager
 import com.mychhachh.app.ui.components.*
 import com.mychhachh.app.ui.theme.JellyInk
 import com.mychhachh.app.ui.theme.JellyMuted
@@ -28,6 +36,9 @@ fun AuthScreen(
     onResend: () -> Unit,
     onForgotSend: (String) -> Unit,
     onForgotReset: (String, String) -> Unit,
+    googleEnabled: Boolean,
+    googleClientId: String,
+    onGoogleCredential: (String) -> Unit,
     onSwitch: (String) -> Unit,
     onBack: () -> Unit
 ) {
@@ -39,6 +50,48 @@ fun AuthScreen(
     var email by remember(mode, pendingEmail) { mutableStateOf(pendingEmail) }
     var code by remember(mode) { mutableStateOf("") }
     var termsAccepted by remember(mode) { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val googleScope = rememberCoroutineScope()
+    val credentialManager = remember(context) { CredentialManager.create(context) }
+    var googleBusy by remember(mode) { mutableStateOf(false) }
+    var googleError by remember(mode) { mutableStateOf<String?>(null) }
+
+    fun startGoogleSignIn() {
+        if (!googleEnabled || googleClientId.isBlank() || googleBusy || busy) return
+        googleScope.launch {
+            googleBusy = true
+            googleError = null
+            try {
+                val option = GetSignInWithGoogleOption.Builder(
+                    serverClientId = googleClientId
+                ).build()
+                val request = GetCredentialRequest.Builder()
+                    .addCredentialOption(option)
+                    .build()
+                val result = credentialManager.getCredential(
+                    request = request,
+                    context = context
+                )
+                val credential = result.credential
+                if (
+                    credential is CustomCredential &&
+                    credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+                ) {
+                    val google = GoogleIdTokenCredential.createFrom(credential.data)
+                    onGoogleCredential(google.idToken)
+                } else {
+                    googleError = "Google sign-in did not return an ID token."
+                }
+            } catch (e: GetCredentialException) {
+                googleError = e.message ?: "Google sign-in was cancelled."
+            } catch (e: Exception) {
+                googleError = e.message ?: "Google sign-in failed."
+            } finally {
+                googleBusy = false
+            }
+        }
+    }
 
     val title = when (mode) {
         "register" -> "Create account"
@@ -72,6 +125,31 @@ fun AuthScreen(
                     fontSize = 24.sp
                 )
                 Text(subtitle, color = JellyMuted, fontSize = 11.sp)
+
+                if ((mode == "login" || mode == "register") && googleEnabled && googleClientId.isNotBlank()) {
+                    JellyButton(
+                        if (googleBusy) "Opening Google…" else "Continue with Google",
+                        modifier = Modifier.fillMaxWidth(),
+                        icon = JellyIcons.User,
+                        enabled = !busy && !googleBusy
+                    ) { startGoogleSignIn() }
+                    googleError?.let {
+                        Text(
+                            it,
+                            color = androidx.compose.ui.graphics.Color(0xFFB23A55),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.5f.sp
+                        )
+                    }
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Spacer(Modifier.weight(1f))
+                        Text("or", color = JellyMuted, fontSize = 9.5f.sp)
+                        Spacer(Modifier.weight(1f))
+                    }
+                }
 
                 when (mode) {
                     "register" -> {
