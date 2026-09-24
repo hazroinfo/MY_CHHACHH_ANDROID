@@ -48,11 +48,11 @@ object LiveJellyTheme {
     var iconShadow by mutableStateOf(Color(0xFF5F57CC))
     var text by mutableStateOf(DefaultJellyInk)
     var muted by mutableStateOf(DefaultJellyMuted)
-    var headerColor by mutableStateOf(Color.White)
+    var headerColor by mutableStateOf(Color(0xFFDFF4FF))
     var navColor by mutableStateOf(Color.White)
     var cardColor by mutableStateOf(DefaultJellySurface)
     var borderColor by mutableStateOf(DefaultJellyOutline)
-    var buttonColor by mutableStateOf(Color.White)
+    var buttonColor by mutableStateOf(Color(0xFF1683FF))
     var inputColor by mutableStateOf(DefaultJellyInput)
     var iconColor by mutableStateOf(DefaultJellyIcon)
     var activeColor by mutableStateOf(DefaultJellyAccent)
@@ -110,11 +110,11 @@ object LiveJellyTheme {
         iconShadow = Color(0xFF5F57CC)
         text = DefaultJellyInk
         muted = DefaultJellyMuted
-        headerColor = Color.White
+        headerColor = Color(0xFFDFF4FF)
         navColor = Color.White
         cardColor = DefaultJellySurface
         borderColor = DefaultJellyOutline
-        buttonColor = Color.White
+        buttonColor = Color(0xFF1683FF)
         inputColor = DefaultJellyInput
         iconColor = DefaultJellyIcon
         activeColor = DefaultJellyAccent
@@ -171,11 +171,11 @@ object LiveJellyTheme {
         iconShadow = color(settings.optString("theme_icon_shadow", ""), Color(0xFF5F57CC))
         text = color(settings.optString("theme_text_color", ""), DefaultJellyInk)
         muted = color(settings.optString("theme_muted_color", ""), DefaultJellyMuted)
-        headerColor = color(settings.optString("theme_header_color", ""), Color.White)
+        headerColor = color(settings.optString("theme_header_color", ""), Color(0xFFDFF4FF))
         navColor = color(settings.optString("theme_nav_color", ""), Color.White)
         cardColor = color(settings.optString("theme_card_color", ""), DefaultJellySurface)
         borderColor = color(settings.optString("theme_border_color", ""), DefaultJellyOutline)
-        buttonColor = Color.White
+        buttonColor = color(settings.optString("theme_button_color", ""), Color(0xFF1683FF))
         inputColor = color(settings.optString("theme_input_color", ""), DefaultJellyInput)
         iconColor = color(settings.optString("theme_icon_color", ""), DefaultJellyIcon)
         activeColor = color(settings.optString("theme_active_color", ""), accent)
