@@ -1068,7 +1068,17 @@ private fun V95VoteCard(
                 }
             }
 
-            JellyGlass(Modifier.fillMaxWidth(), radius = 26.dp, padding = 5.dp) {
+            JellyGlass(
+                Modifier.fillMaxWidth(),
+                radius = 26.dp,
+                padding = 5.dp,
+                gradientColors = listOf(
+                    Color(0xFFDCF8FF).copy(alpha = .79f),
+                    Color(0xFFFAE5F7).copy(alpha = .69f),
+                    Color(0xFFEBE6FF).copy(alpha = .72f)
+                ),
+                showShine = false
+            ) {
                 Row(
                     Modifier.fillMaxWidth().padding(vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
