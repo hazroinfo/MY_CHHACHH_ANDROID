@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -1850,6 +1852,129 @@ fun NativeThemeScreen(
                         .put("theme_header_items", headerItems.trim())
                         .put("theme_menu_items", menuItems.trim())
                 )
+            }
+        }
+    }
+}
+
+private fun parseThemeIconMap(raw: String): Map<String, String> {
+    val allowed = JellyIcons.Semantic.keys
+    val json = runCatching { JSONObject(raw) }.getOrElse { JSONObject() }
+    val out = linkedMapOf<String, String>()
+    val keys = json.keys()
+    while (keys.hasNext()) {
+        val key = keys.next()
+        val mapped = json.optString(key, "").trim()
+        if (key in allowed && mapped in allowed && mapped != key) out[key] = mapped
+    }
+    return out
+}
+
+private fun themeIconMapJson(value: Map<String, String>): String {
+    val json = JSONObject()
+    value.forEach { (key, mapped) ->
+        if (key in JellyIcons.Semantic && mapped in JellyIcons.Semantic && key != mapped) {
+            json.put(key, mapped)
+        }
+    }
+    return json.toString()
+}
+
+@Composable
+private fun ThemeIconMapEditor(
+    value: Map<String, String>,
+    onValue: (Map<String, String>) -> Unit
+) {
+    var open by remember { mutableStateOf(false) }
+    val keys = remember { JellyIcons.Semantic.keys.toList() }
+
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        JellyButton(
+            if (open) "Hide individual icon shapes" else "Edit every icon shape",
+            Modifier.fillMaxWidth(),
+            icon = JellyIcons.Brush
+        ) { open = !open }
+
+        if (open) {
+            Text(
+                "Each selector changes that icon everywhere it is used in the native app, matching the V95 semantic icon map.",
+                color = JellyMuted,
+                fontSize = 8.5f.sp
+            )
+            keys.chunked(2).forEach { pair ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    pair.forEach { key ->
+                        ThemeIconMapRow(
+                            key = key,
+                            mapped = value[key] ?: key,
+                            options = keys,
+                            modifier = Modifier.weight(1f)
+                        ) { selected ->
+                            val next = value.toMutableMap()
+                            if (selected == key) next.remove(key) else next[key] = selected
+                            onValue(next)
+                        }
+                    }
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+            JellyButton("Reset all icon shapes", Modifier.fillMaxWidth(), icon = JellyIcons.Close) {
+                onValue(emptyMap())
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThemeIconMapRow(
+    key: String,
+    mapped: String,
+    options: List<String>,
+    modifier: Modifier = Modifier,
+    onMapped: (String) -> Unit
+) {
+    var expanded by remember(key) { mutableStateOf(false) }
+    val icon = JellyIcons.Semantic[mapped] ?: JellyIcons.Semantic[key] ?: JellyIcons.Info
+
+    JellyGlass(modifier, radius = 16.dp, padding = 7.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                JellyIcon(icon, size = 28.dp)
+                Spacer(Modifier.width(5.dp))
+                Text(
+                    key.replaceFirstChar { it.uppercase() },
+                    color = JellyInk,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 9.sp,
+                    maxLines = 1
+                )
+            }
+            Box {
+                JellyButton(
+                    if (mapped == key) "Default" else mapped.replaceFirstChar { it.uppercase() },
+                    Modifier.fillMaxWidth()
+                ) { expanded = true }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Default ($key)") },
+                        onClick = {
+                            expanded = false
+                            onMapped(key)
+                        }
+                    )
+                    options.filter { it != key }.forEach { option ->
+                        DropdownMenuItem(
+                            leadingIcon = {
+                                JellyIcon(JellyIcons.Semantic[option] ?: JellyIcons.Info, size = 23.dp)
+                            },
+                            text = { Text(option.replaceFirstChar { it.uppercase() }) },
+                            onClick = {
+                                expanded = false
+                                onMapped(option)
+                            }
+                        )
+                    }
+                }
             }
         }
     }
