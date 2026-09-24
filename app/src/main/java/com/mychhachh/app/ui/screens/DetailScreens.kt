@@ -77,6 +77,11 @@ fun ProfileScreen(
     val user = userRaw?.toUser()
     val posts = data?.optJSONArray("posts")?.posts().orEmpty()
     val shop = data?.optJSONObject("shop")?.toShop()
+    val profileAvatarDp = if (LocalConfiguration.current.screenWidthDp <= 430) {
+        minOf(LiveJellyTheme.profileAvatarSize, 90f)
+    } else {
+        LiveJellyTheme.profileAvatarSize
+    }
     var relationMode by remember { mutableStateOf<String?>(null) }
     var relationUsers by remember { mutableStateOf<List<User>>(emptyList()) }
     var relationLoading by remember { mutableStateOf(false) }
@@ -149,10 +154,10 @@ fun ProfileScreen(
                         ) {
                             Box(
                                 Modifier
-                                    .width(minOf(LiveJellyTheme.profileAvatarSize, 90f).dp)
+                                    .width(profileAvatarDp.dp)
                                     .offset(y = (-LiveJellyTheme.profileOverlap).dp)
                             ) {
-                                Avatar(u, minOf(LiveJellyTheme.profileAvatarSize, 90f).dp)
+                                Avatar(u, profileAvatarDp.dp)
                             }
                             Spacer(Modifier.width(9.dp))
                             Column(
@@ -965,6 +970,11 @@ fun ShopDetailScreen(
     var shopFollowers by remember { mutableStateOf<List<User>>(emptyList()) }
     var shopFollowersLoading by remember { mutableStateOf(false) }
     val shopScope = rememberCoroutineScope()
+    val shopAvatarDp = if (LocalConfiguration.current.screenWidthDp <= 430) {
+        minOf(LiveJellyTheme.shopAvatarSize, 92f)
+    } else {
+        LiveJellyTheme.shopAvatarSize
+    }
 
     fun shareShop(id: Long, name: String) {
         val intent = Intent(Intent.ACTION_SEND)
@@ -1049,7 +1059,7 @@ fun ShopDetailScreen(
                             ) {
                                 Box(
                                     Modifier
-                                        .size(minOf(LiveJellyTheme.shopAvatarSize, 92f).dp)
+                                        .size(shopAvatarDp.dp)
                                         .offset(y = (-LiveJellyTheme.shopOverlap).dp)
                                         .clip(RoundedCornerShape(999.dp))
                                         .background(Color.White)
