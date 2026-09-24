@@ -40,6 +40,7 @@ import com.mychhachh.app.ui.components.*
 import com.mychhachh.app.ui.theme.JellyInk
 import com.mychhachh.app.ui.theme.JellyMuted
 import com.mychhachh.app.ui.theme.JellyPurple
+import com.mychhachh.app.ui.theme.LiveJellyTheme
 import kotlinx.coroutines.launch
 import java.io.File
 import org.osmdroid.config.Configuration
