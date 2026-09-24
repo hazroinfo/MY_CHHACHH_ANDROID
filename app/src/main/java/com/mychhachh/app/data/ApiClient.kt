@@ -363,6 +363,8 @@ class ApiClient(private val context: Context) {
     }
 
     fun likePost(id: Long): JSONObject = post("/api/posts/$id/like")
+    fun reactPost(id: Long, type: String): JSONObject =
+        post("/api/posts/$id/reaction", JSONObject().put("type", type))
     fun likePost(postItem: Post): JSONObject =
         if (postItem.shopId > 0) post("/api/shop-posts/${postItem.id}/like") else likePost(postItem.id)
 
