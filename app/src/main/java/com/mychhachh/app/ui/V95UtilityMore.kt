@@ -97,8 +97,8 @@ internal fun V95Settings(c: V95Controller) {
             V95GlassCard {
                 Text(c.t("Language", "زبان"), color = V95Ink, fontWeight = FontWeight.Black, fontSize = 17.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    V95Button("English", primary = c.language == "en") { c.setLanguage("en") }
-                    V95Button("اردو", primary = c.language == "ur") { c.setLanguage("ur") }
+                    V95Button("English", primary = c.language == "en") { c.changeLanguage("en") }
+                    V95Button("اردو", primary = c.language == "ur") { c.changeLanguage("ur") }
                 }
             }
         }
