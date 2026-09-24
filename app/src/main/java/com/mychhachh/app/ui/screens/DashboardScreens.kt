@@ -828,8 +828,8 @@ private fun V95VoteWinnerCard(vote: Vote, onOpen: (() -> Unit)? = null) {
     val votes = if (vote.winnerUserId == vote.leftUserId) vote.votes1 else vote.votes2
     JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp, padding = 14.dp, onClick = onOpen) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            JellyIcon(JellyIcons.Crown, size = 46.dp)
-            Avatar(winner, 80.dp)
+            JellyIcon(JellyIcons.Crown, size = 48.dp)
+            Avatar(winner, 96.dp)
             Text("CONGRATULATIONS", color = JellyPurple, fontWeight = FontWeight.Black, fontSize = 9.sp)
             UserName(winner, 18)
             if (winner.username.isNotBlank()) Text("@${winner.username}", color = JellyMuted, fontSize = 9.5f.sp)
@@ -954,9 +954,24 @@ private fun V95VoteCard(
                     )
                     Column(Modifier.width(92.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         if (active) Text(voteCountdownText(vote.endsAt, now), color = JellyMuted, fontSize = 6.8f.sp, fontWeight = FontWeight.Black, maxLines = 1)
-                        JellyGlass(radius = 999.dp, padding = 9.dp) {
+                        Box(
+                            Modifier
+                                .size(64.dp)
+                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .background(
+                                    Brush.radialGradient(
+                                        listOf(
+                                            Color.White,
+                                            Color(0xFFF678EB).copy(alpha = .82f),
+                                            Color(0xFF4BA7FF).copy(alpha = .90f)
+                                        )
+                                    )
+                                )
+                                .border(2.dp, Color.White.copy(alpha = .90f), androidx.compose.foundation.shape.CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("VS", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                                Text("VS", color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
                                 Text(
                                     when {
                                         waiting -> "WAIT"
@@ -964,7 +979,7 @@ private fun V95VoteCard(
                                         active -> "LIVE"
                                         else -> "RESULT"
                                     },
-                                    color = if (active) JellyGreen else JellyPurple,
+                                    color = Color.White,
                                     fontWeight = FontWeight.Black,
                                     fontSize = 7.sp
                                 )
@@ -1121,7 +1136,7 @@ private fun VoteArenaPlayer(
 
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (user != null) {
-            Avatar(user, 62.dp)
+            Avatar(user, 72.dp)
             UserName(user, 10)
             if (user.username.isNotBlank()) Text("@${user.username}", color = JellyMuted, fontSize = 8.sp)
         } else {
