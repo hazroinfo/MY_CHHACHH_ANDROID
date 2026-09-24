@@ -282,6 +282,7 @@ class ApiClient(private val context: Context) {
         return items to d.optInt("unread", 0)
     }
     fun markNotificationsRead() { post("/api/notifications/read") }
+    fun presence() { post("/api/presence") }
 
     fun announcements(): Pair<List<Announcement>, Int> {
         val d = get("/api/announcements?limit=80")
