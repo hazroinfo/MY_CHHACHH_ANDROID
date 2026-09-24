@@ -189,6 +189,12 @@ fun JellyPill(text: String, selected: Boolean, modifier: Modifier = Modifier, on
     val shape = RoundedCornerShape(LiveJellyTheme.buttonRadius.dp)
     Box(
         modifier
+            .shadow(
+                if (selected) 8.dp else 5.dp,
+                shape,
+                ambientColor = if (selected) Color(0x31CB479E) else Color(0x14375B88),
+                spotColor = if (selected) Color(0x31CB479E) else Color(0x14375B88)
+            )
             .clip(shape)
             .clickable { onClick() }
             .background(
@@ -210,7 +216,7 @@ fun JellyPill(text: String, selected: Boolean, modifier: Modifier = Modifier, on
                 }
             )
             .border(1.5.dp, Color.White.copy(alpha = .94f), shape)
-            .height(43.dp),
+            .heightIn(min = LiveJellyTheme.buttonHeight.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -238,6 +244,12 @@ fun JellyButton(
     val alpha = if (enabled) 1f else .45f
     Row(
         modifier
+            .shadow(
+                if (primary) 7.dp else 5.dp,
+                shape,
+                ambientColor = if (primary) Color(0x316950C0) else Color(0x14375B88),
+                spotColor = if (primary) Color(0x316950C0) else Color(0x14375B88)
+            )
             .clip(shape)
             .clickable(enabled = enabled) { onClick() }
             .background(
@@ -271,8 +283,8 @@ fun JellyButton(
         horizontalArrangement = Arrangement.Center
     ) {
         icon?.let {
-            JellyIcon(it, size = 22.dp)
-            Spacer(Modifier.width(5.dp))
+            JellyIcon(it, size = 25.dp)
+            Spacer(Modifier.width(6.dp))
         }
         Text(
             text,
