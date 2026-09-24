@@ -77,10 +77,12 @@ fun ProfileScreen(
     val user = userRaw?.toUser()
     val posts = data?.optJSONArray("posts")?.posts().orEmpty()
     val shop = data?.optJSONObject("shop")?.toShop()
-    val profileAvatarDp = if (LocalConfiguration.current.screenWidthDp <= 430) {
-        minOf(LiveJellyTheme.profileAvatarSize, 90f)
+    val profileScreenWidthDp = LocalConfiguration.current.screenWidthDp
+    val profileAvatarDp = LiveJellyTheme.profileAvatarSize
+    val profileNameSize = if (profileScreenWidthDp <= 430) {
+        (profileScreenWidthDp * .052f).coerceIn(18f, 23f).toInt()
     } else {
-        LiveJellyTheme.profileAvatarSize
+        (profileScreenWidthDp * .05f).coerceIn(19f, 28f).toInt()
     }
     var relationMode by remember { mutableStateOf<String?>(null) }
     var relationUsers by remember { mutableStateOf<List<User>>(emptyList()) }
@@ -167,11 +169,11 @@ fun ProfileScreen(
                             ) {
                                 Avatar(u, profileAvatarDp.dp)
                             }
-                            Spacer(Modifier.width(9.dp))
+                            Spacer(Modifier.width(if (profileScreenWidthDp <= 430) 9.dp else 12.dp))
                             Column(
-                                Modifier.weight(1f).padding(top = 9.dp)
+                                Modifier.weight(1f).padding(top = if (profileScreenWidthDp <= 430) 9.dp else 11.dp)
                             ) {
-                                UserName(u, 23)
+                                UserName(u, profileNameSize)
                                 if (u.username.isNotBlank()) {
                                     Text(
                                         "@${u.username}",
@@ -978,10 +980,16 @@ fun ShopDetailScreen(
     var shopFollowers by remember { mutableStateOf<List<User>>(emptyList()) }
     var shopFollowersLoading by remember { mutableStateOf(false) }
     val shopScope = rememberCoroutineScope()
-    val shopAvatarDp = if (LocalConfiguration.current.screenWidthDp <= 430) {
+    val shopScreenWidthDp = LocalConfiguration.current.screenWidthDp
+    val shopAvatarDp = if (shopScreenWidthDp <= 430) {
         minOf(LiveJellyTheme.shopAvatarSize, 92f)
     } else {
         LiveJellyTheme.shopAvatarSize
+    }
+    val shopNameSize = if (shopScreenWidthDp <= 430) {
+        (shopScreenWidthDp * .052f).coerceIn(18f, 23f)
+    } else {
+        (shopScreenWidthDp * .05f).coerceIn(20f, 27f)
     }
 
     fun shareShop(id: Long, name: String) {
@@ -1047,7 +1055,7 @@ fun ShopDetailScreen(
                             Row(
                                 Modifier
                                     .align(Alignment.TopStart)
-                                    .padding(12.dp)
+                                    .padding(if (shopScreenWidthDp <= 700) 9.dp else 12.dp)
                                     .clip(RoundedCornerShape(999.dp))
                                     .background(Color.White.copy(alpha = .70f))
                                     .padding(horizontal = 10.dp, vertical = 7.dp),
@@ -1059,7 +1067,7 @@ fun ShopDetailScreen(
                                     s.category.ifBlank { "Local business" },
                                     color = JellyInk,
                                     fontWeight = FontWeight.Black,
-                                    fontSize = 10.sp,
+                                    fontSize = 11.sp,
                                     maxLines = 1
                                 )
                             }
@@ -1093,12 +1101,12 @@ fun ShopDetailScreen(
                                         JellyIcon(JellyIcons.Shop, size = 54.dp)
                                     }
                                 }
-                                Spacer(Modifier.width(10.dp))
+                                Spacer(Modifier.width(if (shopScreenWidthDp <= 430) 9.dp else 12.dp))
                                 Column(
-                                    Modifier.weight(1f).padding(top = 9.dp),
+                                    Modifier.weight(1f).padding(top = if (shopScreenWidthDp <= 430) 9.dp else 11.dp),
                                     verticalArrangement = Arrangement.spacedBy(2.dp)
                                 ) {
-                                    Text(s.name, color = JellyInk, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                                    Text(s.name, color = JellyInk, fontWeight = FontWeight.Black, fontSize = shopNameSize.sp)
                                     if (s.username.isNotBlank()) Text("@${s.username}", color = JellyMuted, fontSize = 10.5f.sp)
                                     Text(s.category.ifBlank { "Shop" }, color = JellyMuted, fontSize = 10.sp)
                                     val shortPlace = listOf(s.village, s.city).filter { it.isNotBlank() }.joinToString(" · ")
