@@ -1317,14 +1317,26 @@ private fun AdminNavGroup(
     selected: String,
     onSelect: (String) -> Unit
 ) {
+    val widthDp = LocalConfiguration.current.screenWidthDp
+    val columns = when {
+        widthDp <= 430 -> 3
+        widthDp <= 700 -> 4
+        else -> 5
+    }
+    val iconSize = if (widthDp <= 700) 34.dp else 40.dp
+    val labelSize = when {
+        widthDp <= 430 -> 8.5f.sp
+        widthDp <= 700 -> 8f.sp
+        else -> 10f.sp
+    }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(title, color = JellyMuted, fontSize = 9.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 3.dp))
-        items.chunked(3).forEach { rowItems ->
+        items.chunked(columns).forEach { rowItems ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 rowItems.forEach { item ->
                     val active = selected == item.key
                     JellyGlass(
-                        Modifier.weight(1f).heightIn(min = 76.dp),
+                        Modifier.weight(1f).heightIn(min = 70.dp),
                         radius = 16.dp,
                         padding = 5.dp,
                         onClick = { onSelect(item.key) },
@@ -1337,11 +1349,11 @@ private fun AdminNavGroup(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
-                                JellyIcon(item.icon, size = 34.dp)
+                                JellyIcon(item.icon, size = iconSize)
                                 Text(
                                     item.label,
                                     color = if (active) LiveJellyTheme.activeColor else JellyInk,
-                                    fontSize = 8.5f.sp,
+                                    fontSize = labelSize,
                                     fontWeight = FontWeight.Black,
                                     maxLines = 2
                                 )
@@ -1365,7 +1377,7 @@ private fun AdminNavGroup(
                         }
                     }
                 }
-                repeat(3 - rowItems.size) { Spacer(Modifier.weight(1f)) }
+                repeat(columns - rowItems.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
