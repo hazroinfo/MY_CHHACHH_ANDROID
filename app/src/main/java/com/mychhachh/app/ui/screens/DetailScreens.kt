@@ -55,6 +55,7 @@ fun ProfileScreen(
     isAdmin: Boolean,
     onAdminAction: (String, Long, JSONObject) -> Unit,
     onLoadRelations: suspend (Long, String) -> List<User>,
+    onRemoveRelation: suspend (Long, String) -> Unit,
     onLike: (Post) -> Unit,
     onComment: (Post) -> Unit,
     onShare: (Post) -> Unit,
@@ -560,9 +561,23 @@ fun ProfileScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Avatar(person, 38.dp)
                                 Spacer(Modifier.width(7.dp))
-                                Column {
+                                Column(Modifier.weight(1f)) {
                                     UserName(person, 11)
                                     Text("@${person.username}", color = JellyMuted, fontSize = 9.sp)
+                                }
+                                if (user?.id == meId) {
+                                    JellyButton(
+                                        if (mode == "followers") "Remove" else "Unfollow",
+                                        danger = mode == "followers",
+                                        icon = if (mode == "followers") JellyIcons.Close else JellyIcons.People
+                                    ) {
+                                        scope.launch {
+                                            relationLoading = true
+                                            runCatching { onRemoveRelation(person.id, mode) }
+                                            relationUsers = runCatching { onLoadRelations(meId, mode) }.getOrDefault(emptyList())
+                                            relationLoading = false
+                                        }
+                                    }
                                 }
                             }
                         }
