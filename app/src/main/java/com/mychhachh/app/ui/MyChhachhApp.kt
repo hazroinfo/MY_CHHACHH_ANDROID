@@ -860,6 +860,8 @@ fun MyChhachhApp() {
                         items = announcements,
                         loading = announcementsLoading,
                         error = announcementsError,
+                        meId = currentUser?.id ?: 0L,
+                        isAdmin = currentUser?.isAdmin == true,
                         onLike = { id ->
                             scope.launch {
                                 runCatching { withContext(Dispatchers.IO) { api.toggleAnnouncementLike(id) } }
@@ -870,6 +872,38 @@ fun MyChhachhApp() {
                         onAddComment = { id, text ->
                             withContext(Dispatchers.IO) { api.addAnnouncementComment(id, text) }
                             loadAnnouncements()
+                        },
+                        onEdit = { id, text ->
+                            scope.launch {
+                                try {
+                                    announcementsError = null
+                                    withContext(Dispatchers.IO) { api.editAnnouncement(id, text) }
+                                    loadAnnouncements()
+                                } catch (e: Exception) {
+                                    announcementsError = e.message ?: "Announcement could not be edited."
+                                }
+                            }
+                        },
+                        onDelete = { id ->
+                            scope.launch {
+                                try {
+                                    announcementsError = null
+                                    withContext(Dispatchers.IO) { api.deleteAnnouncement(id) }
+                                    loadAnnouncements()
+                                } catch (e: Exception) {
+                                    announcementsError = e.message ?: "Announcement could not be deleted."
+                                }
+                            }
+                        },
+                        onReport = { id, reason ->
+                            scope.launch {
+                                try {
+                                    announcementsError = null
+                                    withContext(Dispatchers.IO) { api.reportAnnouncement(id, reason) }
+                                } catch (e: Exception) {
+                                    announcementsError = e.message ?: "Announcement report could not be sent."
+                                }
+                            }
                         },
                         onPublish = { text, photoUri, audioFile ->
                             scope.launch {
