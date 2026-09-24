@@ -1473,29 +1473,29 @@ fun NativeThemeScreen(
     var brandBrightness by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_brand_brightness", 100).toFloat()) }
     var brandSaturation by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_brand_saturation", 125).toFloat()) }
     var brandGlow by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_brand_glow", 12).toFloat()) }
-    var jellyDepth by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_jelly_depth", 90).toFloat()) }
-    var jellyShine by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_jelly_shine", 94).toFloat()) }
-    var jellyBorder by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_jelly_border", 88).toFloat()) }
-    var jellySaturation by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_jelly_saturation", 138).toFloat()) }
+    var jellyDepth by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_jelly_depth", 92).toFloat()) }
+    var jellyShine by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_jelly_shine", 96).toFloat()) }
+    var jellyBorder by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_jelly_border", 92).toFloat()) }
+    var jellySaturation by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_jelly_saturation", 140).toFloat()) }
     var timeMode by remember(stateKey) { mutableStateOf(settings.optString("theme_time_mode", "auto").ifBlank { "auto" }) }
     var manualWeather by remember(stateKey) { mutableStateOf(settings.optString("theme_manual_weather", "clear").ifBlank { "clear" }) }
 
-    var cardOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_card_opacity", 68).toFloat()) }
-    var headerOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_header_opacity", 70).toFloat()) }
-    var navOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_nav_opacity", 66).toFloat()) }
-    var inputOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_input_opacity", 62).toFloat()) }
-    var blur by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_blur", 28).toFloat()) }
-    var cardRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_card_radius", 30).toFloat()) }
+    var cardOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_card_opacity", 76).toFloat()) }
+    var headerOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_header_opacity", 78).toFloat()) }
+    var navOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_nav_opacity", 74).toFloat()) }
+    var inputOpacity by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_input_opacity", 78).toFloat()) }
+    var blur by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_blur", 24).toFloat()) }
+    var cardRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_card_radius", 28).toFloat()) }
     var headerRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_header_radius", 28).toFloat()) }
-    var navRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_nav_radius", 17).toFloat()) }
-    var buttonRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_button_radius", 14).toFloat()) }
-    var inputRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_input_radius", 16).toFloat()) }
-    var shadow by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_shadow", 24).toFloat()) }
+    var navRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_nav_radius", 23).toFloat()) }
+    var buttonRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_button_radius", 18).toFloat()) }
+    var inputRadius by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_input_radius", 20).toFloat()) }
+    var shadow by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_shadow", 22).toFloat()) }
     var fontScale by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_font_scale", 100).toFloat()) }
-    var pageWidth by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_page_width", 940).toFloat()) }
-    var cardPadding by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_card_padding", 18).toFloat()) }
-    var sectionGap by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_section_gap", 14).toFloat()) }
-    var navHeight by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_nav_height", 64).toFloat()) }
+    var pageWidth by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_page_width", 920).toFloat()) }
+    var cardPadding by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_card_padding", 16).toFloat()) }
+    var sectionGap by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_section_gap", 12).toFloat()) }
+    var navHeight by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_nav_height", 72).toFloat()) }
     var buttonHeight by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_button_height", 44).toFloat()) }
     var framePadding by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_frame_padding", 10).toFloat()) }
     var profileCover by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_profile_cover_height", 165).toFloat()) }
@@ -1505,23 +1505,23 @@ fun NativeThemeScreen(
     var shopAvatar by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_shop_avatar_size", 96).toFloat()) }
     var shopOverlap by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_shop_overlap", 50).toFloat()) }
     var notificationAvatar by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_notification_avatar_size", 46).toFloat()) }
-    var bgStrength by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_bg_strength", 72).toFloat()) }
+    var bgStrength by remember(stateKey) { mutableFloatStateOf(settings.optInt("theme_bg_strength", 100).toFloat()) }
 
     var brandColor by remember(stateKey) { mutableStateOf(settings.optString("theme_brand_color", "#7b65d7")) }
     var brandColor2 by remember(stateKey) { mutableStateOf(settings.optString("theme_brand_color2", "#ff4fb8")) }
-    var headerColor by remember(stateKey) { mutableStateOf(settings.optString("theme_header_color", "#ffffff")) }
-    var headerText by remember(stateKey) { mutableStateOf(settings.optString("theme_header_text", "#0d1a34")) }
+    var headerColor by remember(stateKey) { mutableStateOf(settings.optString("theme_header_color", "#dff4ff")) }
+    var headerText by remember(stateKey) { mutableStateOf(settings.optString("theme_header_text", "#10203d")) }
     var navColor by remember(stateKey) { mutableStateOf(settings.optString("theme_nav_color", "#ffffff")) }
     var iconColor by remember(stateKey) { mutableStateOf(settings.optString("theme_icon_color", "#8b79ff")) }
     var iconHighlight by remember(stateKey) { mutableStateOf(settings.optString("theme_icon_highlight", "#f7fdff")) }
     var iconShadow by remember(stateKey) { mutableStateOf(settings.optString("theme_icon_shadow", "#5f57cc")) }
-    var activeColor by remember(stateKey) { mutableStateOf(settings.optString("theme_active_color", "#1683ff")) }
-    var textColor by remember(stateKey) { mutableStateOf(settings.optString("theme_text_color", "#0d1a34")) }
+    var activeColor by remember(stateKey) { mutableStateOf(settings.optString("theme_active_color", "#ff4fb8")) }
+    var textColor by remember(stateKey) { mutableStateOf(settings.optString("theme_text_color", "#10203d")) }
     var mutedColor by remember(stateKey) { mutableStateOf(settings.optString("theme_muted_color", "#66738b")) }
     var cardColor by remember(stateKey) { mutableStateOf(settings.optString("theme_card_color", "#ffffff")) }
-    var borderColor by remember(stateKey) { mutableStateOf(settings.optString("theme_border_color", "#e8edf2")) }
+    var borderColor by remember(stateKey) { mutableStateOf(settings.optString("theme_border_color", "#ffffff")) }
     var buttonColor by remember(stateKey) { mutableStateOf(settings.optString("theme_button_color", "#1683ff")) }
-    var inputColor by remember(stateKey) { mutableStateOf(settings.optString("theme_input_color", "#f4f7fa")) }
+    var inputColor by remember(stateKey) { mutableStateOf(settings.optString("theme_input_color", "#f7fbff")) }
     var accent by remember(stateKey) { mutableStateOf(settings.optString("theme_accent", "#ff4fb8")) }
     var accent2 by remember(stateKey) { mutableStateOf(settings.optString("theme_accent2", "#6fc8ff")) }
 
