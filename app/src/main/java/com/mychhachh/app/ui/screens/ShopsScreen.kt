@@ -25,6 +25,7 @@ import com.mychhachh.app.data.Shop
 import com.mychhachh.app.ui.components.*
 import com.mychhachh.app.ui.theme.JellyInk
 import com.mychhachh.app.ui.theme.JellyMuted
+import com.mychhachh.app.ui.theme.LiveJellyTheme
 import org.json.JSONObject
 
 @Composable
