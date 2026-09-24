@@ -1727,7 +1727,7 @@ private fun AuthHeader(
                         )
                     )
                 )
-                .border(2.dp, Color.White, RoundedCornerShape(22.dp))
+                .border(2.dp, Color.White, RoundedCornerShape(LiveJellyTheme.navRadius.dp))
         ) {
             Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 5.dp)) {
                 navOrder.forEach { key ->
