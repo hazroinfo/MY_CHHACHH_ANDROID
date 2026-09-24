@@ -1563,7 +1563,7 @@ private fun AuthHeader(
                 tagline = brandTagline,
                 iconUrl = brandIcon,
                 modifier = Modifier.weight(1f),
-                fontSize = 27,
+                fontSize = 28,
                 iconSize = brandIconSize.coerceAtMost(44.dp)
             )
 
@@ -1756,7 +1756,7 @@ private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: ()
     val shape = RoundedCornerShape(21.dp)
     Box(
         modifier
-            .height(76.dp)
+            .height(82.dp)
             .shadow(
                 7.dp,
                 shape,
@@ -1794,13 +1794,13 @@ private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: ()
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            JellyIcon(icon, size = if (icon == JellyIcons.Weather) 34.dp else 31.dp)
+            JellyIcon(icon, size = if (icon == JellyIcons.Weather) 37.dp else 34.dp)
             Spacer(Modifier.height(3.dp))
             Text(
                 text,
                 color = Color(0xFF433476),
                 fontWeight = FontWeight.Black,
-                fontSize = 8.sp,
+                fontSize = 8.8f.sp,
                 maxLines = 1
             )
         }
@@ -1811,7 +1811,7 @@ private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: ()
 private fun NavItem(text: String, icon: Int, active: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(
         modifier
-            .height(64.dp)
+            .height(68.dp)
             .clip(RoundedCornerShape(18.dp))
             .clickable { onClick() }
             .background(
@@ -1829,13 +1829,13 @@ private fun NavItem(text: String, icon: Int, active: Boolean, modifier: Modifier
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        JellyIcon(icon, size = 30.dp, contentDescription = text)
+        JellyIcon(icon, size = 32.dp, contentDescription = text)
         Spacer(Modifier.height(2.dp))
         Text(
             text,
             color = Color(0xFF392B72),
             fontWeight = FontWeight.Black,
-            fontSize = 8.4f.sp,
+            fontSize = 9.sp,
             maxLines = 1
         )
         if (active) {
