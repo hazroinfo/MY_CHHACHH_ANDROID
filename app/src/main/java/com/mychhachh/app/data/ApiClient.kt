@@ -144,6 +144,8 @@ class ApiClient(private val context: Context) {
     fun followUser(id: Long): JSONObject = post("/api/users/$id/follow")
     fun relationUsers(id: Long, mode: String): List<User> =
         (get("/api/users/$id/${if (mode == "following") "following" else "followers"}").optJSONArray("items") ?: JSONArray()).users()
+    fun removeFollower(id: Long): JSONObject = post("/api/users/$id/remove-follower")
+    fun removeFollowing(id: Long): JSONObject = post("/api/users/$id/remove-following")
     fun reportProfile(id: Long, reason: String): JSONObject =
         post("/api/report", JSONObject().put("target_type", "profile").put("target_id", id).put("reason", reason))
     fun reportPost(id: Long, reason: String): JSONObject =
