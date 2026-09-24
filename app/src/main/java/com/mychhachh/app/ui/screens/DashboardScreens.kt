@@ -142,15 +142,24 @@ fun AnnouncementsScreen(
     items: List<Announcement>,
     loading: Boolean,
     error: String?,
+    meId: Long,
+    isAdmin: Boolean,
     onLike: (Long) -> Unit,
     onLoadComments: suspend (Long) -> List<Comment>,
     onAddComment: suspend (Long, String) -> Unit,
+    onEdit: (Long, String) -> Unit,
+    onDelete: (Long) -> Unit,
+    onReport: (Long, String) -> Unit,
     onPublish: (String, Uri?, File?) -> Unit
 ) {
     val context = LocalContext.current
     val uiScope = rememberCoroutineScope()
     var text by remember { mutableStateOf("") }
     var commentAnnouncement by remember { mutableStateOf<Announcement?>(null) }
+    var actionAnnouncement by remember { mutableStateOf<Announcement?>(null) }
+    var editAnnouncement by remember { mutableStateOf<Announcement?>(null) }
+    var deleteAnnouncement by remember { mutableStateOf<Announcement?>(null) }
+    var reportAnnouncement by remember { mutableStateOf<Announcement?>(null) }
     var announcementComments by remember { mutableStateOf<List<Comment>>(emptyList()) }
     var commentsLoading by remember { mutableStateOf(false) }
     var commentsError by remember { mutableStateOf<String?>(null) }
@@ -291,6 +300,7 @@ fun AnnouncementsScreen(
                                 Text(shortTime(a.createdAt), color = JellyMuted, fontSize = 9.sp)
                             }
                         }
+                        JellyIconButton(JellyIcons.More, "Announcement options") { actionAnnouncement = a }
                     }
                     Row(Modifier.fillMaxWidth()) {
                         JellyGlass(radius = 999.dp, padding = 6.dp) {
@@ -344,6 +354,102 @@ fun AnnouncementsScreen(
                 }
             }
         }
+    }
+
+
+    actionAnnouncement?.let { announcement ->
+        val canManage = isAdmin || announcement.author?.id == meId
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { actionAnnouncement = null },
+            title = { Text("Announcement options", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (canManage) {
+                        JellyButton("Edit announcement", Modifier.fillMaxWidth(), icon = JellyIcons.Edit) {
+                            editAnnouncement = announcement
+                            actionAnnouncement = null
+                        }
+                        JellyButton("Delete announcement", Modifier.fillMaxWidth(), danger = true, icon = JellyIcons.Delete) {
+                            deleteAnnouncement = announcement
+                            actionAnnouncement = null
+                        }
+                    } else {
+                        JellyButton("Report announcement", Modifier.fillMaxWidth(), danger = true, icon = JellyIcons.Shield) {
+                            reportAnnouncement = announcement
+                            actionAnnouncement = null
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { JellyButton("Close") { actionAnnouncement = null } }
+        )
+    }
+
+    editAnnouncement?.let { announcement ->
+        var editText by remember(announcement.id) { mutableStateOf(announcement.text) }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { editAnnouncement = null },
+            title = { Text("Edit Announcement", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                OutlinedTextField(
+                    editText,
+                    { editText = it.take(5000) },
+                    Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 8,
+                    shape = RoundedCornerShape(18.dp)
+                )
+            },
+            confirmButton = {
+                JellyButton("Save", primary = true, icon = JellyIcons.Check, enabled = editText.isNotBlank() || announcement.photo != null || announcement.audio != null) {
+                    onEdit(announcement.id, editText.trim())
+                    editAnnouncement = null
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { editAnnouncement = null } }
+        )
+    }
+
+    deleteAnnouncement?.let { announcement ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { deleteAnnouncement = null },
+            title = { Text("Delete Announcement", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = { Text("Delete this announcement permanently?", color = JellyMuted) },
+            confirmButton = {
+                JellyButton("Delete", danger = true, icon = JellyIcons.Delete) {
+                    onDelete(announcement.id)
+                    deleteAnnouncement = null
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { deleteAnnouncement = null } }
+        )
+    }
+
+    reportAnnouncement?.let { announcement ->
+        var reason by remember(announcement.id) { mutableStateOf("") }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { reportAnnouncement = null },
+            title = { Text("Report Announcement", color = JellyInk, fontWeight = FontWeight.Black) },
+            text = {
+                OutlinedTextField(
+                    reason,
+                    { reason = it.take(3000) },
+                    Modifier.fillMaxWidth(),
+                    placeholder = { Text("Tell the admin what is wrong…") },
+                    minLines = 3,
+                    maxLines = 7,
+                    shape = RoundedCornerShape(18.dp)
+                )
+            },
+            confirmButton = {
+                JellyButton("Send report", danger = true, icon = JellyIcons.Shield, enabled = reason.trim().length >= 3) {
+                    onReport(announcement.id, reason.trim())
+                    reportAnnouncement = null
+                }
+            },
+            dismissButton = { JellyButton("Cancel") { reportAnnouncement = null } }
+        )
     }
 
     commentAnnouncement?.let { announcement ->
