@@ -297,6 +297,14 @@ class ApiClient(private val context: Context) {
         post("/api/announcements/$id/comments", JSONObject().put("text", text))
     fun createAnnouncement(text: String, photo: String = "", audio: String = "", noticeType: String = "announcement"): JSONObject =
         post("/api/announcements", JSONObject().put("text", text).put("photo", photo).put("audio", audio).put("notice_type", noticeType))
+    fun editAnnouncement(id: Long, text: String, noticeType: String? = null): JSONObject {
+        val body = JSONObject().put("text", text)
+        if (!noticeType.isNullOrBlank()) body.put("notice_type", noticeType)
+        return patch("/api/announcements/$id", body)
+    }
+    fun deleteAnnouncement(id: Long): JSONObject = delete("/api/announcements/$id")
+    fun reportAnnouncement(id: Long, reason: String): JSONObject =
+        post("/api/report", JSONObject().put("target_type", "announcement").put("target_id", id).put("reason", reason))
 
     fun votes(): List<Vote> {
         val d = get("/api/votes?limit=40")
