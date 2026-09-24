@@ -1663,7 +1663,7 @@ private fun AuthHeader(
     val brandIconSize = settings.optInt("site_icon_size", 34).coerceIn(20, 96).dp
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
     val responsiveBrandFontSize = (screenWidthDp * 0.08f).coerceIn(24f, 34f).toInt()
-    val responsiveNavRadius = if (screenWidthDp <= 700) 22.dp else LiveJellyTheme.navRadius.dp
+    val responsiveNavRadius = LiveJellyTheme.navRadius.dp
 
     Column(
         Modifier
@@ -1682,7 +1682,7 @@ private fun AuthHeader(
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(
-            Modifier.fillMaxWidth().height(43.dp),
+            Modifier.fillMaxWidth().height(47.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -1701,12 +1701,12 @@ private fun AuthHeader(
                 iconSize = brandIconSize.coerceAtMost(44.dp)
             )
 
-            Box(Modifier.size(43.dp).clickable { onNotifications() }, contentAlignment = Alignment.Center) {
+            Box(Modifier.size(45.dp).clickable { onNotifications() }, contentAlignment = Alignment.Center) {
                 JellyIcon(JellyIcons.Bell, size = 36.dp, contentDescription = "Notifications")
                 if (unread > 0) CountBadge(unread, Modifier.align(Alignment.TopEnd))
             }
             Spacer(Modifier.width(5.dp))
-            Box(Modifier.size(43.dp).clickable { onProfile() }, contentAlignment = Alignment.Center) {
+            Box(Modifier.size(47.dp).clickable { onProfile() }, contentAlignment = Alignment.Center) {
                 Avatar(user, 41.dp)
             }
         }
