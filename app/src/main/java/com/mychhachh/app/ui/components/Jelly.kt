@@ -127,6 +127,8 @@ fun JellyGlass(
     onClick: (() -> Unit)? = null,
     surfaceColor: Color? = null,
     surfaceOpacity: Float? = null,
+    gradientColors: List<Color>? = null,
+    showShine: Boolean = true,
     content: @Composable BoxScope.() -> Unit
 ) {
     val actualRadius = radius ?: LiveJellyTheme.cardRadius.dp
@@ -146,10 +148,10 @@ fun JellyGlass(
         )
         .clip(shape)
         .background(
-            if (surfaceColor != null) {
-                Brush.linearGradient(listOf(base.copy(alpha = opacity), base.copy(alpha = opacity)))
-            } else {
-                Brush.linearGradient(
+            when {
+                gradientColors != null -> Brush.linearGradient(gradientColors)
+                surfaceColor != null -> Brush.linearGradient(listOf(base.copy(alpha = opacity), base.copy(alpha = opacity)))
+                else -> Brush.linearGradient(
                     listOf(
                         Color.White.copy(alpha = .88f),
                         Color(0xFFDEF7FF).copy(alpha = .72f),
@@ -161,7 +163,7 @@ fun JellyGlass(
         .border((1.08f + borderStrength).dp, Color.White.copy(alpha = .94f), shape)
     if (onClick != null) m = m.clickable { onClick() }
     Box(m.padding(padding)) {
-        if (surfaceColor == null) {
+        if (surfaceColor == null && showShine) {
             Box(
                 Modifier
                     .fillMaxWidth(.90f)
