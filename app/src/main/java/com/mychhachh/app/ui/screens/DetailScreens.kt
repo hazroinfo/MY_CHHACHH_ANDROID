@@ -476,7 +476,7 @@ fun ProfileScreen(
                                 placeholder = { Text("Write report reason...") },
                                 minLines = 4,
                                 maxLines = 8,
-                                shape = RoundedCornerShape(18.dp)
+                                shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp)
                             )
                         },
                         confirmButton = {
@@ -515,7 +515,7 @@ fun ProfileScreen(
                     placeholder = { Text("Write an admin warning…") },
                     minLines = 4,
                     maxLines = 8,
-                    shape = RoundedCornerShape(18.dp)
+                    shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp)
                 )
             },
             confirmButton = {
@@ -540,7 +540,7 @@ fun ProfileScreen(
                     placeholder = { Text("Write a post…") },
                     minLines = 4,
                     maxLines = 9,
-                    shape = RoundedCornerShape(18.dp)
+                    shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp)
                 )
             },
             confirmButton = {
@@ -1337,7 +1337,7 @@ private fun ShopPostComposer(
                 placeholder = { Text("Write shop post...") },
                 minLines = 3,
                 maxLines = 7,
-                shape = RoundedCornerShape(18.dp)
+                shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp)
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 JellyButton(if (photo != null) "Photo ✓" else "Photo", Modifier.weight(1f), icon = JellyIcons.Photo) { photoPicker.launch("image/*") }
