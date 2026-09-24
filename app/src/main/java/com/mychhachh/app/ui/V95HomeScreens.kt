@@ -46,37 +46,93 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import androidx.compose.ui.viewinterop.AndroidView
 import java.util.Locale
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 
 @Composable
 internal fun V95Home(c: V95Controller) {
     LaunchedEffect(c.feedMode) { if (c.feed.isEmpty()) c.loadFeed(false) }
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp), contentPadding = PaddingValues(top = 10.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val guest = c.user == null
+    LazyColumn(
+        Modifier.fillMaxSize().padding(horizontal = 7.dp),
+        contentPadding = PaddingValues(top = 5.dp, bottom = 26.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (guest) item { V95GuestCard(c) }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                V95Tab(c.t("For You", "آپ کے لیے"), c.feedMode == "for_you") { c.changeFeed("for_you") }
-                V95Tab(c.t("Following", "فالوونگ"), c.feedMode == "following") { c.changeFeed("following") }
-                V95Tab(c.t("Shop Posts", "دکان پوسٹس"), c.feedMode == "shops") { c.changeFeed("shops") }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                V95Tab(c.t("For You", "آپ کے لیے"), c.feedMode == "for_you", Modifier.weight(1f)) { c.changeFeed("for_you") }
+                if (!guest) {
+                    V95Tab(c.t("Following", "فالوونگ"), c.feedMode == "following", Modifier.weight(1f)) { c.changeFeed("following") }
+                }
+                V95Tab(c.t("Shop Posts", "دکان پوسٹس"), c.feedMode == "shops", Modifier.weight(1f)) { c.changeFeed("shops") }
+                if (guest) Spacer(Modifier.weight(1f))
             }
         }
-        if (c.user != null) item { V95Composer(c) }
-        else item { V95GuestCard(c) }
+        if (!guest && c.feedMode != "shops") item { V95Composer(c) }
         if (c.feed.isEmpty() && !c.busy) item { V95Empty(c.t("No posts yet", "ابھی کوئی پوسٹ نہیں")) }
         items(c.feed, key = { it.id }) { post -> V95PostCard(c, post) }
     }
 }
 
 @Composable
-internal fun V95Tab(text: String, active: Boolean, onClick: () -> Unit) {
-    V95Button(text, primary = active, onClick = onClick)
+internal fun V95Tab(text: String, active: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(999.dp)
+    Box(
+        modifier
+            .height(43.dp)
+            .clip(shape)
+            .background(
+                if (active) {
+                    Brush.linearGradient(
+                        listOf(Color(0xFFFF6EC0), Color(0xFFFF4CAD), Color(0xFFB671F1))
+                    )
+                } else {
+                    Brush.linearGradient(listOf(Color.White.copy(.72f), Color.White.copy(.62f)))
+                }
+            )
+            .border(1.5.dp, Color.White.copy(.95f), shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text,
+            color = if (active) Color.White else V95Purple,
+            fontWeight = FontWeight.Black,
+            fontSize = 10.5.sp,
+            maxLines = 1
+        )
+    }
 }
 
 @Composable
 internal fun V95GuestCard(c: V95Controller) {
-    V95GlassCard {
-        Text(c.t("Browse My Chhachh freely", "My Chhachh آزادانہ دیکھیں"), color = V95Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
-        Text(c.t("Login only when you want to post, like, comment or message.", "پوسٹ، لائک، کمنٹ یا پیغام کے لیے لاگ اِن کریں۔"), color = V95Muted, fontSize = 13.sp)
-        V95Button(c.t("Login / Register", "لاگ اِن / رجسٹریشن"), primary = true) { c.route = V95Route.AUTH }
+    V95GlassCard(radius = 22.dp, padding = 12.dp) {
+        Text(
+            c.t("Welcome to My Chhachh", "My Chhachh میں خوش آمدید"),
+            color = V95Ink,
+            fontWeight = FontWeight.Black,
+            fontSize = 14.sp
+        )
+        Text(
+            c.t(
+                "Browse public posts, or sign in to like, comment, message and post.",
+                "عوامی پوسٹس دیکھیں، لائک، کمنٹ، پیغام اور پوسٹ کے لیے لاگ اِن کریں۔"
+            ),
+            color = V95Muted,
+            fontSize = 11.sp,
+            lineHeight = 16.sp
+        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            V95Button(c.t("Login", "لاگ اِن"), Modifier.weight(1f)) { c.route = V95Route.AUTH }
+            V95Button(c.t("Create account", "اکاؤنٹ بنائیں"), Modifier.weight(1f), primary = true) { c.route = V95Route.AUTH }
+        }
     }
 }
 
@@ -130,30 +186,26 @@ internal fun V95Tool(text: String, icon: Int, modifier: Modifier, onClick: () ->
 
 @Composable
 internal fun V95PostCard(c: V95Controller, post: Post) {
-    V95GlassCard {
+    V95GlassCard(radius = 22.dp, padding = 14.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            V95Avatar(post.user, 46.dp, Modifier.clickable { c.openProfile(post.user) })
+            V95Avatar(post.user, 42.dp, Modifier.clickable { c.openProfile(post.user) })
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(post.user.name, fontWeight = FontWeight.Black, color = V95Ink, fontSize = 14.sp)
+                    Text(post.user.name, fontWeight = FontWeight.Black, color = V95Ink, fontSize = 13.sp)
                     if (post.user.verified) { Spacer(Modifier.width(4.dp)); Image(painterResource(V95Icons.Check), null, Modifier.size(18.dp)) }
                 }
-                Text("@${post.user.username} · ${post.createdAt}", color = V95Muted, fontSize = 11.sp)
+                Text("@${post.user.username} · ${v95FormatTime(post.createdAt)} · ${if (post.privacy == "followers") c.t("Followers", "فالوورز") else c.t("Everyone", "سب")}", color = V95Muted, fontSize = 10.sp)
             }
             Image(painterResource(V95Icons.More), null, Modifier.size(28.dp))
         }
-        if (post.text.isNotBlank()) Text(post.text, color = V95Ink, fontSize = 15.sp, lineHeight = 22.sp)
+        if (post.text.isNotBlank()) Text(post.text, color = V95Ink, fontSize = 13.sp, lineHeight = 19.5.sp)
         if (!post.photo.isNullOrBlank()) AsyncImage(post.photo, null, Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 440.dp).clip(RoundedCornerShape(22.dp)), contentScale = ContentScale.Crop)
         if (!post.video.isNullOrBlank()) {
             V95Button(c.t("Play video", "ویڈیو چلائیں"), primary = true, icon = V95Icons.Video) { c.error = c.t("Native video player opens from the media card in the full build.", "نیٹو ویڈیو پلیئر مکمل بلڈ میں میڈیا کارڈ سے کھلتا ہے۔") }
         }
         if (!post.feeling.isNullOrBlank() || !post.checkin.isNullOrBlank()) {
             Text(listOfNotNull(post.feeling, post.checkin).joinToString(" · "), color = V95Muted, fontSize = 12.sp)
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("${post.reactionTotal} ${c.t("reactions", "ری ایکشن")}", color = V95Muted, fontSize = 11.sp)
-            Text("${post.comments} ${c.t("comments", "کمنٹس")} · ${post.shares} ${c.t("shares", "شیئر")}", color = V95Muted, fontSize = 11.sp)
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
             V95PostAction(if (post.liked) c.t("Liked", "لائکڈ") else c.t("Like", "لائک"), V95Icons.Heart, post.liked) { if (c.user == null) c.route = V95Route.AUTH else c.likePost(post) }
@@ -168,7 +220,7 @@ internal fun V95PostCard(c: V95Controller, post: Post) {
 internal fun V95PostAction(text: String, icon: Int, active: Boolean = false, onClick: () -> Unit) {
     Column(Modifier.widthIn(min = 58.dp).height(44.dp).clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Image(painterResource(icon), null, Modifier.size(25.dp))
-        Text(text, color = if (active) V95Pink else V95Purple, fontWeight = FontWeight.Black, fontSize = 9.sp, maxLines = 1)
+        Text(text, color = if (active) V95Pink else V95Purple, fontWeight = FontWeight.Black, fontSize = 8.75.sp, maxLines = 1)
     }
 }
 
@@ -264,4 +316,15 @@ internal fun V95Chat(c: V95Controller) {
             V95IconButton(V95Icons.Send, 48.dp, 35.dp) { if (text.isNotBlank()) c.sendMessage(text) { text = "" } }
         }
     }
+}
+
+
+private val V95_TIME_FORMATTER: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("dd MMM yyyy, h:mm a", Locale.getDefault())
+
+private fun v95FormatTime(raw: String): String {
+    if (raw.isBlank()) return ""
+    return runCatching {
+        Instant.parse(raw).atZone(ZoneId.systemDefault()).format(V95_TIME_FORMATTER)
+    }.getOrElse { raw.replace('T', ' ').take(16) }
 }
