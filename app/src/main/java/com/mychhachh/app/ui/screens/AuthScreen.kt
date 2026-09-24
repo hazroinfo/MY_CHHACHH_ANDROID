@@ -23,6 +23,7 @@ import androidx.credentials.CredentialManager
 import com.mychhachh.app.ui.components.*
 import com.mychhachh.app.ui.theme.JellyInk
 import com.mychhachh.app.ui.theme.JellyMuted
+import com.mychhachh.app.ui.theme.LiveJellyTheme
 
 @Composable
 fun AuthScreen(
@@ -113,8 +114,8 @@ fun AuthScreen(
         contentAlignment = Alignment.Center
     ) {
         JellyGlass(
-            Modifier.fillMaxWidth().widthIn(max = 420.dp),
-            radius = 22.dp,
+            Modifier.fillMaxWidth().widthIn(max = 430.dp),
+            radius = 26.dp,
             padding = 18.dp
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -153,10 +154,10 @@ fun AuthScreen(
 
                 when (mode) {
                     "register" -> {
-                        OutlinedTextField(name, { name = it }, label = { Text("Full name") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), singleLine = true)
-                        OutlinedTextField(username, { username = it.lowercase().filter { ch -> ch.isLetterOrDigit() || ch == '_' } }, label = { Text("Username (a-z, 0-9, _)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), singleLine = true)
-                        OutlinedTextField(email, { email = it }, label = { Text("Email address") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), singleLine = true)
-                        OutlinedTextField(password, { password = it }, label = { Text("Password (6+ characters)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                        OutlinedTextField(name, { name = it }, label = { Text("Full name") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), singleLine = true)
+                        OutlinedTextField(username, { username = it.lowercase().filter { ch -> ch.isLetterOrDigit() || ch == '_' } }, label = { Text("Username (a-z, 0-9, _)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), singleLine = true)
+                        OutlinedTextField(email, { email = it }, label = { Text("Email address") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), singleLine = true)
+                        OutlinedTextField(password, { password = it }, label = { Text("Password (6+ characters)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), visualTransformation = PasswordVisualTransformation(), singleLine = true)
                         Row(
                             Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.Top
@@ -178,19 +179,19 @@ fun AuthScreen(
                     }
                     "verify" -> {
                         if (pendingEmail.isNotBlank()) Text(pendingEmail, color = JellyInk, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        OutlinedTextField(code, { code = it.filter(Char::isDigit).take(6) }, label = { Text("6-digit code") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), singleLine = true)
+                        OutlinedTextField(code, { code = it.filter(Char::isDigit).take(6) }, label = { Text("6-digit code") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), singleLine = true)
                     }
                     "forgot" -> {
-                        OutlinedTextField(email, { email = it }, label = { Text("Email address") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), singleLine = true)
+                        OutlinedTextField(email, { email = it }, label = { Text("Email address") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), singleLine = true)
                     }
                     "reset" -> {
-                        OutlinedTextField(code, { code = it.filter(Char::isDigit).take(6) }, label = { Text("6-digit code") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), singleLine = true)
-                        OutlinedTextField(password, { password = it }, label = { Text("New password") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), visualTransformation = PasswordVisualTransformation(), singleLine = true)
-                        OutlinedTextField(password2, { password2 = it }, label = { Text("Confirm password") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                        OutlinedTextField(code, { code = it.filter(Char::isDigit).take(6) }, label = { Text("6-digit code") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), singleLine = true)
+                        OutlinedTextField(password, { password = it }, label = { Text("New password") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                        OutlinedTextField(password2, { password2 = it }, label = { Text("Confirm password") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), visualTransformation = PasswordVisualTransformation(), singleLine = true)
                     }
                     else -> {
-                        OutlinedTextField(identity, { identity = it }, label = { Text("Email, username or phone") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), singleLine = true)
-                        OutlinedTextField(password, { password = it }, label = { Text("Password") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                        OutlinedTextField(identity, { identity = it }, label = { Text("Email, username or phone") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), singleLine = true)
+                        OutlinedTextField(password, { password = it }, label = { Text("Password") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), visualTransformation = PasswordVisualTransformation(), singleLine = true)
                     }
                 }
 
