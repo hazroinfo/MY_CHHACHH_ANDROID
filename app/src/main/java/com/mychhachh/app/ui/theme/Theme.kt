@@ -44,6 +44,7 @@ object LiveJellyTheme {
     var brandBrightness by mutableFloatStateOf(1f)
     var brandSaturation by mutableFloatStateOf(1.25f)
     var customIconPalette by mutableStateOf(false)
+    var iconMap by mutableStateOf<Map<String, String>>(emptyMap())
     var iconHighlight by mutableStateOf(Color(0xFFF7FDFF))
     var iconShadow by mutableStateOf(Color(0xFF5F57CC))
     var text by mutableStateOf(DefaultJellyInk)
@@ -106,6 +107,7 @@ object LiveJellyTheme {
         brandBrightness = 1f
         brandSaturation = 1.25f
         customIconPalette = false
+        iconMap = emptyMap()
         iconHighlight = Color(0xFFF7FDFF)
         iconShadow = Color(0xFF5F57CC)
         text = DefaultJellyInk
@@ -167,6 +169,17 @@ object LiveJellyTheme {
         brandBrightness = settings.optInt("theme_brand_brightness", 100).coerceIn(40, 180) / 100f
         brandSaturation = settings.optInt("theme_brand_saturation", 125).coerceIn(40, 220) / 100f
         customIconPalette = settings.optString("theme_icon_mode", "multicolor") == "custom"
+        iconMap = runCatching {
+            val raw = JSONObject(settings.optString("theme_icon_map", "{}"))
+            buildMap<String, String> {
+                val keys = raw.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    val value = raw.optString(key, "").trim()
+                    if (value.isNotBlank()) put(key, value)
+                }
+            }
+        }.getOrDefault(emptyMap())
         iconHighlight = color(settings.optString("theme_icon_highlight", ""), Color(0xFFF7FDFF))
         iconShadow = color(settings.optString("theme_icon_shadow", ""), Color(0xFF5F57CC))
         text = color(settings.optString("theme_text_color", ""), DefaultJellyInk)
