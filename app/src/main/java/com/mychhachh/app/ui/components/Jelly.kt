@@ -56,6 +56,35 @@ object JellyIcons {
     val City = R.drawable.jelly_city; val Village = R.drawable.jelly_village; val Mohalla = R.drawable.jelly_mohalla
     val Hometown = R.drawable.jelly_hometown; val Gender = R.drawable.jelly_gender; val Work = R.drawable.jelly_work
     val School = R.drawable.jelly_school; val Category = R.drawable.jelly_category; val Info = R.drawable.jelly_info
+    val Facebook = R.drawable.jelly_facebook; val Instagram = R.drawable.jelly_instagram
+    val Youtube = R.drawable.jelly_youtube; val Website = R.drawable.jelly_website
+    val Upload = R.drawable.jelly_upload; val Error = R.drawable.jelly_error
+    val Semantic: Map<String, Int> by lazy {
+        linkedMapOf(
+            "home" to Home, "user" to User, "people" to People, "heart" to Heart,
+            "message" to Message, "comment" to Comment, "share" to Share, "eye" to Eye,
+            "edit" to Edit, "gear" to Gear, "pin" to Pin, "map" to Map,
+            "address" to Address, "phone" to Phone, "mail" to Mail, "shield" to Shield,
+            "clock" to Clock, "logout" to Logout, "photo" to Photo, "video" to Video,
+            "shop" to Shop, "bell" to Bell, "announcement" to Announcement, "vote" to Vote,
+            "search" to Search, "plus" to Plus, "star" to Star, "palette" to Palette,
+            "brush" to Brush, "menu" to Menu, "filter" to Filter, "whatsapp" to Whatsapp,
+            "feeling" to Feeling, "mention" to Mention, "upload" to Upload, "delete" to Delete,
+            "check" to Check, "reply" to Reply, "crown" to Crown, "lock" to Lock,
+            "send" to Send, "close" to Close, "facebook" to Facebook, "instagram" to Instagram,
+            "youtube" to Youtube, "website" to Website, "info" to Info, "error" to Error,
+            "save" to Save, "follow" to Follow, "more" to More, "arrow" to Arrow,
+            "city" to City, "village" to Village, "mohalla" to Mohalla, "hometown" to Hometown,
+            "gender" to Gender, "work" to Work, "school" to School, "category" to Category,
+            "weather" to Weather
+        )
+    }
+
+    fun resolve(icon: Int): Int {
+        val key = Semantic.entries.firstOrNull { it.value == icon }?.key ?: return icon
+        val mapped = LiveJellyTheme.iconMap[key].orEmpty()
+        return Semantic[mapped] ?: icon
+    }
 }
 
 @Composable
@@ -81,7 +110,7 @@ fun JellyIcon(
             }
         }
         androidx.compose.foundation.Image(
-            painter = painterResource(icon),
+            painter = painterResource(JellyIcons.resolve(icon)),
             contentDescription = contentDescription,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Fit,
