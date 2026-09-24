@@ -1,12 +1,16 @@
 package com.mychhachh.app.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -109,6 +113,34 @@ fun AuthScreen(
         else -> "Sign in to My Chhachh"
     }
 
+    val authInputShape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp)
+    val authInputModifier = Modifier
+        .fillMaxWidth()
+        .height(48.dp)
+        .background(
+            Brush.linearGradient(
+                listOf(
+                    Color.White.copy(alpha = .92f),
+                    Color(0xFFE2F7FF).copy(alpha = .79f)
+                )
+            ),
+            authInputShape
+        )
+    val authInputColors = OutlinedTextFieldDefaults.colors(
+        focusedContainerColor = Color.Transparent,
+        unfocusedContainerColor = Color.Transparent,
+        disabledContainerColor = Color.Transparent,
+        focusedBorderColor = Color.White.copy(alpha = .98f),
+        unfocusedBorderColor = Color.White.copy(alpha = .98f),
+        disabledBorderColor = Color.White.copy(alpha = .78f),
+        focusedTextColor = JellyInk,
+        unfocusedTextColor = JellyInk,
+        disabledTextColor = JellyMuted,
+        focusedPlaceholderColor = Color(0xFF858EB1),
+        unfocusedPlaceholderColor = Color(0xFF858EB1),
+        cursorColor = LiveJellyTheme.accent
+    )
+
     Box(
         Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center
@@ -154,10 +186,10 @@ fun AuthScreen(
 
                 when (mode) {
                     "register" -> {
-                        OutlinedTextField(name, { name = it }, placeholder = { Text("Full name") }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), singleLine = true)
-                        OutlinedTextField(username, { username = it.lowercase().filter { ch -> ch.isLetterOrDigit() || ch == '_' } }, placeholder = { Text("Username (a-z, 0-9, _)") }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), singleLine = true)
-                        OutlinedTextField(email, { email = it }, placeholder = { Text("Email address") }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), singleLine = true)
-                        OutlinedTextField(password, { password = it }, placeholder = { Text("Password (6+ characters)") }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                        OutlinedTextField(name, { name = it }, placeholder = { Text("Full name") }, modifier = authInputModifier, shape = authInputShape, colors = authInputColors, singleLine = true)
+                        OutlinedTextField(username, { username = it.lowercase().filter { ch -> ch.isLetterOrDigit() || ch == '_' } }, placeholder = { Text("Username (a-z, 0-9, _)") }, modifier = authInputModifier, shape = authInputShape, colors = authInputColors, singleLine = true)
+                        OutlinedTextField(email, { email = it }, placeholder = { Text("Email address") }, modifier = authInputModifier, shape = authInputShape, colors = authInputColors, singleLine = true)
+                        OutlinedTextField(password, { password = it }, placeholder = { Text("Password (6+ characters)") }, modifier = authInputModifier, shape = authInputShape, colors = authInputColors, visualTransformation = PasswordVisualTransformation(), singleLine = true)
                         Row(
                             Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.Top
@@ -179,19 +211,19 @@ fun AuthScreen(
                     }
                     "verify" -> {
                         if (pendingEmail.isNotBlank()) Text(pendingEmail, color = JellyInk, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        OutlinedTextField(code, { code = it.filter(Char::isDigit).take(6) }, placeholder = { Text("6-digit code") }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), singleLine = true)
+                        OutlinedTextField(code, { code = it.filter(Char::isDigit).take(6) }, placeholder = { Text("6-digit code") }, modifier = authInputModifier, shape = authInputShape, colors = authInputColors, singleLine = true)
                     }
                     "forgot" -> {
-                        OutlinedTextField(email, { email = it }, placeholder = { Text("Email address") }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), singleLine = true)
+                        OutlinedTextField(email, { email = it }, placeholder = { Text("Email address") }, modifier = authInputModifier, shape = authInputShape, colors = authInputColors, singleLine = true)
                     }
                     "reset" -> {
-                        OutlinedTextField(code, { code = it.filter(Char::isDigit).take(6) }, placeholder = { Text("6-digit code") }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), singleLine = true)
-                        OutlinedTextField(password, { password = it }, placeholder = { Text("New password") }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), visualTransformation = PasswordVisualTransformation(), singleLine = true)
-                        OutlinedTextField(password2, { password2 = it }, placeholder = { Text("Confirm password") }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                        OutlinedTextField(code, { code = it.filter(Char::isDigit).take(6) }, placeholder = { Text("6-digit code") }, modifier = authInputModifier, shape = authInputShape, colors = authInputColors, singleLine = true)
+                        OutlinedTextField(password, { password = it }, placeholder = { Text("New password") }, modifier = authInputModifier, shape = authInputShape, colors = authInputColors, visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                        OutlinedTextField(password2, { password2 = it }, placeholder = { Text("Confirm password") }, modifier = authInputModifier, shape = authInputShape, colors = authInputColors, visualTransformation = PasswordVisualTransformation(), singleLine = true)
                     }
                     else -> {
-                        OutlinedTextField(identity, { identity = it }, placeholder = { Text("Email, username or phone") }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), singleLine = true)
-                        OutlinedTextField(password, { password = it }, placeholder = { Text("Password") }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp), visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                        OutlinedTextField(identity, { identity = it }, placeholder = { Text("Email, username or phone") }, modifier = authInputModifier, shape = authInputShape, colors = authInputColors, singleLine = true)
+                        OutlinedTextField(password, { password = it }, placeholder = { Text("Password") }, modifier = authInputModifier, shape = authInputShape, colors = authInputColors, visualTransformation = PasswordVisualTransformation(), singleLine = true)
                     }
                 }
 
