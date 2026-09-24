@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,6 +33,13 @@ import com.mychhachh.app.ui.theme.*
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.roundToInt
+
+@Composable
+private fun v95FramePadding() = if (LocalConfiguration.current.screenWidthDp <= 700) {
+    minOf(LiveJellyTheme.framePadding, 8f).dp
+} else {
+    LiveJellyTheme.framePadding.dp
+}
 
 private fun jsonObjects(a: JSONArray?): List<JSONObject> {
     if (a == null) return emptyList()
@@ -97,7 +105,7 @@ fun AdminCenterScreen(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(minOf(LiveJellyTheme.framePadding, 8f).dp, 8.dp, minOf(LiveJellyTheme.framePadding, 8f).dp, 24.dp),
+        contentPadding = PaddingValues(v95FramePadding(), 8.dp, v95FramePadding(), 24.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item {
@@ -1537,7 +1545,7 @@ fun NativeThemeScreen(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(minOf(LiveJellyTheme.framePadding, 8f).dp, 8.dp, minOf(LiveJellyTheme.framePadding, 8f).dp, 24.dp),
+        contentPadding = PaddingValues(v95FramePadding(), 8.dp, v95FramePadding(), 24.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item { PageTitle("Theme Builder", "Theme and branding controls only. Admin controls stay in Admin Center.", JellyIcons.Palette) }
