@@ -66,6 +66,7 @@ internal class V95Controller(context: Context) {
     var error by mutableStateOf<String?>(null)
     var menuOpen by mutableStateOf(false)
     var language by mutableStateOf(app.getSharedPreferences("my_chhachh_v95", Context.MODE_PRIVATE).getString("lang", "en") ?: "en")
+    var features by mutableStateOf(JSONObject())
 
     var feedMode by mutableStateOf("for_you")
     var feed by mutableStateOf<List<Post>>(emptyList())
@@ -108,6 +109,7 @@ internal class V95Controller(context: Context) {
         user = b.user
         unread = b.unread
         announcementUnread = b.announcementUnread
+        features = b.features
         loadFeed(false)
     }
 
