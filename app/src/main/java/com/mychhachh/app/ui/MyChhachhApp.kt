@@ -643,6 +643,33 @@ fun MyChhachhApp() {
                                 authBusy = false
                             }
                         },
+                        googleEnabled = features.optInt("google_login_enabled", 0) != 0,
+                        googleClientId = features.optString("google_client_id", ""),
+                        onGoogleCredential = { credential ->
+                            scope.launch {
+                                authBusy = true
+                                authError = null
+                                try {
+                                    val u = withContext(Dispatchers.IO) { api.googleAuth(credential) }
+                                    me = u
+                                    val b = withContext(Dispatchers.IO) { api.bootstrap() }
+                                    unread = b.unread
+                                    announcementUnread = b.announcementUnread
+                                    features = b.features
+                                    LiveJellyTheme.apply(b.features)
+                                    route = Screen.HOME
+                                    selectedId = 0L
+                                    backStack.clear()
+                                    feedMode = "global"
+                                    loadFeed(true)
+                                    loadVotes()
+                                    loadWeather()
+                                } catch (e: Exception) {
+                                    authError = e.message ?: "Google sign-in failed."
+                                }
+                                authBusy = false
+                            }
+                        },
                         onSwitch = { authMode = it; authError = null },
                         onBack = { route = Screen.HOME; selectedId = 0L; backStack.clear() }
                     )
