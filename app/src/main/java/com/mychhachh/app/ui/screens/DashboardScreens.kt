@@ -1000,7 +1000,11 @@ private fun V95VoteCard(
         else -> "Match finished."
     }
 
-    JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp, padding = 13.dp) {
+    JellyGlass(
+        Modifier.fillMaxWidth(),
+        radius = LiveJellyTheme.cardRadius.dp,
+        padding = LiveJellyTheme.cardPadding.dp
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f)) {
@@ -1047,8 +1051,11 @@ private fun V95VoteCard(
                 }
             }
 
-            JellyGlass(Modifier.fillMaxWidth(), radius = 26.dp, padding = 8.dp) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            JellyGlass(Modifier.fillMaxWidth(), radius = 26.dp, padding = 5.dp) {
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     VoteArenaPlayer(
                         vote = vote,
                         user = vote.user1,
