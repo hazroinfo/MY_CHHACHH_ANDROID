@@ -10,6 +10,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -29,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.mychhachh.app.data.ApiClient
 import com.mychhachh.app.data.CheckinPlace
 import com.mychhachh.app.data.Comment
 import com.mychhachh.app.data.Post
@@ -36,6 +39,8 @@ import com.mychhachh.app.data.Shop
 import com.mychhachh.app.data.User
 import com.mychhachh.app.data.Vote
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.mychhachh.app.ui.components.*
 import com.mychhachh.app.ui.theme.*
 
@@ -624,7 +629,42 @@ fun PostCard(
     var editOpen by remember(post.id) { mutableStateOf(false) }
     var deleteConfirm by remember(post.id) { mutableStateOf(false) }
     var reportOpen by remember(post.id) { mutableStateOf(false) }
+    var reactionOpen by remember(post.id) { mutableStateOf(false) }
+    var myReaction by remember(post.id, post.myReaction) { mutableStateOf(post.myReaction) }
+    var reactionTotal by remember(post.id, post.reactionTotal, post.likes) {
+        mutableIntStateOf(if (post.reactionTotal > 0) post.reactionTotal else post.likes)
+    }
+    var reactionBusy by remember(post.id) { mutableStateOf(false) }
+    var reactionError by remember(post.id) { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val reactionScope = rememberCoroutineScope()
+    val reactionApi = remember(context) { ApiClient(context.applicationContext) }
+
+    fun setReaction(type: String) {
+        if (reactionBusy || post.shopId > 0L) return
+        val previous = myReaction
+        val previousTotal = reactionTotal
+        myReaction = type
+        reactionTotal = when {
+            previous.isBlank() && type.isNotBlank() -> reactionTotal + 1
+            previous.isNotBlank() && type.isBlank() -> (reactionTotal - 1).coerceAtLeast(0)
+            else -> reactionTotal
+        }
+        reactionOpen = false
+        reactionBusy = true
+        reactionError = null
+        reactionScope.launch {
+            try {
+                withContext(Dispatchers.IO) { reactionApi.reactPost(post.id, type) }
+            } catch (e: Exception) {
+                myReaction = previous
+                reactionTotal = previousTotal
+                reactionError = e.message ?: "Reaction could not be saved."
+            } finally {
+                reactionBusy = false
+            }
+        }
+    }
 
     JellyGlass(Modifier.fillMaxWidth(), radius = 22.dp, padding = 14.dp) {
         Column(Modifier.fillMaxWidth()) {
@@ -732,6 +772,62 @@ fun PostCard(
                 )
             }
 
+            if (post.shopId == 0L && reactionOpen && loggedIn) {
+                val reactionChoices = listOf(
+                    Triple("like", "👍", "Like"),
+                    Triple("love", "❤️", "Love"),
+                    Triple("haha", "😂", "Haha"),
+                    Triple("wow", "😮", "Wow"),
+                    Triple("sad", "😢", "Sad"),
+                    Triple("angry", "😡", "Angry")
+                )
+                JellyGlass(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 9.dp),
+                    radius = 999.dp,
+                    padding = 6.dp
+                ) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        reactionChoices.forEach { (key, emoji, label) ->
+                            Column(
+                                Modifier
+                                    .width(56.dp)
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .clickable(enabled = !reactionBusy) { setReaction(key) }
+                                    .background(if (myReaction == key) Color.White.copy(alpha = .86f) else Color.Transparent)
+                                    .padding(vertical = 4.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(emoji, fontSize = 27.sp)
+                                Text(label, color = JellyInk, fontSize = 7.5f.sp, fontWeight = FontWeight.Black)
+                            }
+                        }
+                        if (myReaction.isNotBlank()) {
+                            Column(
+                                Modifier
+                                    .width(56.dp)
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .clickable(enabled = !reactionBusy) { setReaction("") }
+                                    .padding(vertical = 4.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                JellyIcon(JellyIcons.Close, size = 27.dp)
+                                Text("Remove", color = JellyMuted, fontSize = 7.5f.sp, fontWeight = FontWeight.Black)
+                            }
+                        }
+                    }
+                }
+            }
+            reactionError?.let {
+                Text(it, Modifier.padding(top = 5.dp), color = Color(0xFFB23A55), fontSize = 8.5f.sp)
+            }
+
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -743,7 +839,25 @@ fun PostCard(
                 Modifier.fillMaxWidth().padding(top = 5.dp),
                 horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
-                PostAction(JellyIcons.Heart, if (post.liked) "Liked" else "Like", post.likes, Modifier.weight(1f)) { if (loggedIn) onLike(post) else onLogin() }
+                val reactionLabel = when (myReaction) {
+                    "love" -> "Love"
+                    "haha" -> "Haha"
+                    "wow" -> "Wow"
+                    "sad" -> "Sad"
+                    "angry" -> "Angry"
+                    "like" -> "Like"
+                    else -> if (post.shopId > 0L && post.liked) "Liked" else "Like"
+                }
+                PostAction(
+                    JellyIcons.Heart,
+                    reactionLabel,
+                    if (post.shopId > 0L) post.likes else reactionTotal,
+                    Modifier.weight(1f)
+                ) {
+                    if (!loggedIn) onLogin()
+                    else if (post.shopId > 0L) onLike(post)
+                    else reactionOpen = !reactionOpen
+                }
                 PostAction(JellyIcons.Comment, "Comment", post.comments, Modifier.weight(1f)) { if (loggedIn) onComment(post) else onLogin() }
                 PostStat(JellyIcons.Eye, "Views", post.views, Modifier.weight(1f))
                 PostAction(JellyIcons.Share, "Share", post.shares, Modifier.weight(1f)) { if (loggedIn) onShare(post) else onLogin() }
