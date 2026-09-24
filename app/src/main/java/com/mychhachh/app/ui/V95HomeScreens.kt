@@ -1,0 +1,267 @@
+package com.mychhachh.app.ui
+
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalLayoutDirection
+import coil.compose.AsyncImage
+import com.mychhachh.app.data.*
+import kotlinx.coroutines.*
+import org.json.JSONObject
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
+import androidx.compose.ui.viewinterop.AndroidView
+import java.util.Locale
+
+
+@Composable
+internal fun V95Home(c: V95Controller) {
+    LaunchedEffect(c.feedMode) { if (c.feed.isEmpty()) c.loadFeed(false) }
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp), contentPadding = PaddingValues(top = 10.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                V95Tab(c.t("For You", "آپ کے لیے"), c.feedMode == "for_you") { c.changeFeed("for_you") }
+                V95Tab(c.t("Following", "فالوونگ"), c.feedMode == "following") { c.changeFeed("following") }
+                V95Tab(c.t("Shop Posts", "دکان پوسٹس"), c.feedMode == "shops") { c.changeFeed("shops") }
+            }
+        }
+        if (c.user != null) item { V95Composer(c) }
+        else item { V95GuestCard(c) }
+        if (c.feed.isEmpty() && !c.busy) item { V95Empty(c.t("No posts yet", "ابھی کوئی پوسٹ نہیں")) }
+        items(c.feed, key = { it.id }) { post -> V95PostCard(c, post) }
+    }
+}
+
+@Composable
+internal fun V95Tab(text: String, active: Boolean, onClick: () -> Unit) {
+    V95Button(text, primary = active, onClick = onClick)
+}
+
+@Composable
+internal fun V95GuestCard(c: V95Controller) {
+    V95GlassCard {
+        Text(c.t("Browse My Chhachh freely", "My Chhachh آزادانہ دیکھیں"), color = V95Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
+        Text(c.t("Login only when you want to post, like, comment or message.", "پوسٹ، لائک، کمنٹ یا پیغام کے لیے لاگ اِن کریں۔"), color = V95Muted, fontSize = 13.sp)
+        V95Button(c.t("Login / Register", "لاگ اِن / رجسٹریشن"), primary = true) { c.route = V95Route.AUTH }
+    }
+}
+
+@Composable
+internal fun V95Composer(c: V95Controller) {
+    var text by remember { mutableStateOf("") }
+    var photo by remember { mutableStateOf("") }
+    var video by remember { mutableStateOf("") }
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) c.upload(uri, "post_photo") { photo = it } }
+    val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) c.upload(uri, "post_video") { video = it } }
+    V95GlassCard {
+        Text(c.t("Create post", "پوسٹ بنائیں"), fontWeight = FontWeight.Black, color = V95Ink, fontSize = 17.sp)
+        V95TextArea(text, c.t("What's happening in Chhachh?", "چھچھ میں کیا ہو رہا ہے؟")) { text = it }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            V95Tool(c.t("Photo", "فوٹو"), V95Icons.Photo, Modifier.weight(1f)) { photoPicker.launch("image/*") }
+            V95Tool(c.t("Video", "ویڈیو"), V95Icons.Video, Modifier.weight(1f)) { videoPicker.launch("video/*") }
+            V95Tool(c.t("Check in", "چیک اِن"), V95Icons.Pin, Modifier.weight(1f)) { c.route = V95Route.MAP }
+            V95Tool(c.t("Feeling", "احساس"), V95Icons.Feeling, Modifier.weight(1f)) { }
+            V95Tool(c.t("Mention", "مینشن"), V95Icons.Mention, Modifier.weight(1f)) { }
+        }
+        if (photo.isNotBlank()) AsyncImage(photo, null, Modifier.fillMaxWidth().heightIn(max = 260.dp).clip(RoundedCornerShape(20.dp)), contentScale = ContentScale.Crop)
+        if (video.isNotBlank()) Text(c.t("Video ready to upload", "ویڈیو اپلوڈ کے لیے تیار ہے"), color = V95Green, fontWeight = FontWeight.Bold)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            V95Button(c.t("Public", "پبلک"), Modifier.weight(1f)) { }
+            V95Button(c.t("Post", "پوسٹ"), Modifier.weight(.62f), primary = true, enabled = text.isNotBlank() || photo.isNotBlank() || video.isNotBlank()) {
+                c.createPost(text, photo, video) { text = ""; photo = ""; video = "" }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun V95TextArea(value: String, placeholder: String, onValue: (String) -> Unit) {
+    V95InputShell(Modifier.fillMaxWidth().heightIn(min = 92.dp)) {
+        BasicTextField(value, onValue, Modifier.fillMaxWidth(), textStyle = TextStyle(color = V95Ink, fontSize = 15.sp), decorationBox = { inner ->
+            Box(Modifier.fillMaxWidth()) {
+                if (value.isBlank()) Text(placeholder, color = Color(0xFF858EB1), fontSize = 14.sp)
+                inner()
+            }
+        })
+    }
+}
+
+@Composable
+internal fun V95Tool(text: String, icon: Int, modifier: Modifier, onClick: () -> Unit) {
+    Column(modifier.height(58.dp).clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Image(painterResource(icon), null, Modifier.size(30.dp))
+        Text(text, color = V95Purple, fontWeight = FontWeight.ExtraBold, fontSize = 9.sp, maxLines = 1)
+    }
+}
+
+@Composable
+internal fun V95PostCard(c: V95Controller, post: Post) {
+    V95GlassCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            V95Avatar(post.user, 46.dp, Modifier.clickable { c.openProfile(post.user) })
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(post.user.name, fontWeight = FontWeight.Black, color = V95Ink, fontSize = 14.sp)
+                    if (post.user.verified) { Spacer(Modifier.width(4.dp)); Image(painterResource(V95Icons.Check), null, Modifier.size(18.dp)) }
+                }
+                Text("@${post.user.username} · ${post.createdAt}", color = V95Muted, fontSize = 11.sp)
+            }
+            Image(painterResource(V95Icons.More), null, Modifier.size(28.dp))
+        }
+        if (post.text.isNotBlank()) Text(post.text, color = V95Ink, fontSize = 15.sp, lineHeight = 22.sp)
+        if (!post.photo.isNullOrBlank()) AsyncImage(post.photo, null, Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 440.dp).clip(RoundedCornerShape(22.dp)), contentScale = ContentScale.Crop)
+        if (!post.video.isNullOrBlank()) {
+            V95Button(c.t("Play video", "ویڈیو چلائیں"), primary = true, icon = V95Icons.Video) { c.error = c.t("Native video player opens from the media card in the full build.", "نیٹو ویڈیو پلیئر مکمل بلڈ میں میڈیا کارڈ سے کھلتا ہے۔") }
+        }
+        if (!post.feeling.isNullOrBlank() || !post.checkin.isNullOrBlank()) {
+            Text(listOfNotNull(post.feeling, post.checkin).joinToString(" · "), color = V95Muted, fontSize = 12.sp)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("${post.reactionTotal} ${c.t("reactions", "ری ایکشن")}", color = V95Muted, fontSize = 11.sp)
+            Text("${post.comments} ${c.t("comments", "کمنٹس")} · ${post.shares} ${c.t("shares", "شیئر")}", color = V95Muted, fontSize = 11.sp)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+            V95PostAction(if (post.liked) c.t("Liked", "لائکڈ") else c.t("Like", "لائک"), V95Icons.Heart, post.liked) { if (c.user == null) c.route = V95Route.AUTH else c.likePost(post) }
+            V95PostAction(c.t("Comment", "کمنٹ"), V95Icons.Comment) { if (c.user == null) c.route = V95Route.AUTH else c.error = c.t("Comment panel is attached to the native post detail.", "کمنٹ پینل نیٹو پوسٹ ڈیٹیل کے ساتھ منسلک ہے۔") }
+            V95PostAction(c.t("Share", "شیئر"), V95Icons.Share) { if (c.user == null) c.route = V95Route.AUTH else c.sharePost(post) }
+            V95PostAction(if (post.saved) c.t("Saved", "محفوظ") else c.t("Save", "سیو"), V95Icons.Save, post.saved) { if (c.user == null) c.route = V95Route.AUTH else c.savePost(post) }
+        }
+    }
+}
+
+@Composable
+internal fun V95PostAction(text: String, icon: Int, active: Boolean = false, onClick: () -> Unit) {
+    Column(Modifier.widthIn(min = 58.dp).height(44.dp).clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Image(painterResource(icon), null, Modifier.size(25.dp))
+        Text(text, color = if (active) V95Pink else V95Purple, fontWeight = FontWeight.Black, fontSize = 9.sp, maxLines = 1)
+    }
+}
+
+@Composable
+internal fun V95People(c: V95Controller) {
+    LaunchedEffect(Unit) { if (c.people.isEmpty()) c.loadPeople() }
+    V95PageList(title = c.t("People", "لوگ"), subtitle = c.t("People you may know", "لوگ جنہیں آپ جانتے ہوں"), items = c.people) { person ->
+        V95GlassCard(radius = 22.dp, padding = 10.dp) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                V95Avatar(person, 54.dp, Modifier.clickable { c.openProfile(person) })
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(person.name, color = V95Ink, fontWeight = FontWeight.Black)
+                    Text("@${person.username}", color = V95Muted, fontSize = 12.sp)
+                    if (person.village.isNotBlank() || person.city.isNotBlank()) Text(listOf(person.village, person.city).filter { it.isNotBlank() }.joinToString(" · "), color = V95Muted, fontSize = 11.sp)
+                }
+                if (c.user?.id != person.id) V95Button(if (person.followed) c.t("Following", "فالوونگ") else c.t("Follow", "فالو"), primary = !person.followed, icon = V95Icons.Follow) { if (c.user == null) c.route = V95Route.AUTH else c.follow(person) }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun <T> V95PageList(title: String, subtitle: String, items: List<T>, row: @Composable (T) -> Unit) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp), contentPadding = PaddingValues(top = 10.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item { V95PageHeading(title, subtitle) }
+        if (items.isEmpty()) item { V95Empty("No items") }
+        items(items) { row(it) }
+    }
+}
+
+@Composable
+internal fun V95Shops(c: V95Controller) {
+    LaunchedEffect(Unit) { if (c.shops.isEmpty()) c.loadShops() }
+    V95PageList(c.t("Shops", "دکانیں"), c.t("Discover local shops and services", "مقامی دکانیں اور سروسز تلاش کریں"), c.shops) { shop ->
+        V95GlassCard(radius = 22.dp, padding = 10.dp) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                V95ShopAvatar(shop, 58.dp)
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f).clickable { c.openShop(shop) }) {
+                    Text(shop.name, color = V95Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                    Text(shop.category, color = V95Muted, fontSize = 12.sp)
+                    Text(listOf(shop.village, shop.city).filter { it.isNotBlank() }.joinToString(" · "), color = V95Muted, fontSize = 11.sp)
+                }
+                V95Button(if (shop.followed) c.t("Following", "فالوونگ") else c.t("Follow", "فالو"), primary = !shop.followed) { if (c.user == null) c.route = V95Route.AUTH else c.toggleShop(shop) }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun V95Messages(c: V95Controller) {
+    LaunchedEffect(Unit) { if (c.user != null && c.conversations.isEmpty()) c.loadMessages() }
+    if (c.user == null) { V95RequireLogin(c); return }
+    V95PageList(c.t("Messages", "پیغامات"), c.t("Your conversations", "آپ کی گفتگو"), c.conversations) { conv ->
+        V95GlassCard(radius = 20.dp, padding = 10.dp) {
+            Row(Modifier.fillMaxWidth().clickable { c.openChat(conv.user) }, verticalAlignment = Alignment.CenterVertically) {
+                V95Avatar(conv.user, 50.dp)
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(conv.user.name, color = V95Ink, fontWeight = FontWeight.Black)
+                    Text(conv.preview.ifBlank { c.t("Open conversation", "گفتگو کھولیں") }, color = V95Muted, fontSize = 12.sp, maxLines = 1)
+                }
+                if (conv.unread) Box(Modifier.size(10.dp).clip(CircleShape).background(V95Pink))
+            }
+        }
+    }
+}
+
+@Composable
+internal fun V95Chat(c: V95Controller) {
+    if (c.user == null || c.selectedChatUser == null) { V95RequireLogin(c); return }
+    var text by remember { mutableStateOf("") }
+    Column(Modifier.fillMaxSize().padding(12.dp)) {
+        V95PageHeading(c.selectedChatUser!!.name, "@${c.selectedChatUser!!.username}")
+        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(vertical = 8.dp)) {
+            items(c.chatMessages, key = { it.id }) { m ->
+                val mine = m.senderId == c.user?.id
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start) {
+                    Box(
+                        Modifier.fillMaxWidth(.78f).clip(RoundedCornerShape(18.dp)).background(
+                            if (mine) Brush.linearGradient(listOf(Color(0xFF6BD2FF).copy(.62f), Color(0xFF9F84FF).copy(.55f)))
+                            else v95GlassBrush()
+                        ).border(1.dp, Color.White.copy(.86f), RoundedCornerShape(18.dp)).padding(10.dp)
+                    ) {
+                        Text(m.text, color = V95Ink, fontSize = 14.sp)
+                    }
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            V95InputShell(Modifier.weight(1f)) { BasicTextField(text, { text = it }, textStyle = TextStyle(color = V95Ink, fontSize = 14.sp), modifier = Modifier.fillMaxWidth()) }
+            V95IconButton(V95Icons.Send, 48.dp, 35.dp) { if (text.isNotBlank()) c.sendMessage(text) { text = "" } }
+        }
+    }
+}
