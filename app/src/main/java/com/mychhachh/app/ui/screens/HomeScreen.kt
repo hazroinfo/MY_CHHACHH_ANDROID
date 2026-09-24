@@ -1069,7 +1069,27 @@ private fun PostAction(icon: Int, label: String, count: Int, modifier: Modifier 
         )
         if (count > 0) {
             Spacer(Modifier.width(2.dp))
-            Text(count.toString(), color = Color(0xFF4C4176), fontSize = (if (screenWidth <= 700) 9f else 10f).sp, fontWeight = FontWeight.Black)
+            if (label.equals("Comment", ignoreCase = true)) {
+                Box(
+                    Modifier
+                        .widthIn(min = if (screenWidth <= 700) 14.dp else 15.dp)
+                        .height(if (screenWidth <= 700) 14.dp else 15.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(Color(0xFF7B65D7).copy(alpha = .12f))
+                        .padding(horizontal = if (screenWidth <= 700) 3.dp else 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        count.toString(),
+                        color = Color(0xFF4C4176),
+                        fontSize = (if (screenWidth <= 700) 8f else 9f).sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1
+                    )
+                }
+            } else {
+                Text(count.toString(), color = Color(0xFF4C4176), fontSize = (if (screenWidth <= 700) 9f else 10f).sp, fontWeight = FontWeight.Black)
+            }
         }
     }
 }
