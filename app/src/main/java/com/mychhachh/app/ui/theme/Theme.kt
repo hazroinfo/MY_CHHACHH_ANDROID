@@ -10,7 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import org.json.JSONObject
 
-private val DefaultJellyInk = Color(0xFF10203D)
+private val DefaultJellyInk = Color(0xFF0D1A34)
 private val DefaultJellyMuted = Color(0xFF66738B)
 private val DefaultJellyAccent = Color(0xFFFF4FB8)
 private val DefaultJellyAccent2 = Color(0xFF6FC8FF)
@@ -80,7 +80,7 @@ object LiveJellyTheme {
     var shopOverlap by mutableFloatStateOf(50f)
     var notificationAvatarSize by mutableFloatStateOf(46f)
     var framePadding by mutableFloatStateOf(10f)
-    var bgStrength by mutableFloatStateOf(1f)
+    var bgStrength by mutableFloatStateOf(.72f)
     var rainbowBrand by mutableStateOf(true)
     var motion by mutableStateOf(true)
     var jellyDepth by mutableFloatStateOf(90f)
@@ -142,7 +142,7 @@ object LiveJellyTheme {
         shopOverlap = 50f
         notificationAvatarSize = 46f
         framePadding = 10f
-        bgStrength = 1f
+        bgStrength = .72f
         rainbowBrand = true
         motion = true
         jellyDepth = 90f
@@ -203,7 +203,7 @@ object LiveJellyTheme {
         shopOverlap = settings.optInt("theme_shop_overlap", 50).coerceIn(0, 90).toFloat()
         notificationAvatarSize = settings.optInt("theme_notification_avatar_size", 46).coerceIn(32, 72).toFloat()
         framePadding = settings.optInt("theme_frame_padding", 10).coerceIn(0, 28).toFloat()
-        bgStrength = settings.optInt("theme_bg_strength", 100).coerceIn(0, 100) / 100f
+        bgStrength = settings.optInt("theme_bg_strength", 72).coerceIn(0, 100) / 100f
         rainbowBrand = settings.optInt("theme_brand_rainbow", 1) != 0
         motion = settings.optInt("theme_motion", 1) != 0
         jellyDepth = settings.optInt("theme_jelly_depth", 90).coerceIn(0, 100).toFloat()
