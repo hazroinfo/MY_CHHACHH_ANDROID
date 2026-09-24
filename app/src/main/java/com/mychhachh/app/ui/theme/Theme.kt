@@ -48,28 +48,28 @@ object LiveJellyTheme {
     var iconShadow by mutableStateOf(Color(0xFF5F57CC))
     var text by mutableStateOf(DefaultJellyInk)
     var muted by mutableStateOf(DefaultJellyMuted)
-    var headerColor by mutableStateOf(Color(0xFFDFF4FF))
+    var headerColor by mutableStateOf(Color.White)
     var navColor by mutableStateOf(Color.White)
     var cardColor by mutableStateOf(DefaultJellySurface)
-    var borderColor by mutableStateOf(DefaultJellyOutline)
+    var borderColor by mutableStateOf(Color(0xFFE8EDF2))
     var buttonColor by mutableStateOf(Color(0xFF1683FF))
-    var inputColor by mutableStateOf(DefaultJellyInput)
+    var inputColor by mutableStateOf(Color(0xFFF4F7FA))
     var iconColor by mutableStateOf(DefaultJellyIcon)
-    var activeColor by mutableStateOf(DefaultJellyAccent)
-    var cardOpacity by mutableFloatStateOf(.76f)
-    var headerOpacity by mutableFloatStateOf(.78f)
-    var navOpacity by mutableFloatStateOf(.74f)
-    var inputOpacity by mutableFloatStateOf(.78f)
-    var cardRadius by mutableFloatStateOf(28f)
+    var activeColor by mutableStateOf(Color(0xFF1683FF))
+    var cardOpacity by mutableFloatStateOf(.68f)
+    var headerOpacity by mutableFloatStateOf(.70f)
+    var navOpacity by mutableFloatStateOf(.66f)
+    var inputOpacity by mutableFloatStateOf(.62f)
+    var cardRadius by mutableFloatStateOf(30f)
     var headerRadius by mutableFloatStateOf(28f)
-    var navRadius by mutableFloatStateOf(23f)
-    var buttonRadius by mutableFloatStateOf(18f)
-    var inputRadius by mutableFloatStateOf(20f)
-    var shadow by mutableFloatStateOf(22f)
-    var pageWidth by mutableFloatStateOf(920f)
-    var cardPadding by mutableFloatStateOf(16f)
-    var sectionGap by mutableFloatStateOf(12f)
-    var navHeight by mutableFloatStateOf(72f)
+    var navRadius by mutableFloatStateOf(17f)
+    var buttonRadius by mutableFloatStateOf(14f)
+    var inputRadius by mutableFloatStateOf(16f)
+    var shadow by mutableFloatStateOf(24f)
+    var pageWidth by mutableFloatStateOf(940f)
+    var cardPadding by mutableFloatStateOf(18f)
+    var sectionGap by mutableFloatStateOf(14f)
+    var navHeight by mutableFloatStateOf(64f)
     var buttonHeight by mutableFloatStateOf(44f)
     var fontScale by mutableFloatStateOf(1f)
     var profileCoverHeight by mutableFloatStateOf(165f)
@@ -83,10 +83,10 @@ object LiveJellyTheme {
     var bgStrength by mutableFloatStateOf(1f)
     var rainbowBrand by mutableStateOf(true)
     var motion by mutableStateOf(true)
-    var jellyDepth by mutableFloatStateOf(92f)
-    var jellyShine by mutableFloatStateOf(96f)
-    var jellyBorder by mutableFloatStateOf(92f)
-    var jellySaturation by mutableFloatStateOf(140f)
+    var jellyDepth by mutableFloatStateOf(90f)
+    var jellyShine by mutableFloatStateOf(94f)
+    var jellyBorder by mutableFloatStateOf(88f)
+    var jellySaturation by mutableFloatStateOf(138f)
 
     private fun color(raw: String, fallback: Color): Color {
         val v = raw.trim()
@@ -110,28 +110,28 @@ object LiveJellyTheme {
         iconShadow = Color(0xFF5F57CC)
         text = DefaultJellyInk
         muted = DefaultJellyMuted
-        headerColor = Color(0xFFDFF4FF)
+        headerColor = Color.White
         navColor = Color.White
         cardColor = DefaultJellySurface
-        borderColor = DefaultJellyOutline
+        borderColor = Color(0xFFE8EDF2)
         buttonColor = Color(0xFF1683FF)
-        inputColor = DefaultJellyInput
+        inputColor = Color(0xFFF4F7FA)
         iconColor = DefaultJellyIcon
-        activeColor = DefaultJellyAccent
-        cardOpacity = .76f
-        headerOpacity = .78f
-        navOpacity = .74f
-        inputOpacity = .78f
-        cardRadius = 28f
+        activeColor = Color(0xFF1683FF)
+        cardOpacity = .68f
+        headerOpacity = .70f
+        navOpacity = .66f
+        inputOpacity = .62f
+        cardRadius = 30f
         headerRadius = 28f
-        navRadius = 23f
-        buttonRadius = 18f
-        inputRadius = 20f
-        shadow = 22f
-        pageWidth = 920f
-        cardPadding = 16f
-        sectionGap = 12f
-        navHeight = 72f
+        navRadius = 17f
+        buttonRadius = 14f
+        inputRadius = 16f
+        shadow = 24f
+        pageWidth = 940f
+        cardPadding = 18f
+        sectionGap = 14f
+        navHeight = 64f
         buttonHeight = 44f
         fontScale = 1f
         profileCoverHeight = 165f
@@ -145,10 +145,10 @@ object LiveJellyTheme {
         bgStrength = 1f
         rainbowBrand = true
         motion = true
-        jellyDepth = 92f
-        jellyShine = 96f
-        jellyBorder = 92f
-        jellySaturation = 140f
+        jellyDepth = 90f
+        jellyShine = 94f
+        jellyBorder = 88f
+        jellySaturation = 138f
     }
 
     fun apply(settings: JSONObject?) {
@@ -171,28 +171,28 @@ object LiveJellyTheme {
         iconShadow = color(settings.optString("theme_icon_shadow", ""), Color(0xFF5F57CC))
         text = color(settings.optString("theme_text_color", ""), DefaultJellyInk)
         muted = color(settings.optString("theme_muted_color", ""), DefaultJellyMuted)
-        headerColor = color(settings.optString("theme_header_color", ""), Color(0xFFDFF4FF))
+        headerColor = color(settings.optString("theme_header_color", ""), Color.White)
         navColor = color(settings.optString("theme_nav_color", ""), Color.White)
         cardColor = color(settings.optString("theme_card_color", ""), DefaultJellySurface)
-        borderColor = color(settings.optString("theme_border_color", ""), DefaultJellyOutline)
+        borderColor = color(settings.optString("theme_border_color", ""), Color(0xFFE8EDF2))
         buttonColor = color(settings.optString("theme_button_color", ""), Color(0xFF1683FF))
-        inputColor = color(settings.optString("theme_input_color", ""), DefaultJellyInput)
+        inputColor = color(settings.optString("theme_input_color", ""), Color(0xFFF4F7FA))
         iconColor = color(settings.optString("theme_icon_color", ""), DefaultJellyIcon)
-        activeColor = color(settings.optString("theme_active_color", ""), accent)
-        cardOpacity = settings.optInt("theme_card_opacity", 76).coerceIn(35, 100) / 100f
-        headerOpacity = settings.optInt("theme_header_opacity", 78).coerceIn(35, 100) / 100f
-        navOpacity = settings.optInt("theme_nav_opacity", 74).coerceIn(35, 100) / 100f
-        inputOpacity = settings.optInt("theme_input_opacity", 78).coerceIn(35, 100) / 100f
-        cardRadius = settings.optInt("theme_card_radius", 28).coerceIn(0, 60).toFloat()
+        activeColor = color(settings.optString("theme_active_color", ""), Color(0xFF1683FF))
+        cardOpacity = settings.optInt("theme_card_opacity", 68).coerceIn(35, 100) / 100f
+        headerOpacity = settings.optInt("theme_header_opacity", 70).coerceIn(35, 100) / 100f
+        navOpacity = settings.optInt("theme_nav_opacity", 66).coerceIn(35, 100) / 100f
+        inputOpacity = settings.optInt("theme_input_opacity", 62).coerceIn(35, 100) / 100f
+        cardRadius = settings.optInt("theme_card_radius", 30).coerceIn(0, 60).toFloat()
         headerRadius = settings.optInt("theme_header_radius", 28).coerceIn(0, 60).toFloat()
-        navRadius = settings.optInt("theme_nav_radius", 23).coerceIn(0, 60).toFloat()
-        buttonRadius = settings.optInt("theme_button_radius", 18).coerceIn(0, 999).toFloat()
-        inputRadius = settings.optInt("theme_input_radius", 20).coerceIn(0, 60).toFloat()
-        shadow = settings.optInt("theme_shadow", 22).coerceIn(0, 30).toFloat()
-        pageWidth = settings.optInt("theme_page_width", 920).coerceIn(320, 1400).toFloat()
-        cardPadding = settings.optInt("theme_card_padding", 16).coerceIn(0, 40).toFloat()
-        sectionGap = settings.optInt("theme_section_gap", 12).coerceIn(0, 40).toFloat()
-        navHeight = settings.optInt("theme_nav_height", 72).coerceIn(44, 100).toFloat()
+        navRadius = settings.optInt("theme_nav_radius", 17).coerceIn(0, 60).toFloat()
+        buttonRadius = settings.optInt("theme_button_radius", 14).coerceIn(0, 999).toFloat()
+        inputRadius = settings.optInt("theme_input_radius", 16).coerceIn(0, 60).toFloat()
+        shadow = settings.optInt("theme_shadow", 24).coerceIn(0, 30).toFloat()
+        pageWidth = settings.optInt("theme_page_width", 940).coerceIn(320, 1400).toFloat()
+        cardPadding = settings.optInt("theme_card_padding", 18).coerceIn(0, 40).toFloat()
+        sectionGap = settings.optInt("theme_section_gap", 14).coerceIn(0, 40).toFloat()
+        navHeight = settings.optInt("theme_nav_height", 64).coerceIn(44, 100).toFloat()
         buttonHeight = settings.optInt("theme_button_height", 44).coerceIn(32, 72).toFloat()
         fontScale = settings.optInt("theme_font_scale", 100).coerceIn(85, 120) / 100f
         profileCoverHeight = settings.optInt("theme_profile_cover_height", 165).coerceIn(90, 300).toFloat()
@@ -206,10 +206,10 @@ object LiveJellyTheme {
         bgStrength = settings.optInt("theme_bg_strength", 100).coerceIn(0, 100) / 100f
         rainbowBrand = settings.optInt("theme_brand_rainbow", 1) != 0
         motion = settings.optInt("theme_motion", 1) != 0
-        jellyDepth = settings.optInt("theme_jelly_depth", 92).coerceIn(0, 100).toFloat()
-        jellyShine = settings.optInt("theme_jelly_shine", 96).coerceIn(0, 100).toFloat()
-        jellyBorder = settings.optInt("theme_jelly_border", 92).coerceIn(0, 100).toFloat()
-        jellySaturation = settings.optInt("theme_jelly_saturation", 140).coerceIn(80, 180).toFloat()
+        jellyDepth = settings.optInt("theme_jelly_depth", 90).coerceIn(0, 100).toFloat()
+        jellyShine = settings.optInt("theme_jelly_shine", 94).coerceIn(0, 100).toFloat()
+        jellyBorder = settings.optInt("theme_jelly_border", 88).coerceIn(0, 100).toFloat()
+        jellySaturation = settings.optInt("theme_jelly_saturation", 138).coerceIn(80, 180).toFloat()
     }
 }
 
