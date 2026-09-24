@@ -15,15 +15,16 @@ RUN mkdir -p /opt/android-sdk/cmdline-tools \
  && rm -f /tmp/cmdtools.zip
 
 RUN yes | sdkmanager --licenses >/dev/null || true
-RUN sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+RUN sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
 WORKDIR /workspace
 COPY . .
 
 RUN chmod +x gradlew cloud-start.sh \
- && ./gradlew --no-daemon clean assembleDebug \
+ && ./gradlew --no-daemon clean assembleDebug bundleRelease \
  && mkdir -p /public \
- && cp app/build/outputs/apk/debug/app-debug.apk /public/MY_CHHACHH_LATEST_DEBUG.apk
+ && cp app/build/outputs/apk/debug/app-debug.apk /public/MY_CHHACHH_LATEST_DEBUG.apk \
+ && cp app/build/outputs/bundle/release/app-release.aab /public/MY_CHHACHH_PLAYSTORE_UNSIGNED.aab
 
 EXPOSE 8080
 CMD ["./cloud-start.sh"]
