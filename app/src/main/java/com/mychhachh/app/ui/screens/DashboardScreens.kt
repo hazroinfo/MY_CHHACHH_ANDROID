@@ -251,7 +251,7 @@ fun AnnouncementsScreen(
                         placeholder = { Text("Write something with the announcement (optional)…") },
                         minLines = 2,
                         maxLines = 5,
-                        shape = RoundedCornerShape(18.dp)
+                        shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp)
                     )
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                         JellyButton(
@@ -417,7 +417,7 @@ fun AnnouncementsScreen(
                     Modifier.fillMaxWidth(),
                     minLines = 3,
                     maxLines = 8,
-                    shape = RoundedCornerShape(18.dp)
+                    shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp)
                 )
             },
             confirmButton = {
@@ -458,7 +458,7 @@ fun AnnouncementsScreen(
                     placeholder = { Text("Tell the admin what is wrong…") },
                     minLines = 3,
                     maxLines = 7,
-                    shape = RoundedCornerShape(18.dp)
+                    shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp)
                 )
             },
             confirmButton = {
@@ -674,7 +674,7 @@ fun VotesScreen(
                             Modifier.fillMaxWidth(),
                             placeholder = { Text("Type a name or @username") },
                             singleLine = true,
-                            shape = RoundedCornerShape(18.dp)
+                            shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp)
                         )
                         JellyButton(
                             if (searchingOpponent) "Searching…" else "Search opponent",
@@ -739,7 +739,7 @@ fun VotesScreen(
                                     Modifier.fillMaxWidth(),
                                     placeholder = { Text("Optional short line") },
                                     maxLines = 2,
-                                    shape = RoundedCornerShape(18.dp)
+                                    shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp)
                                 )
                             }
                         }
@@ -1247,7 +1247,7 @@ private fun V95VoteCard(
                     placeholder = { Text("Write a short line under your photo…") },
                     minLines = 2,
                     maxLines = 4,
-                    shape = RoundedCornerShape(18.dp)
+                    shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp)
                 )
                 JellyButton("Save my line", Modifier.fillMaxWidth(), primary = true, icon = JellyIcons.Check) {
                     onStatement(vote.id, line.trim())
@@ -1641,7 +1641,7 @@ fun MapScreen(
                                 Modifier.weight(1f),
                                 placeholder = { Text("Village / place or use current location") },
                                 singleLine = true,
-                                shape = RoundedCornerShape(18.dp)
+                                shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp)
                             )
                             JellyButton("My location", icon = JellyIcons.Pin) {
                                 val granted =
@@ -1664,7 +1664,7 @@ fun MapScreen(
                             Modifier.fillMaxWidth(),
                             placeholder = { Text("Village, place or shop") },
                             singleLine = true,
-                            shape = RoundedCornerShape(18.dp)
+                            shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp)
                         )
                     }
 
