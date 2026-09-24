@@ -123,8 +123,8 @@ fun JellyGlass(
                 Brush.linearGradient(
                     listOf(
                         Color.White.copy(alpha = .88f),
-                        Color(0xFFDEF7FF).copy(alpha = .72f),
-                        Color(0xFFF9E7F9).copy(alpha = .61f)
+                        Color(0xFFDDF7FF).copy(alpha = .72f),
+                        Color(0xFFF8E1F8).copy(alpha = .62f)
                     )
                 )
             }
