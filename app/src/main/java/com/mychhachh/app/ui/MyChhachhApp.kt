@@ -1831,10 +1831,19 @@ private fun routeTitle(route: Screen): String = when (route) {
 
 @Composable
 private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: () -> Unit) {
+    val widthDp = LocalConfiguration.current.screenWidthDp
+    val compact = widthDp <= 390
     val shape = RoundedCornerShape(21.dp)
+    val cardHeight = if (compact) 76.dp else 82.dp
+    val iconSize = when {
+        icon == JellyIcons.Weather -> 37.dp
+        compact -> 31.dp
+        else -> 34.dp
+    }
+    val labelSize = if (compact) 8f else 8.8f
     Box(
         modifier
-            .height(82.dp)
+            .height(cardHeight)
             .shadow(
                 7.dp,
                 shape,
@@ -1872,13 +1881,13 @@ private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: ()
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            JellyIcon(icon, size = if (icon == JellyIcons.Weather) 37.dp else 34.dp)
+            JellyIcon(icon, size = iconSize)
             Spacer(Modifier.height(3.dp))
             Text(
                 text,
                 color = Color(0xFF433476),
                 fontWeight = FontWeight.Black,
-                fontSize = 8.8f.sp,
+                fontSize = labelSize.sp,
                 maxLines = 1
             )
         }
@@ -1887,9 +1896,12 @@ private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: ()
 
 @Composable
 private fun NavItem(text: String, icon: Int, active: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val compact = LocalConfiguration.current.screenWidthDp <= 390
+    val navIconSize = if (compact) 30.dp else 32.dp
+    val navLabelSize = if (compact) 8.4f else 9f
     Column(
         modifier
-            .height(68.dp)
+            .height(LiveJellyTheme.navHeight.dp)
             .clip(RoundedCornerShape(20.dp))
             .clickable { onClick() }
             .background(
@@ -1907,13 +1919,13 @@ private fun NavItem(text: String, icon: Int, active: Boolean, modifier: Modifier
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        JellyIcon(icon, size = 32.dp, contentDescription = text)
+        JellyIcon(icon, size = navIconSize, contentDescription = text)
         Spacer(Modifier.height(2.dp))
         Text(
             text,
             color = Color(0xFF392B72),
             fontWeight = FontWeight.Black,
-            fontSize = 9.sp,
+            fontSize = navLabelSize.sp,
             maxLines = 1
         )
         if (active) {
