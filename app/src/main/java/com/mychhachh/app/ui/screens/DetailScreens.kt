@@ -128,9 +128,9 @@ fun ProfileScreen(
                                 .background(
                                     Brush.linearGradient(
                                         listOf(
-                                            Color(0x5955D8FF),
-                                            Color(0x4D9A78FF),
-                                            Color(0x45FF78C4)
+                                            Color(0x596BD3FF),
+                                            Color(0x4DA580FF),
+                                            Color(0x45FF78C2)
                                         )
                                     )
                                 )
