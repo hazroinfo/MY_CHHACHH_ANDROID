@@ -513,8 +513,8 @@ private fun V95VoteFeedCard(vote: Vote, onOpen: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(5.dp)
             ) {
-                JellyIcon(JellyIcons.Crown, size = 42.dp)
-                Avatar(winner, 72.dp)
+                JellyIcon(JellyIcons.Crown, size = 48.dp)
+                Avatar(winner, 96.dp)
                 Text("CONGRATULATIONS", color = JellyPurple, fontWeight = FontWeight.Black, fontSize = 9.sp)
                 UserName(winner, 18)
                 if (winner.username.isNotBlank()) Text("@${winner.username}", color = JellyMuted, fontSize = 9.5f.sp)
@@ -559,7 +559,7 @@ private fun V95VoteFeedCard(vote: Vote, onOpen: () -> Unit) {
 private fun VoteTeaserSide(user: User?, votes: Int?, modifier: Modifier = Modifier) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         if (user != null) {
-            Avatar(user, 54.dp)
+            Avatar(user, 56.dp)
             UserName(user, 9)
         } else {
             JellyIcon(JellyIcons.User, size = 48.dp)
@@ -598,7 +598,7 @@ private fun ComposerTool(icon: Int, label: String, modifier: Modifier = Modifier
             .clickable { onClick() }
             .padding(vertical = 5.dp, horizontal = 2.dp)
     ) {
-        JellyIcon(icon, size = 25.dp)
+        JellyIcon(icon, size = 28.dp)
         Spacer(Modifier.height(4.dp))
         Text(label, color = Color(0xFF4C4176), fontSize = 7.sp, fontWeight = FontWeight.Black, maxLines = 1)
     }
@@ -898,7 +898,7 @@ private fun PostAction(icon: Int, label: String, count: Int, modifier: Modifier 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        JellyIcon(icon, size = 25.dp)
+        JellyIcon(icon, size = 28.dp)
         Spacer(Modifier.width(3.dp))
         Text(
             label,
@@ -923,7 +923,7 @@ private fun PostStat(icon: Int, label: String, count: Int, modifier: Modifier = 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        JellyIcon(icon, size = 25.dp)
+        JellyIcon(icon, size = 28.dp)
         Spacer(Modifier.width(3.dp))
         Text(label, color = Color(0xFF4C4176), fontSize = 9.sp, fontWeight = FontWeight.Black, maxLines = 1)
         if (count > 0) {
