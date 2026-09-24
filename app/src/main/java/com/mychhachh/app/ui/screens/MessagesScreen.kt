@@ -142,7 +142,7 @@ fun MessagesScreen(
 
         if (filter != "groups") {
             items(directRows, key = { "conversation-${it.user.id}" }) { row ->
-                JellyGlass(Modifier.fillMaxWidth(), radius = 19.dp, padding = 12.dp, onClick = { onOpen(row.user.id) }) {
+                JellyGlass(Modifier.fillMaxWidth(), radius = 19.dp, padding = 10.dp, onClick = { onOpen(row.user.id) }) {
                     Box(Modifier.fillMaxWidth().heightIn(min = 82.dp)) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Avatar(row.user, 44.dp)
@@ -169,7 +169,7 @@ fun MessagesScreen(
 
         if (filter == "all" || filter == "groups") {
             items(groupRows, key = { "group-${it.id}" }) { group ->
-                JellyGlass(Modifier.fillMaxWidth(), radius = 19.dp, padding = 12.dp, onClick = { onOpenGroup(group.id) }) {
+                JellyGlass(Modifier.fillMaxWidth(), radius = 19.dp, padding = 10.dp, onClick = { onOpenGroup(group.id) }) {
                     Row(Modifier.fillMaxWidth().heightIn(min = 82.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             Modifier.size(44.dp).clip(RoundedCornerShape(99.dp)).background(Color(0xFFE9F6FF)),
