@@ -66,7 +66,15 @@ data class Post(
     val shopId: Long = 0L,
     val voteId: Long = 0L,
     val voteLeftName: String = "",
-    val voteRightName: String = ""
+    val voteRightName: String = "",
+    val reactionLike: Int = 0,
+    val reactionLove: Int = 0,
+    val reactionHaha: Int = 0,
+    val reactionWow: Int = 0,
+    val reactionSad: Int = 0,
+    val reactionAngry: Int = 0,
+    val reactionTotal: Int = likes,
+    val myReaction: String = ""
 )
 
 data class CheckinPlace(
@@ -188,7 +196,15 @@ fun JSONObject.toPost(): Post {
         shopId = optLong("shop_id", 0L),
         voteId = optLong("vote_id", 0L),
         voteLeftName = optString("vote_left_name", ""),
-        voteRightName = optString("vote_right_name", "")
+        voteRightName = optString("vote_right_name", ""),
+        reactionLike = optJSONObject("reactions")?.optInt("like", 0) ?: 0,
+        reactionLove = optJSONObject("reactions")?.optInt("love", 0) ?: 0,
+        reactionHaha = optJSONObject("reactions")?.optInt("haha", 0) ?: 0,
+        reactionWow = optJSONObject("reactions")?.optInt("wow", 0) ?: 0,
+        reactionSad = optJSONObject("reactions")?.optInt("sad", 0) ?: 0,
+        reactionAngry = optJSONObject("reactions")?.optInt("angry", 0) ?: 0,
+        reactionTotal = optJSONObject("reactions")?.optInt("total", optInt("likes", 0)) ?: optInt("likes", 0),
+        myReaction = optString("my_reaction", "")
     )
 }
 
