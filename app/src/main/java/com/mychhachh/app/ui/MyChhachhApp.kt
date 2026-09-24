@@ -1110,6 +1110,12 @@ fun MyChhachhApp() {
                                 }
                             },
                             onLoadRelations = { id, mode -> withContext(Dispatchers.IO) { api.relationUsers(id, mode) } },
+                            onRemoveRelation = { id, mode ->
+                                withContext(Dispatchers.IO) {
+                                    if (mode == "followers") api.removeFollower(id) else api.removeFollowing(id)
+                                }
+                                loadProfile(selectedId)
+                            },
                             onLike = { p -> scope.launch { runCatching { withContext(Dispatchers.IO) { api.likePost(p) } }; loadProfile(selectedId) } },
                             onComment = { openDiscussion(it) },
                             onShare = ::sharePost,
