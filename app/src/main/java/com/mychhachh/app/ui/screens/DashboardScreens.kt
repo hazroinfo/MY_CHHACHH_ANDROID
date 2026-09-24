@@ -1063,7 +1063,7 @@ private fun V95VoteCard(
                         if (active) Text(voteCountdownText(vote.endsAt, now), color = JellyMuted, fontSize = 6.8f.sp, fontWeight = FontWeight.Black, maxLines = 1)
                         Box(
                             Modifier
-                                .size(64.dp)
+                                .size(47.dp)
                                 .clip(androidx.compose.foundation.shape.CircleShape)
                                 .background(
                                     Brush.radialGradient(
@@ -1078,7 +1078,7 @@ private fun V95VoteCard(
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("VS", color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                                Text("VS", color = Color.White, fontWeight = FontWeight.Black, fontSize = 18.sp)
                                 Text(
                                     when {
                                         waiting -> "WAIT"
@@ -1243,7 +1243,7 @@ private fun VoteArenaPlayer(
 
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (user != null) {
-            Avatar(user, 72.dp)
+            Avatar(user, 62.dp)
             UserName(user, 10)
             if (user.username.isNotBlank()) Text("@${user.username}", color = JellyMuted, fontSize = 8.sp)
         } else {
