@@ -14,6 +14,7 @@ import com.mychhachh.app.data.User
 import com.mychhachh.app.ui.components.*
 import com.mychhachh.app.ui.theme.JellyInk
 import com.mychhachh.app.ui.theme.JellyMuted
+import com.mychhachh.app.ui.theme.LiveJellyTheme
 
 @Composable
 fun PeopleScreen(
