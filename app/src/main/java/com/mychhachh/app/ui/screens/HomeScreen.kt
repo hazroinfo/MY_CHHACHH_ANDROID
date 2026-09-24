@@ -352,7 +352,7 @@ fun HomeScreen(
                         onValueChange = { query = it },
                         placeholder = { Text("Search name or username") },
                         singleLine = true,
-                        shape = RoundedCornerShape(18.dp)
+                        shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp)
                     )
                     JellyButton(
                         if (searching) "Searching…" else "Search people",
@@ -434,7 +434,7 @@ fun HomeScreen(
                         onValueChange = { query = it },
                         placeholder = { Text("Search a place in Chhachh / Hazro") },
                         singleLine = true,
-                        shape = RoundedCornerShape(18.dp)
+                        shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp)
                     )
                     JellyButton(
                         if (searching) "Searching…" else "Find place",
@@ -967,7 +967,7 @@ fun PostCard(
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 3,
                         maxLines = 7,
-                        shape = RoundedCornerShape(18.dp)
+                        shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp)
                     )
                     JellyButton(
                         if (editPrivacy == "followers") "Followers" else "Everyone",
@@ -1015,7 +1015,7 @@ fun PostCard(
                     placeholder = { Text("Explain the problem…") },
                     minLines = 4,
                     maxLines = 8,
-                    shape = RoundedCornerShape(18.dp)
+                    shape = RoundedCornerShape(LiveJellyTheme.inputRadius.dp)
                 )
             },
             confirmButton = {
