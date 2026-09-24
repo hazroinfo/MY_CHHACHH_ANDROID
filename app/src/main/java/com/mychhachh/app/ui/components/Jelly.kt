@@ -457,12 +457,32 @@ fun EmptyCard(text: String, @DrawableRes icon: Int = JellyIcons.Info) {
 
 @Composable
 fun PageTitle(title: String, subtitle: String? = null, @DrawableRes icon: Int? = null) {
+    val shape = RoundedCornerShape(26.dp)
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 4.dp),
+        Modifier
+            .fillMaxWidth()
+            .shadow(
+                13.dp,
+                shape,
+                ambientColor = Color(0x29455F89),
+                spotColor = Color(0x29455F89)
+            )
+            .clip(shape)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        Color.White.copy(alpha = .88f),
+                        Color(0xFFDEF7FF).copy(alpha = .72f),
+                        Color(0xFFF9E7F9).copy(alpha = .61f)
+                    )
+                )
+            )
+            .border(2.dp, Color.White.copy(alpha = .94f), shape)
+            .padding(start = 4.dp, end = 4.dp, top = 12.dp, bottom = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         icon?.let {
-            JellyIcon(it, size = 34.dp)
+            JellyIcon(it, size = 38.dp)
             Spacer(Modifier.width(7.dp))
         }
         Column {
