@@ -101,7 +101,16 @@ fun NotificationsScreen(
         error?.let { item { ErrorCard(it) } }
         if (!loading && visible.isEmpty() && error == null) item { EmptyCard("No notifications in this filter.", JellyIcons.Bell) }
         items(visible, key = { "notice-${it.id}" }) { n ->
-            JellyGlass(Modifier.fillMaxWidth(), radius = 18.dp, padding = 0.dp) {
+            JellyGlass(
+                Modifier.fillMaxWidth(),
+                radius = LiveJellyTheme.cardRadius.dp,
+                padding = 0.dp,
+                gradientColors = listOf(
+                    Color.White.copy(alpha = .78f),
+                    Color(0xFFE5F6FF).copy(alpha = .58f)
+                ),
+                showShine = false
+            ) {
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 8.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
