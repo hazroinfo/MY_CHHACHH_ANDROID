@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import coil.compose.AsyncImage
 import com.mychhachh.app.data.*
 import kotlinx.coroutines.*
@@ -55,8 +57,13 @@ fun V95App() {
     DisposableEffect(Unit) { onDispose { c.dispose() } }
     LaunchedEffect(Unit) { c.bootstrap() }
     val direction = if (c.language == "ur") LayoutDirection.Rtl else LayoutDirection.Ltr
+    val baseDensity = LocalDensity.current
+    val cssDensity = Density(baseDensity.density, 1f)
 
-    CompositionLocalProvider(LocalLayoutDirection provides direction) {
+    CompositionLocalProvider(
+        LocalLayoutDirection provides direction,
+        LocalDensity provides cssDensity
+    ) {
         V95Theme {
             Box(
                 Modifier
@@ -112,6 +119,7 @@ internal fun V95Header(c: V95Controller) {
     Column(
         Modifier
             .fillMaxWidth()
+            .statusBarsPadding()
             .background(
                 Brush.verticalGradient(
                     listOf(Color(0xFFDAF7FF).copy(.92f), Color(0xFFE4F4FF).copy(.82f), Color(0xFFEEEAFF).copy(.78f))
@@ -133,7 +141,20 @@ internal fun V95Header(c: V95Controller) {
                 Spacer(Modifier.width(4.dp))
                 V95Avatar(user, 41.dp, Modifier.clickable { c.openProfile(user) })
             } else {
-                V95Button(c.t("Login", "لاگ اِن"), modifier = Modifier.height(42.dp), primary = true) { c.route = V95Route.AUTH }
+                val authEnabled = c.features.optInt("theme_guest_auth_buttons", 1) != 0
+                val showLogin = authEnabled && c.features.optInt("theme_guest_login_button", 1) != 0
+                val showRegister = authEnabled && c.features.optInt("theme_guest_register_button", 1) != 0
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (showLogin) {
+                        V95TopAuthButton(c.t("Login", "لاگ اِن"), compact = compact) { c.route = V95Route.AUTH }
+                    }
+                    if (showRegister) {
+                        V95TopAuthButton(c.t("Sign up", "رجسٹر"), register = true, compact = compact) { c.route = V95Route.AUTH }
+                    }
+                }
             }
         }
         V95SearchBar(c)
@@ -146,6 +167,44 @@ internal fun V95Header(c: V95Controller) {
             }
         }
         V95Nav(c, compact)
+    }
+}
+
+@Composable
+private fun V95TopAuthButton(
+    text: String,
+    register: Boolean = false,
+    compact: Boolean = false,
+    onClick: () -> Unit
+) {
+    val shape = RoundedCornerShape(999.dp)
+    Box(
+        Modifier
+            .height(42.dp)
+            .clip(shape)
+            .background(
+                if (register) {
+                    Brush.linearGradient(
+                        listOf(Color.White.copy(alpha = .84f), Color(0xFFFFE4F4).copy(alpha = .76f))
+                    )
+                } else {
+                    Brush.linearGradient(
+                        listOf(Color.White.copy(alpha = .78f), Color.White.copy(alpha = .68f))
+                    )
+                }
+            )
+            .border(1.5.dp, Color.White, shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = if (compact) 7.dp else 9.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text,
+            color = if (register) Color(0xFF5B3D86) else Color(0xFF4D3C82),
+            fontWeight = FontWeight.Black,
+            fontSize = if (compact) 9.sp else 10.sp,
+            maxLines = 1
+        )
     }
 }
 
