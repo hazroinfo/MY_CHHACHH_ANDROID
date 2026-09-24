@@ -988,6 +988,7 @@ private fun V95VoteCard(
     val candidate = isLeft || isRight
     val canAccept = waiting && isRight
     val canStart = ready && isLeft
+    val mobileVoteLayout = LocalConfiguration.current.screenWidthDp <= 700
 
     val winner = when (vote.winnerUserId) {
         vote.leftUserId -> vote.user1
@@ -1071,7 +1072,7 @@ private fun V95VoteCard(
             JellyGlass(
                 Modifier.fillMaxWidth(),
                 radius = 26.dp,
-                padding = 5.dp,
+                padding = if (mobileVoteLayout) 5.dp else 8.dp,
                 gradientColors = listOf(
                     Color(0xFFDCF8FF).copy(alpha = .79f),
                     Color(0xFFFAE5F7).copy(alpha = .69f),
@@ -1094,11 +1095,11 @@ private fun V95VoteCard(
                         modifier = Modifier.weight(1f),
                         onCast = onCast
                     )
-                    Column(Modifier.width(92.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Column(Modifier.width(if (mobileVoteLayout) 92.dp else 104.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         if (active) Text(voteCountdownText(vote.endsAt, now), color = JellyMuted, fontSize = 6.8f.sp, fontWeight = FontWeight.Black, maxLines = 1)
                         Box(
                             Modifier
-                                .size(47.dp)
+                                .size(if (mobileVoteLayout) 47.dp else 62.dp)
                                 .clip(androidx.compose.foundation.shape.CircleShape)
                                 .background(
                                     Brush.radialGradient(
@@ -1276,9 +1277,10 @@ private fun VoteArenaPlayer(
     val votes = if (side == "left") vote.votes1 else vote.votes2
     val winner = ended && vote.winnerUserId == userId && userId > 0L
 
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    val mobileVoteLayout = LocalConfiguration.current.screenWidthDp <= 700
+    Column(modifier.padding(horizontal = 3.dp, vertical = 7.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (user != null) {
-            Avatar(user, 62.dp)
+            Avatar(user, if (mobileVoteLayout) 62.dp else 76.dp)
             UserName(user, 10)
             if (user.username.isNotBlank()) Text("@${user.username}", color = JellyMuted, fontSize = 8.sp)
         } else {
