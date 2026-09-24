@@ -50,6 +50,7 @@ object LiveJellyTheme {
     var text by mutableStateOf(DefaultJellyInk)
     var muted by mutableStateOf(DefaultJellyMuted)
     var headerColor by mutableStateOf(Color.White)
+    var headerText by mutableStateOf(DefaultJellyInk)
     var navColor by mutableStateOf(Color.White)
     var cardColor by mutableStateOf(DefaultJellySurface)
     var borderColor by mutableStateOf(Color(0xFFE8EDF2))
@@ -61,6 +62,7 @@ object LiveJellyTheme {
     var headerOpacity by mutableFloatStateOf(.70f)
     var navOpacity by mutableFloatStateOf(.66f)
     var inputOpacity by mutableFloatStateOf(.62f)
+    var blur by mutableFloatStateOf(28f)
     var cardRadius by mutableFloatStateOf(30f)
     var headerRadius by mutableFloatStateOf(28f)
     var navRadius by mutableFloatStateOf(17f)
@@ -113,6 +115,7 @@ object LiveJellyTheme {
         text = DefaultJellyInk
         muted = DefaultJellyMuted
         headerColor = Color.White
+        headerText = DefaultJellyInk
         navColor = Color.White
         cardColor = DefaultJellySurface
         borderColor = Color(0xFFE8EDF2)
@@ -124,6 +127,7 @@ object LiveJellyTheme {
         headerOpacity = .70f
         navOpacity = .66f
         inputOpacity = .62f
+        blur = 28f
         cardRadius = 30f
         headerRadius = 28f
         navRadius = 17f
@@ -185,6 +189,7 @@ object LiveJellyTheme {
         text = color(settings.optString("theme_text_color", ""), DefaultJellyInk)
         muted = color(settings.optString("theme_muted_color", ""), DefaultJellyMuted)
         headerColor = color(settings.optString("theme_header_color", ""), Color.White)
+        headerText = color(settings.optString("theme_header_text", ""), DefaultJellyInk)
         navColor = color(settings.optString("theme_nav_color", ""), Color.White)
         cardColor = color(settings.optString("theme_card_color", ""), DefaultJellySurface)
         borderColor = color(settings.optString("theme_border_color", ""), Color(0xFFE8EDF2))
@@ -196,18 +201,19 @@ object LiveJellyTheme {
         headerOpacity = settings.optInt("theme_header_opacity", 70).coerceIn(35, 100) / 100f
         navOpacity = settings.optInt("theme_nav_opacity", 66).coerceIn(35, 100) / 100f
         inputOpacity = settings.optInt("theme_input_opacity", 62).coerceIn(35, 100) / 100f
+        blur = settings.optInt("theme_blur", 28).coerceIn(0, 50).toFloat()
         cardRadius = settings.optInt("theme_card_radius", 30).coerceIn(0, 60).toFloat()
         headerRadius = settings.optInt("theme_header_radius", 28).coerceIn(0, 60).toFloat()
-        navRadius = settings.optInt("theme_nav_radius", 17).coerceIn(0, 60).toFloat()
-        buttonRadius = settings.optInt("theme_button_radius", 14).coerceIn(0, 999).toFloat()
-        inputRadius = settings.optInt("theme_input_radius", 16).coerceIn(0, 60).toFloat()
-        shadow = settings.optInt("theme_shadow", 24).coerceIn(0, 30).toFloat()
+        navRadius = settings.optInt("theme_nav_radius", 17).coerceIn(0, 50).toFloat()
+        buttonRadius = settings.optInt("theme_button_radius", 14).coerceIn(0, 50).toFloat()
+        inputRadius = settings.optInt("theme_input_radius", 16).coerceIn(0, 50).toFloat()
+        shadow = settings.optInt("theme_shadow", 24).coerceIn(0, 40).toFloat()
         pageWidth = settings.optInt("theme_page_width", 940).coerceIn(320, 1400).toFloat()
-        cardPadding = settings.optInt("theme_card_padding", 18).coerceIn(0, 40).toFloat()
-        sectionGap = settings.optInt("theme_section_gap", 14).coerceIn(0, 40).toFloat()
+        cardPadding = settings.optInt("theme_card_padding", 18).coerceIn(6, 40).toFloat()
+        sectionGap = settings.optInt("theme_section_gap", 14).coerceIn(2, 40).toFloat()
         navHeight = settings.optInt("theme_nav_height", 64).coerceIn(44, 100).toFloat()
         buttonHeight = settings.optInt("theme_button_height", 44).coerceIn(32, 72).toFloat()
-        fontScale = settings.optInt("theme_font_scale", 100).coerceIn(85, 120) / 100f
+        fontScale = settings.optInt("theme_font_scale", 100).coerceIn(90, 115) / 100f
         profileCoverHeight = settings.optInt("theme_profile_cover_height", 165).coerceIn(90, 300).toFloat()
         profileAvatarSize = settings.optInt("theme_profile_avatar_size", 96).coerceIn(56, 160).toFloat()
         shopCoverHeight = settings.optInt("theme_shop_cover_height", 185).coerceIn(100, 320).toFloat()
