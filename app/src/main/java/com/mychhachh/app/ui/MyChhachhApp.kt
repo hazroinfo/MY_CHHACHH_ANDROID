@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import coil.compose.AsyncImage
 import androidx.compose.ui.text.font.FontWeight
@@ -1524,7 +1525,7 @@ private fun GuestHeader(
     val authVisible = settings.optInt("theme_guest_auth_buttons", 1) != 0
     val showLogin = authVisible && settings.optInt("theme_guest_login_button", 1) != 0
     val showRegister = authVisible && settings.optInt("theme_guest_register_button", 1) != 0
-    val iconSize = settings.optInt("site_icon_size", 40).coerceIn(20, 96).dp
+    val iconSize = settings.optInt("site_icon_size", 34).coerceIn(20, 96).dp
 
     Box(Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 7.dp)) {
         JellyGlass(
@@ -1578,7 +1579,8 @@ private fun AuthHeader(
     val navOrder = settings.optString("theme_header_items", "home,people,shop,map,messages")
         .split(",").map { it.trim() }.filter { it.isNotBlank() }
     val votingEnabled = settings.optInt("voting", 1) != 0
-    val brandIconSize = settings.optInt("site_icon_size", 40).coerceIn(20, 96).dp
+    val brandIconSize = settings.optInt("site_icon_size", 34).coerceIn(20, 96).dp
+    val responsiveBrandFontSize = (LocalConfiguration.current.screenWidthDp * 0.08f).coerceIn(24f, 34f).toInt()
 
     Column(
         Modifier
@@ -1612,7 +1614,7 @@ private fun AuthHeader(
                 tagline = brandTagline,
                 iconUrl = brandIcon,
                 modifier = Modifier.weight(1f),
-                fontSize = 28,
+                fontSize = responsiveBrandFontSize,
                 iconSize = brandIconSize.coerceAtMost(44.dp)
             )
 
@@ -1713,11 +1715,11 @@ private fun AuthHeader(
                 .fillMaxWidth()
                 .shadow(
                     10.dp,
-                    RoundedCornerShape(22.dp),
+                    RoundedCornerShape(LiveJellyTheme.navRadius.dp),
                     ambientColor = Color(0x1F2D5789),
                     spotColor = Color(0x1F2D5789)
                 )
-                .clip(RoundedCornerShape(22.dp))
+                .clip(RoundedCornerShape(LiveJellyTheme.navRadius.dp))
                 .background(
                     Brush.linearGradient(
                         listOf(
@@ -1861,7 +1863,7 @@ private fun NavItem(text: String, icon: Int, active: Boolean, modifier: Modifier
     Column(
         modifier
             .height(68.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(20.dp))
             .clickable { onClick() }
             .background(
                 if (active) {
