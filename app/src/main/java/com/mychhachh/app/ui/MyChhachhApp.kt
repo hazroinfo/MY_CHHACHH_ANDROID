@@ -1553,33 +1553,87 @@ private fun GuestHeader(
     val showLogin = authVisible && settings.optInt("theme_guest_login_button", 1) != 0
     val showRegister = authVisible && settings.optInt("theme_guest_register_button", 1) != 0
     val iconSize = settings.optInt("site_icon_size", 34).coerceIn(20, 96).dp
+    val widthDp = LocalConfiguration.current.screenWidthDp
+    val brandFontSize = (widthDp * 0.08f).coerceIn(24f, 34f).toInt()
 
-    Box(Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 7.dp)) {
-        JellyGlass(
-            Modifier.fillMaxWidth(),
-            radius = LiveJellyTheme.headerRadius.dp,
-            padding = 10.dp,
-            surfaceColor = LiveJellyTheme.headerColor,
-            surfaceOpacity = LiveJellyTheme.headerOpacity
-        ) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                HeaderBrand(
-                    brandName,
-                    brandTagline,
-                    brandIcon,
-                    Modifier.weight(1f),
-                    28,
-                    iconSize = iconSize
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(
+                RoundedCornerShape(
+                    bottomStart = LiveJellyTheme.headerRadius.dp,
+                    bottomEnd = LiveJellyTheme.headerRadius.dp
                 )
-                if (showLogin) {
-                    JellyButton("Login", onClick = onLogin)
-                }
-                if (showLogin && showRegister) Spacer(Modifier.width(7.dp))
-                if (showRegister) {
-                    JellyButton("Sign up", primary = true, onClick = onRegister)
-                }
+            )
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFFDAF7FF).copy(alpha = .88f),
+                        Color(0xFFE4F4FF).copy(alpha = .73f),
+                        Color(0xFFEEEAFF).copy(alpha = .68f)
+                    )
+                )
+            )
+            .padding(start = 7.dp, end = 7.dp, top = 8.dp, bottom = 7.dp)
+            .heightIn(min = 43.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Spacer(Modifier.width(49.dp))
+        HeaderBrand(
+            brandName,
+            brandTagline,
+            brandIcon,
+            Modifier.weight(1f),
+            brandFontSize,
+            iconSize = iconSize.coerceAtMost(44.dp)
+        )
+        if (showLogin || showRegister) {
+            Row(horizontalArrangement = Arrangement.spacedBy(if (widthDp <= 390) 3.dp else 4.dp)) {
+                if (showLogin) GuestAuthPill("Login", false, onLogin)
+                if (showRegister) GuestAuthPill("Sign up", true, onRegister)
             }
+        } else {
+            Spacer(Modifier.width(49.dp))
         }
+    }
+}
+
+@Composable
+private fun GuestAuthPill(text: String, register: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(999.dp)
+    Box(
+        Modifier
+            .height(42.dp)
+            .clip(shape)
+            .clickable { onClick() }
+            .background(
+                if (register) {
+                    Brush.linearGradient(
+                        listOf(
+                            Color.White.copy(alpha = .84f),
+                            Color(0xFFFFE4F4).copy(alpha = .76f)
+                        )
+                    )
+                } else {
+                    Brush.linearGradient(
+                        listOf(
+                            Color.White.copy(alpha = .73f),
+                            Color.White.copy(alpha = .73f)
+                        )
+                    )
+                }
+            )
+            .border(1.5.dp, Color.White, shape)
+            .padding(horizontal = if (LocalConfiguration.current.screenWidthDp <= 390) 7.dp else 9.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text,
+            color = if (register) Color(0xFF5B3D86) else Color(0xFF4D3C82),
+            fontWeight = FontWeight.Black,
+            fontSize = if (LocalConfiguration.current.screenWidthDp <= 390) 9.sp else 10.sp,
+            maxLines = 1
+        )
     }
 }
 
@@ -1628,7 +1682,7 @@ private fun AuthHeader(
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(
-            Modifier.fillMaxWidth().height(45.dp),
+            Modifier.fillMaxWidth().height(43.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
