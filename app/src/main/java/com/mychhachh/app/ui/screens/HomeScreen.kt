@@ -563,7 +563,7 @@ private fun V95VoteFeedCard(vote: Vote, onOpen: () -> Unit) {
                         verticalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         if (vote.endsAt.isNotBlank()) {
-                            Text("LIVE", color = JellyGreen, fontWeight = FontWeight.Black, fontSize = 8.dp.value.sp)
+                            Text("LIVE", color = JellyGreen, fontWeight = FontWeight.Black, fontSize = 8.sp)
                         }
                         Box(
                             Modifier
@@ -1049,7 +1049,7 @@ private fun Tag(icon: Int, text: String, onClick: (() -> Unit)? = null) {
 private fun PostAction(icon: Int, label: String, count: Int, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Row(
         modifier
-            .heightIn(min = 42.dp)
+            .heightIn(min = 44.dp)
             .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() }
             .padding(horizontal = 2.dp, vertical = 3.dp),
@@ -1078,7 +1078,7 @@ private fun PostAction(icon: Int, label: String, count: Int, modifier: Modifier 
 private fun PostStat(icon: Int, label: String, count: Int, modifier: Modifier = Modifier) {
     Row(
         modifier
-            .heightIn(min = 42.dp)
+            .heightIn(min = 44.dp)
             .padding(horizontal = 2.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
