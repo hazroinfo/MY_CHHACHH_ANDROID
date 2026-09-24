@@ -9,6 +9,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -98,15 +100,10 @@ fun ProfileScreen(
                         Box(
                             Modifier
                                 .fillMaxWidth()
-                                .height(minOf(LiveJellyTheme.profileCoverHeight, 145f).dp)
-                                .clip(
-                                    RoundedCornerShape(
-                                        topStart = LiveJellyTheme.cardRadius.dp,
-                                        topEnd = LiveJellyTheme.cardRadius.dp,
-                                        bottomStart = 18.dp,
-                                        bottomEnd = 18.dp
-                                    )
-                                )
+                                .height(LiveJellyTheme.profileCoverHeight.dp)
+                                .shadow(7.dp, RoundedCornerShape(24.dp))
+                                .clip(RoundedCornerShape(24.dp))
+                                .border(2.dp, Color.White, RoundedCornerShape(24.dp))
                                 .background(
                                     Brush.linearGradient(
                                         listOf(
@@ -144,10 +141,10 @@ fun ProfileScreen(
                         ) {
                             Box(
                                 Modifier
-                                    .width(LiveJellyTheme.profileAvatarSize.dp)
+                                    .width(minOf(LiveJellyTheme.profileAvatarSize, 90f).dp)
                                     .offset(y = (-LiveJellyTheme.profileOverlap).dp)
                             ) {
-                                Avatar(u, LiveJellyTheme.profileAvatarSize.dp)
+                                Avatar(u, minOf(LiveJellyTheme.profileAvatarSize, 90f).dp)
                             }
                             Spacer(Modifier.width(9.dp))
                             Column(
@@ -985,6 +982,14 @@ fun ShopDetailScreen(
                             Modifier
                                 .fillMaxWidth()
                                 .height(LiveJellyTheme.shopCoverHeight.dp)
+                                .clip(
+                                    RoundedCornerShape(
+                                        topStart = LiveJellyTheme.cardRadius.dp,
+                                        topEnd = LiveJellyTheme.cardRadius.dp,
+                                        bottomStart = 18.dp,
+                                        bottomEnd = 18.dp
+                                    )
+                                )
                                 .background(
                                     Brush.horizontalGradient(
                                         listOf(
