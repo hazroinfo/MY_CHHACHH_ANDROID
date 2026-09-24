@@ -1036,7 +1036,7 @@ fun ShopDetailScreen(
                             ) {
                                 Box(
                                     Modifier
-                                        .size(LiveJellyTheme.shopAvatarSize.dp)
+                                        .size(minOf(LiveJellyTheme.shopAvatarSize, 92f).dp)
                                         .offset(y = (-LiveJellyTheme.shopOverlap).dp)
                                         .clip(RoundedCornerShape(999.dp))
                                         .background(Color.White)
