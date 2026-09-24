@@ -173,12 +173,16 @@ fun HomeScreen(
         }
 
         if (user != null && mode != "shops") item {
-            JellyGlass(Modifier.fillMaxWidth(), radius = 22.dp, padding = 10.dp) {
+            JellyGlass(
+                Modifier.fillMaxWidth(),
+                radius = LiveJellyTheme.cardRadius.dp,
+                padding = LiveJellyTheme.cardPadding.dp
+            ) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = composing,
                         onValueChange = { composing = it },
-                        modifier = Modifier.fillMaxWidth().height(96.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp),
                         placeholder = { Text("What's on your mind? Type @ to mention someone", fontSize = 11.sp) },
                         shape = RoundedCornerShape(22.dp),
                         minLines = 3,
@@ -575,7 +579,7 @@ private fun VoteTeaserSide(user: User?, votes: Int?, modifier: Modifier = Modifi
 
 @Composable
 private fun HomeTabPill(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(999.dp)
     Box(
         modifier
             .height(43.dp)
@@ -598,14 +602,15 @@ private fun ComposerTool(icon: Int, label: String, modifier: Modifier = Modifier
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         modifier = modifier
-            .height(60.dp)
+            .height(56.dp)
             .clip(RoundedCornerShape(14.dp))
             .clickable { onClick() }
             .padding(vertical = 5.dp, horizontal = 2.dp)
     ) {
-        JellyIcon(icon, size = 28.dp)
-        Spacer(Modifier.height(4.dp))
-        Text(label, color = Color(0xFF4C4176), fontSize = 7.sp, fontWeight = FontWeight.Black, maxLines = 1)
+        val compact = LocalConfiguration.current.screenWidthDp <= 390
+        JellyIcon(icon, size = if (compact) 25.dp else 27.dp)
+        Spacer(Modifier.height(3.dp))
+        Text(label, color = Color(0xFF4C4176), fontSize = (if (compact) 6.9f else 7.5f).sp, fontWeight = FontWeight.Black, maxLines = 1)
     }
 }
 
@@ -666,7 +671,11 @@ fun PostCard(
         }
     }
 
-    JellyGlass(Modifier.fillMaxWidth(), radius = 22.dp, padding = 14.dp) {
+    JellyGlass(
+        Modifier.fillMaxWidth(),
+        radius = LiveJellyTheme.cardRadius.dp,
+        padding = LiveJellyTheme.cardPadding.dp
+    ) {
         Column(Modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Avatar(post.user, 42.dp, Modifier.clickable { onProfile() })
