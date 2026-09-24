@@ -1607,7 +1607,9 @@ private fun AuthHeader(
         .split(",").map { it.trim() }.filter { it.isNotBlank() }
     val votingEnabled = settings.optInt("voting", 1) != 0
     val brandIconSize = settings.optInt("site_icon_size", 34).coerceIn(20, 96).dp
-    val responsiveBrandFontSize = (LocalConfiguration.current.screenWidthDp * 0.08f).coerceIn(24f, 34f).toInt()
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+    val responsiveBrandFontSize = (screenWidthDp * 0.08f).coerceIn(24f, 34f).toInt()
+    val responsiveNavRadius = if (screenWidthDp <= 700) 22.dp else LiveJellyTheme.navRadius.dp
 
     Column(
         Modifier
@@ -1742,11 +1744,11 @@ private fun AuthHeader(
                 .fillMaxWidth()
                 .shadow(
                     10.dp,
-                    RoundedCornerShape(LiveJellyTheme.navRadius.dp),
+                    RoundedCornerShape(responsiveNavRadius),
                     ambientColor = Color(0x1F2D5789),
                     spotColor = Color(0x1F2D5789)
                 )
-                .clip(RoundedCornerShape(LiveJellyTheme.navRadius.dp))
+                .clip(RoundedCornerShape(responsiveNavRadius))
                 .background(
                     Brush.linearGradient(
                         listOf(
@@ -1756,7 +1758,7 @@ private fun AuthHeader(
                         )
                     )
                 )
-                .border(2.dp, Color.White, RoundedCornerShape(LiveJellyTheme.navRadius.dp))
+                .border(2.dp, Color.White, RoundedCornerShape(responsiveNavRadius))
         ) {
             Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 5.dp)) {
                 navOrder.forEach { key ->
@@ -1896,12 +1898,18 @@ private fun QuickHeader(text: String, icon: Int, modifier: Modifier, onClick: ()
 
 @Composable
 private fun NavItem(text: String, icon: Int, active: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val compact = LocalConfiguration.current.screenWidthDp <= 390
+    val widthDp = LocalConfiguration.current.screenWidthDp
+    val compact = widthDp <= 390
+    val navHeight = when {
+        widthDp <= 390 -> 64.dp
+        widthDp <= 700 -> 68.dp
+        else -> LiveJellyTheme.navHeight.dp
+    }
     val navIconSize = if (compact) 30.dp else 32.dp
     val navLabelSize = if (compact) 8.4f else 9f
     Column(
         modifier
-            .height(LiveJellyTheme.navHeight.dp)
+            .height(navHeight)
             .clip(RoundedCornerShape(20.dp))
             .clickable { onClick() }
             .background(
