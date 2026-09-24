@@ -517,7 +517,12 @@ private fun V95VoteFeedCard(vote: Vote, onOpen: () -> Unit) {
     }
     if (ended && winner != null) {
         val winnerVotes = if (vote.winnerUserId == vote.leftUserId) vote.votes1 else vote.votes2
-        JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp, padding = 14.dp, onClick = onOpen) {
+        JellyGlass(
+            Modifier.fillMaxWidth().heightIn(min = 220.dp),
+            radius = LiveJellyTheme.cardRadius.dp,
+            padding = LiveJellyTheme.cardPadding.dp,
+            onClick = onOpen
+        ) {
             Column(
                 Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -535,7 +540,12 @@ private fun V95VoteFeedCard(vote: Vote, onOpen: () -> Unit) {
         return
     }
 
-    JellyGlass(Modifier.fillMaxWidth(), radius = 28.dp, padding = 13.dp, onClick = onOpen) {
+    JellyGlass(
+        Modifier.fillMaxWidth(),
+        radius = LiveJellyTheme.cardRadius.dp,
+        padding = LiveJellyTheme.cardPadding.dp,
+        onClick = onOpen
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(9.dp).clip(RoundedCornerShape(99.dp)).background(JellyGreen))
@@ -544,14 +554,38 @@ private fun V95VoteFeedCard(vote: Vote, onOpen: () -> Unit) {
                 Spacer(Modifier.weight(1f))
                 Text("Tap to open", color = JellyMuted, fontSize = 8.5f.sp)
             }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                VoteTeaserSide(vote.user1, if (vote.resultRevealed) vote.votes1 else null, Modifier.weight(1f))
-                Column(Modifier.width(88.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    JellyIcon(JellyIcons.Vote, size = 31.dp)
-                    Text("VS", color = JellyInk, fontWeight = FontWeight.Black, fontSize = 15.sp)
-                    if (vote.endsAt.isNotBlank()) Text("LIVE", color = JellyGreen, fontWeight = FontWeight.Black, fontSize = 8.sp)
+            JellyGlass(Modifier.fillMaxWidth(), radius = 24.dp, padding = 10.dp) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    VoteTeaserSide(vote.user1, if (vote.resultRevealed) vote.votes1 else null, Modifier.weight(1f))
+                    Column(
+                        Modifier.width(112.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        if (vote.endsAt.isNotBlank()) {
+                            Text("LIVE", color = JellyGreen, fontWeight = FontWeight.Black, fontSize = 8.dp.value.sp)
+                        }
+                        Box(
+                            Modifier
+                                .size(58.dp)
+                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .background(
+                                    Brush.radialGradient(
+                                        listOf(
+                                            Color.White,
+                                            Color(0xFFF678EB).copy(alpha = .82f),
+                                            Color(0xFF4BA7FF).copy(alpha = .90f)
+                                        )
+                                    )
+                                )
+                                .border(2.dp, Color.White.copy(alpha = .90f), androidx.compose.foundation.shape.CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("VS", color = Color.White, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                        }
+                    }
+                    VoteTeaserSide(vote.user2, if (vote.resultRevealed) vote.votes2 else null, Modifier.weight(1f))
                 }
-                VoteTeaserSide(vote.user2, if (vote.resultRevealed) vote.votes2 else null, Modifier.weight(1f))
             }
             Text(
                 if (vote.resultRevealed) "Live vote counts are visible · Open match →"
@@ -569,7 +603,7 @@ private fun V95VoteFeedCard(vote: Vote, onOpen: () -> Unit) {
 private fun VoteTeaserSide(user: User?, votes: Int?, modifier: Modifier = Modifier) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         if (user != null) {
-            Avatar(user, 56.dp)
+            Avatar(user, 64.dp)
             UserName(user, 9)
         } else {
             JellyIcon(JellyIcons.User, size = 48.dp)
@@ -603,7 +637,7 @@ private fun ComposerTool(icon: Int, label: String, modifier: Modifier = Modifier
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         modifier = modifier
-            .height(56.dp)
+            .height(54.dp)
             .clip(RoundedCornerShape(14.dp))
             .clickable { onClick() }
             .padding(vertical = 5.dp, horizontal = 2.dp)
@@ -1022,12 +1056,14 @@ private fun PostAction(icon: Int, label: String, count: Int, modifier: Modifier 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        JellyIcon(icon, size = 28.dp)
-        Spacer(Modifier.width(3.dp))
+        val screenWidth = LocalConfiguration.current.screenWidthDp
+        val compact = screenWidth <= 390
+        JellyIcon(icon, size = if (compact) 25.dp else 28.dp)
+        Spacer(Modifier.width(if (compact) 2.dp else 3.dp))
         Text(
             label,
             color = Color(0xFF4C4176),
-            fontSize = 9.sp,
+            fontSize = (if (screenWidth <= 360) 8.75f else 9.5f).sp,
             fontWeight = FontWeight.Black,
             maxLines = 1
         )
@@ -1047,9 +1083,11 @@ private fun PostStat(icon: Int, label: String, count: Int, modifier: Modifier = 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        JellyIcon(icon, size = 28.dp)
-        Spacer(Modifier.width(3.dp))
-        Text(label, color = Color(0xFF4C4176), fontSize = 9.sp, fontWeight = FontWeight.Black, maxLines = 1)
+        val screenWidth = LocalConfiguration.current.screenWidthDp
+        val compact = screenWidth <= 390
+        JellyIcon(icon, size = if (compact) 25.dp else 28.dp)
+        Spacer(Modifier.width(if (compact) 2.dp else 3.dp))
+        Text(label, color = Color(0xFF4C4176), fontSize = (if (screenWidth <= 360) 8.75f else 9.5f).sp, fontWeight = FontWeight.Black, maxLines = 1)
         if (count > 0) {
             Spacer(Modifier.width(2.dp))
             Text(count.toString(), color = Color(0xFF4C4176), fontSize = 8.5f.sp, fontWeight = FontWeight.Black)
