@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -414,6 +415,14 @@ fun MyChhachhApp() {
         loadFeed(true)
         if (features.optInt("voting", 1) != 0) loadVotes()
         loadWeather()
+    }
+
+    LaunchedEffect(me?.id) {
+        if (me == null) return@LaunchedEffect
+        while (true) {
+            runCatching { withContext(Dispatchers.IO) { api.presence() } }
+            delay(120_000L)
+        }
     }
 
     LaunchedEffect(feedMode) { if (!booting) loadFeed(true) }
