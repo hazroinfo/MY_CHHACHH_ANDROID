@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +41,13 @@ import com.mychhachh.app.ui.theme.JellyMuted
 import com.mychhachh.app.ui.theme.LiveJellyTheme
 import org.json.JSONObject
 import kotlinx.coroutines.launch
+
+@Composable
+private fun v95FramePadding() = if (LocalConfiguration.current.screenWidthDp <= 700) {
+    minOf(LiveJellyTheme.framePadding, 8f).dp
+} else {
+    LiveJellyTheme.framePadding.dp
+}
 
 @Composable
 fun ProfileScreen(
@@ -88,7 +96,7 @@ fun ProfileScreen(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(minOf(LiveJellyTheme.framePadding, 8f).dp, 8.dp, minOf(LiveJellyTheme.framePadding, 8f).dp, 18.dp),
+        contentPadding = PaddingValues(v95FramePadding(), 8.dp, v95FramePadding(), 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         if (loading && user == null) item { LoadingBlock() }
@@ -967,7 +975,7 @@ fun ShopDetailScreen(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(minOf(LiveJellyTheme.framePadding, 8f).dp, 8.dp, minOf(LiveJellyTheme.framePadding, 8f).dp, 18.dp),
+        contentPadding = PaddingValues(v95FramePadding(), 8.dp, v95FramePadding(), 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         if (loading && shop == null) item { LoadingBlock() }
@@ -1479,7 +1487,7 @@ fun SettingsScreen(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(minOf(LiveJellyTheme.framePadding, 8f).dp, 8.dp, minOf(LiveJellyTheme.framePadding, 8f).dp, 18.dp),
+        contentPadding = PaddingValues(v95FramePadding(), 8.dp, v95FramePadding(), 18.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item { PageTitle("Settings & Privacy", "Manage your privacy and experience", JellyIcons.Gear) }
