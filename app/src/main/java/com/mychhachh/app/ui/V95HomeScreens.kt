@@ -84,7 +84,7 @@ internal fun V95Home(c: V95Controller) {
 
 @Composable
 internal fun V95Tab(text: String, active: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(999.dp)
+    val shape = RoundedCornerShape(LocalV95Features.current.optDouble("theme_button_radius", 18.0).toFloat().dp)
     Box(
         modifier
             .height(43.dp)
