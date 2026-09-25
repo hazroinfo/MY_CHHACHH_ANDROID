@@ -133,7 +133,12 @@ private fun V95AdminFeatureToggles(c: V95Controller) {
         "shops" to c.t("Shops", "دکانیں"),
         "follows" to c.t("Follows", "فالو"),
         "registration_enabled" to c.t("Registration", "رجسٹریشن"),
-        "password_login_enabled" to c.t("Password login", "پاس ورڈ لاگ اِن")
+        "password_login_enabled" to c.t("Password login", "پاس ورڈ لاگ اِن"),
+        "verification_unverified_post_photo" to c.t("Photo before verification", "ویریفکیشن سے پہلے پوسٹ فوٹو"),
+        "verification_unverified_post_video" to c.t("Video before verification", "ویریفکیشن سے پہلے پوسٹ ویڈیو"),
+        "verification_unverified_message_photo" to c.t("Message photo before verification", "ویریفکیشن سے پہلے میسج فوٹو"),
+        "verification_unverified_announcement_photo" to c.t("Announcement photo before verification", "ویریفکیشن سے پہلے اعلان فوٹو"),
+        "verification_auto_blue_tick" to c.t("Auto blue tick", "آٹو بلیو ٹک")
     )
 
     V95GlassCard {
@@ -192,8 +197,13 @@ private fun V95AdminUser(c: V95Controller, item: JSONObject, id: Long) {
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         V95Button(c.t("Comments", "کمنٹس"), Modifier.weight(1f)) { c.runAdminAction("user_setting", id, JSONObject().put("key", "allow_comments")) }
+        V95Button(c.t("Likes", "لائکس"), Modifier.weight(1f)) { c.runAdminAction("user_setting", id, JSONObject().put("key", "allow_likes")) }
         V95Button(c.t("Messages", "پیغامات"), Modifier.weight(1f)) { c.runAdminAction("user_setting", id, JSONObject().put("key", "allow_messages")) }
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        V95Button(c.t("Follows", "فالو"), Modifier.weight(1f)) { c.runAdminAction("user_setting", id, JSONObject().put("key", "allow_follows")) }
         V95Button(c.t("Delete", "حذف"), Modifier.weight(1f), danger = true) { c.runAdminAction("delete_user", id) }
+        Spacer(Modifier.weight(1f))
     }
 }
 
