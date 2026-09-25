@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalLayoutDirection
+import coil.compose.AsyncImage
 
 @Composable
 fun NativeV95App() {
@@ -136,7 +138,18 @@ private fun NativeHeader(c: V95Controller) {
         Row(Modifier.fillMaxWidth().height(47.dp), verticalAlignment = Alignment.CenterVertically) {
             NVIconButton(NVIcons.Menu, size = 43.dp, iconSize = 35.dp) { c.menuOpen = true }
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                NVBrand(if (compact) 20f else 22f)
+                val brandName = c.features.optString("site_name", "My Chhachh")
+                val brandLogo = c.features.optString("site_icon", "").trim()
+                if (brandLogo.isNotBlank()) {
+                    AsyncImage(
+                        model = brandLogo,
+                        contentDescription = brandName,
+                        modifier = Modifier.fillMaxWidth().height(42.dp).padding(horizontal = 6.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                } else {
+                    NVBrand(if (compact) 20f else 22f, brandName)
+                }
             }
             if (user != null) {
                 Box(
@@ -291,6 +304,22 @@ private fun NativeQuickCard(text: String, icon: Int, compact: Boolean, modifier:
 @Composable
 private fun NativeNav(c: V95Controller, compact: Boolean) {
     val shape = RoundedCornerShape(23.dp)
+    val definitions = linkedMapOf(
+        "home" to Triple(c.t("Home", "ہوم"), NVIcons.Home, V95Route.HOME),
+        "people" to Triple(c.t("People", "لوگ"), NVIcons.People, V95Route.PEOPLE),
+        "shop" to Triple(c.t("Shop", "دکانیں"), NVIcons.Shop, V95Route.SHOPS),
+        "map" to Triple(c.t("Map", "نقشہ"), NVIcons.Map, V95Route.MAP),
+        "messages" to Triple(c.t("Messages", "پیغامات"), NVIcons.Message, V95Route.MESSAGES)
+    )
+    val rawOrder = c.features.optString("theme_header_items", "home,people,shop,map,messages")
+    val orderedItems = rawOrder
+        .split(",")
+        .map { it.trim().lowercase() }
+        .filter { it.isNotBlank() }
+        .distinct()
+        .mapNotNull { definitions[it] }
+        .take(5)
+
     Row(
         Modifier
             .fillMaxWidth()
@@ -299,11 +328,9 @@ private fun NativeNav(c: V95Controller, compact: Boolean) {
             .border(1.5.dp, Color.White, shape)
             .padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 5.dp)
     ) {
-        NativeNavItem(c, c.t("Home", "ہوم"), NVIcons.Home, V95Route.HOME, compact)
-        NativeNavItem(c, c.t("People", "لوگ"), NVIcons.People, V95Route.PEOPLE, compact)
-        NativeNavItem(c, c.t("Shop", "دکانیں"), NVIcons.Shop, V95Route.SHOPS, compact)
-        NativeNavItem(c, c.t("Map", "نقشہ"), NVIcons.Map, V95Route.MAP, compact)
-        NativeNavItem(c, c.t("Messages", "پیغامات"), NVIcons.Message, V95Route.MESSAGES, compact)
+        orderedItems.forEach { (label, icon, route) ->
+            NativeNavItem(c, label, icon, route, compact)
+        }
     }
 }
 
@@ -359,17 +386,27 @@ private fun NativeSideMenu(c: V95Controller) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 NVIconButton(NVIcons.Close) { c.menuOpen = false }
             }
-            val menu = listOf(
-                Triple(c.t("Home", "ہوم"), NVIcons.Home, V95Route.HOME),
-                Triple(c.t("Voting", "ووٹنگ"), NVIcons.Vote, V95Route.VOTES),
-                Triple(c.t("Saved", "محفوظ"), NVIcons.Save, V95Route.SAVED),
-                Triple(c.t("Announcements", "اعلانات"), NVIcons.Announcement, V95Route.ANNOUNCEMENTS),
-                Triple(c.t("Notifications", "اطلاعات"), NVIcons.Bell, V95Route.NOTIFICATIONS),
-                Triple(c.t("Profile", "پروفائل"), NVIcons.User, V95Route.PROFILE),
-                Triple(c.t("Settings", "ترتیبات"), NVIcons.Gear, V95Route.SETTINGS),
-                Triple(c.t("Theme Builder", "تھیم بلڈر"), NVIcons.Palette, V95Route.THEME),
-                Triple(c.t("Admin Center", "ایڈمن سینٹر"), NVIcons.Shield, V95Route.ADMIN)
+            val menuDefinitions = linkedMapOf(
+                "home" to Triple(c.t("Home", "ہوم"), NVIcons.Home, V95Route.HOME),
+                "votes" to Triple(c.t("Voting", "ووٹنگ"), NVIcons.Vote, V95Route.VOTES),
+                "saved" to Triple(c.t("Saved", "محفوظ"), NVIcons.Save, V95Route.SAVED),
+                "announcements" to Triple(c.t("Announcements", "اعلانات"), NVIcons.Announcement, V95Route.ANNOUNCEMENTS),
+                "notifications" to Triple(c.t("Notifications", "اطلاعات"), NVIcons.Bell, V95Route.NOTIFICATIONS),
+                "settings" to Triple(c.t("Settings", "ترتیبات"), NVIcons.Gear, V95Route.SETTINGS),
+                "theme" to Triple(c.t("Theme Builder", "تھیم بلڈر"), NVIcons.Palette, V95Route.THEME),
+                "admin" to Triple(c.t("Admin Center", "ایڈمن سینٹر"), NVIcons.Shield, V95Route.ADMIN)
             )
+            val rawMenuOrder = c.features.optString(
+                "theme_menu_items",
+                "votes,saved,announcements,notifications,settings,theme,admin,logout"
+            )
+            val menuKeys = rawMenuOrder
+                .split(",")
+                .map { it.trim().lowercase() }
+                .filter { it.isNotBlank() }
+                .distinct()
+            val showLogout = "logout" in menuKeys
+            val menu = menuKeys.mapNotNull { menuDefinitions[it] }
             menu.forEach { (label, icon, route) ->
                 if (route != V95Route.ADMIN || c.user?.isAdmin == true) {
                     if (route != V95Route.PROFILE || c.user != null) {
@@ -403,7 +440,7 @@ private fun NativeSideMenu(c: V95Controller) {
                 }
             }
             Spacer(Modifier.weight(1f))
-            if (c.user != null) {
+            if (c.user != null && showLogout) {
                 Row(
                     Modifier
                         .fillMaxWidth()
