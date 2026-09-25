@@ -3,6 +3,7 @@ package com.mychhachh.app
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
@@ -158,6 +159,11 @@ class MainActivity : ComponentActivity() {
             @Deprecated("Deprecated in Java")
             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
                 return handleUri(Uri.parse(url))
+            }
+
+            override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                Log.i(WEBVIEW_LOG_TAG, "PAGE_STARTED $url")
             }
 
             override fun onPageCommitVisible(view: WebView, url: String) {

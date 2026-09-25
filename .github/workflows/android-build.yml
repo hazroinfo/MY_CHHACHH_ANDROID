@@ -187,11 +187,6 @@ jobs:
 
           adb logcat -d -v threadtime > "$ART/logcat.txt" || true
           adb logcat -d -v brief -s MyChhachhWebView:I > "$ART/webview-during-scroll.txt" || true
-          if grep -q "PAGE_FINISHED" "$ART/webview-during-scroll.txt"; then
-            echo "::error::Unexpected WebView navigation/reload occurred during repeated-scroll QA"
-            cat "$ART/webview-during-scroll.txt" || true
-            exit 1
-          fi
           adb shell dumpsys activity exit-info com.mychhachh.app > "$ART/exit-info.txt" || true
           adb shell dumpsys gfxinfo com.mychhachh.app > "$ART/gfxinfo-after-scroll.txt" || true
           grep -E "Total frames rendered:|Janky frames:|50th percentile:|90th percentile:|95th percentile:|99th percentile:|Number Missed Vsync:|Number Slow UI thread:|Number Slow issue draw commands:|Number Frame deadline missed:" "$ART/gfxinfo-after-scroll.txt" > "$ART/scroll-frame-summary.txt" || true
@@ -232,9 +227,19 @@ jobs:
             fi
           } | tee "$ART/scroll-frame-classification.txt"
 
+          qa_fail=0
+
+          # A PAGE_FINISHED can arrive late for the page that was already loading.
+          # A new PAGE_STARTED during the isolated scroll window is real reload/navigation evidence.
+          if grep -q "PAGE_STARTED" "$ART/webview-during-scroll.txt"; then
+            echo "::error::Unexpected real WebView navigation/reload started during repeated-scroll QA"
+            cat "$ART/webview-during-scroll.txt" || true
+            qa_fail=1
+          fi
+
           if [ "$janky_pct" -gt 15 ] || [ "$missed_vsync_pct" -gt 15 ] || [ "$slow_ui_pct" -gt 10 ] || [ "$deadline_missed_pct" -gt 15 ]; then
             echo "::error::Repeated-scroll smoothness gate failed: janky=$janky_pct%, missed-vsync=$missed_vsync_pct%, slow-ui=$slow_ui_pct%, deadline-missed=$deadline_missed_pct%"
-            exit 1
+            qa_fail=1
           fi
 
           if grep -E "FATAL EXCEPTION|ANR in com\.mychhachh\.app|Process: com\.mychhachh\.app.*has died" "$ART/logcat.txt"; then
@@ -242,15 +247,19 @@ jobs:
             adb shell sh -c 'ls -lt /data/anr 2>/dev/null | head -20' > "$ART/anr-files.txt" 2>&1 || true
             adb shell sh -c 'for f in /data/anr/anr_*; do echo "===== $f ====="; cat "$f"; done' > "$ART/anr-traces.txt" 2>&1 || true
             echo "::error::Crash or ANR evidence found in logcat"
-            exit 1
+            qa_fail=1
           fi
 
           if grep -E "REASON_CRASH|REASON_ANR" "$ART/exit-info.txt"; then
             echo "::error::Crash/ANR exit reason found"
+            qa_fail=1
+          fi
+
+          if [ "$qa_fail" -ne 0 ]; then
             exit 1
           fi
 
-          echo "PASS: install, verified live My Chhachh WebView load, process-alive, repeated scroll, screenshots and crash/ANR checks completed."
+          echo "PASS: install, verified live My Chhachh WebView load, process-alive, repeated scroll, frame gate, screenshots and crash/ANR checks completed."
 
       - name: Upload fresh APK
         if: always()
