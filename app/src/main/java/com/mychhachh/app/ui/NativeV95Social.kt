@@ -799,6 +799,11 @@ private fun NativeAnnouncementComposer(c: V95Controller) {
 
 @Composable
 private fun NativeAnnouncementCard(c: V95Controller, item: Announcement) {
+    var editOpen by remember(item.id, item.text) { mutableStateOf(false) }
+    var editText by remember(item.id, item.text) { mutableStateOf(item.text) }
+    var deleteConfirm by remember(item.id) { mutableStateOf(false) }
+    val canManage = c.user?.isAdmin == true || (c.user?.id != null && c.user?.id == item.author?.id)
+
     NVCard(modifier = Modifier.clickable { c.openAnnouncement(item) }, radius = 22.dp, padding = 11.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             val author = item.author
@@ -820,10 +825,58 @@ private fun NativeAnnouncementCard(c: V95Controller, item: Announcement) {
                 if (c.user == null) c.route = V95Route.AUTH else c.likeAnnouncement(item)
             }
             NativeSmallAction(c.t("Comments", "کمنٹس") + " " + item.comments, NVIcons.Comment) { c.openAnnouncement(item) }
-            NativeSmallAction(c.t("Report", "رپورٹ"), NVIcons.More) {
-                if (c.user == null) c.route = V95Route.AUTH else c.reportAnnouncement(item)
+            if (canManage) {
+                NativeSmallAction(c.t("Edit", "ایڈٹ"), NVIcons.Edit) {
+                    editText = item.text
+                    editOpen = true
+                }
+                NativeSmallAction(c.t("Delete", "حذف"), NVIcons.Delete) {
+                    deleteConfirm = true
+                }
+            } else {
+                NativeSmallAction(c.t("Report", "رپورٹ"), NVIcons.More) {
+                    if (c.user == null) c.route = V95Route.AUTH else c.reportAnnouncement(item)
+                }
             }
         }
+    }
+
+    if (editOpen) {
+        AlertDialog(
+            onDismissRequest = { editOpen = false },
+            title = { Text(c.t("Edit announcement", "اعلان ایڈٹ کریں"), fontWeight = FontWeight.Black) },
+            text = {
+                NVInput(editText, c.t("Announcement text", "اعلان کا متن"), Modifier.fillMaxWidth(), singleLine = false) {
+                    editText = it
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { c.editAnnouncement(item, editText) { editOpen = false } },
+                    enabled = editText.isNotBlank() || !item.photo.isNullOrBlank() || !item.audio.isNullOrBlank()
+                ) { Text(c.t("Save", "محفوظ کریں"), fontWeight = FontWeight.Black) }
+            },
+            dismissButton = {
+                TextButton(onClick = { editOpen = false }) { Text(c.t("Cancel", "منسوخ")) }
+            }
+        )
+    }
+
+    if (deleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { deleteConfirm = false },
+            title = { Text(c.t("Delete announcement?", "اعلان حذف کریں؟"), fontWeight = FontWeight.Black) },
+            text = { Text(c.t("This announcement will be permanently deleted.", "یہ اعلان مستقل طور پر حذف ہو جائے گا۔")) },
+            confirmButton = {
+                TextButton(onClick = {
+                    deleteConfirm = false
+                    c.deleteAnnouncement(item)
+                }) { Text(c.t("Delete", "حذف کریں"), color = NVDanger, fontWeight = FontWeight.Black) }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteConfirm = false }) { Text(c.t("Cancel", "منسوخ")) }
+            }
+        )
     }
 }
 
