@@ -3,6 +3,8 @@ name: WebView Final Stable QA
 on:
   push:
     branches: [ webview-final-stable ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
