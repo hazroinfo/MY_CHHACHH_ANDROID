@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
@@ -57,15 +57,123 @@ jobs:
       - name: Install Android SDK packages
         shell: bash
         run: |
+          set -euo pipefail
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          "$SDKMANAGER"             "platform-tools"             "platforms;android-36"             "build-tools;36.0.0"             "emulator"             "system-images;android-35;google_apis;x86_64"
 
       - name: Build APK and Play Store bundle
         shell: bash
         run: |
+          set -euo pipefail
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace clean assembleDebug bundleRelease
+
+      - name: Boot Android emulator and run full ADB smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ARTIFACT_DIR="$GITHUB_WORKSPACE/emulator-artifacts"
+          mkdir -p "$ARTIFACT_DIR"
+
+          export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+          AVDMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
+
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm || true
+          fi
+
+          echo "no" | "$AVDMANAGER" create avd             --force             --name MyChhachhCI             --package "system-images;android-35;google_apis;x86_64"             --device "pixel_6"
+
+          adb kill-server || true
+          adb start-server
+
+          start_emulator() {
+            nohup emulator               -avd MyChhachhCI               -no-window               -noaudio               -no-boot-anim               -no-snapshot               -no-snapshot-save               -wipe-data               -gpu swiftshader_indirect               > "$ARTIFACT_DIR/emulator.log" 2>&1 &
+            echo $! > "$ARTIFACT_DIR/emulator.pid"
+          }
+
+          wait_for_device() {
+            local deadline=$((SECONDS + 360))
+            while [ $SECONDS -lt $deadline ]; do
+              adb devices -l | tee "$ARTIFACT_DIR/adb-devices.txt"
+              state="$(adb get-state 2>/dev/null || true)"
+
+              if [ "$state" = "device" ]; then
+                boot="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+                if [ "$boot" = "1" ]; then
+                  return 0
+                fi
+              elif [ "$state" = "offline" ]; then
+                adb reconnect offline || true
+                adb kill-server || true
+                sleep 2
+                adb start-server
+              fi
+
+              sleep 5
+            done
+            return 1
+          }
+
+          start_emulator
+
+          if ! wait_for_device; then
+            echo "First emulator boot did not become a usable ADB device. Performing hard recovery."
+            adb emu kill || true
+            if [ -f "$ARTIFACT_DIR/emulator.pid" ]; then
+              kill "$(cat "$ARTIFACT_DIR/emulator.pid")" 2>/dev/null || true
+            fi
+            pkill -9 -f "emulator.*MyChhachhCI" || true
+            adb kill-server || true
+            sleep 3
+            adb start-server
+            start_emulator
+            wait_for_device
+          fi
+
+          echo "ADB device is online and Android boot completed."
+          adb devices -l | tee "$ARTIFACT_DIR/adb-devices-final.txt"
+          adb shell input keyevent 82 || true
+          adb shell wm dismiss-keyguard || true
+
+          adb install -r -t app/build/outputs/apk/debug/app-debug.apk             | tee "$ARTIFACT_DIR/install.txt"
+
+          adb logcat -c || true
+          adb shell am force-stop com.mychhachh.app || true
+          adb shell am start -W -n com.mychhachh.app/.MainActivity             | tee "$ARTIFACT_DIR/app-launch.txt"
+
+          sleep 10
+
+          adb shell dumpsys window windows             | grep -E "mCurrentFocus|mFocusedApp"             > "$ARTIFACT_DIR/window-focus.txt" || true
+
+          adb shell uiautomator dump /sdcard/mychhachh-window.xml || true
+          adb pull /sdcard/mychhachh-window.xml "$ARTIFACT_DIR/window.xml" || true
+
+          adb exec-out screencap -p > "$ARTIFACT_DIR/home-screen.png"
+
+          adb logcat -d -v threadtime             > "$ARTIFACT_DIR/logcat.txt" || true
+
+          if ! adb shell pidof com.mychhachh.app > "$ARTIFACT_DIR/app-pid.txt"; then
+            echo "::error::My Chhachh is not running after launch. Check logcat and screenshot artifacts."
+            exit 1
+          fi
+
+          if [ ! -s "$ARTIFACT_DIR/home-screen.png" ]; then
+            echo "::error::Emulator screenshot was not created."
+            exit 1
+          fi
+
+          echo "My Chhachh launched successfully and emulator screenshot was captured."
+
+      - name: Upload emulator screenshot and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MY_CHHACHH-emulator-proof
+          path: emulator-artifacts/
+          if-no-files-found: warn
 
       - name: Upload build outputs
         if: success()
