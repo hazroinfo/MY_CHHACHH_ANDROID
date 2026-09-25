@@ -109,7 +109,8 @@ jobs:
           network_deadline=$((SECONDS + 180))
           network_ok=0
           while [ $SECONDS -lt $network_deadline ]; do
-            if adb shell ping -c 1 -W 2 chhachh.pages.dev > "$ARTIFACT_DIR/network-check.txt" 2>&1; then
+            adb shell ping -c 1 -W 1 chhachh.pages.dev > "$ARTIFACT_DIR/network-check.txt" 2>&1 || true
+            if grep -q 'PING chhachh.pages.dev (' "$ARTIFACT_DIR/network-check.txt"; then
               network_ok=1
               break
             fi
