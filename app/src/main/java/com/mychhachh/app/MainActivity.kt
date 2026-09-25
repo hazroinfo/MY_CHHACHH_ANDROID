@@ -148,7 +148,7 @@ class MainActivity : ComponentActivity() {
         webView.isVerticalScrollBarEnabled = false
         webView.isHorizontalScrollBarEnabled = false
 
-        installDocumentStartPerformanceGuard()
+        installDocumentStartLoaderGuard()
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -258,21 +258,21 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun installDocumentStartPerformanceGuard() {
+    private fun installDocumentStartLoaderGuard() {
         if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
-            Log.w(WEBVIEW_LOG_TAG, "DOCUMENT_START_SCRIPT unavailable")
+            Log.w(WEBVIEW_LOG_TAG, "DOCUMENT_START_SCRIPT unavailable; using page-commit fallback")
             return
         }
 
         WebViewCompat.addDocumentStartJavaScript(
             webView,
-            DOCUMENT_START_PERF_JS,
-            setOf("https://chhachh.pages.dev", "https://*.chhachh.pages.dev")
+            LOADER_GUARD_JS,
+            setOf("https://chhachh.pages.dev")
         )
     }
 
     private fun applyNativePageFixes(view: WebView) {
-        view.evaluateJavascript(NATIVE_PAGE_FIXES_JS, null)
+        view.evaluateJavascript(LOADER_GUARD_JS, null)
     }
 
     private fun handleUri(uri: Uri): Boolean {
@@ -340,192 +340,19 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val HOME_URL = "https://chhachh.pages.dev/"
         private const val WEBVIEW_LOG_TAG = "MyChhachhWebView"
-        private const val DOCUMENT_START_PERF_JS = """
+        private const val LOADER_GUARD_JS = """
             (function(){
               try {
-                if (window.__mcAndroidScrollPerfBoot) return;
-                window.__mcAndroidScrollPerfBoot = 1;
-
-                var NativeMO = window.MutationObserver;
-                if (!NativeMO) return;
-
-                var now = function(){
-                  return (window.performance && typeof performance.now === 'function')
-                    ? performance.now()
-                    : Date.now();
-                };
-                var scrollBusyUntil = 0;
-                var markScrollBusy = function(ms){
-                  var until = now() + ms;
-                  if (until > scrollBusyUntil) scrollBusyUntil = until;
-                };
-
-                addEventListener('scroll', function(){ markScrollBusy(180); }, {passive:true,capture:true});
-                addEventListener('touchstart', function(){ markScrollBusy(360); }, {passive:true,capture:true});
-                addEventListener('touchmove', function(){ markScrollBusy(220); }, {passive:true,capture:true});
-                addEventListener('touchend', function(){ markScrollBusy(120); }, {passive:true,capture:true});
-
-                function AndroidMutationObserver(callback){
-                  var globalSubtree = false;
-                  var queued = [];
-                  var timer = 0;
-                  var nativeObserver;
-
-                  function flush(){
-                    timer = 0;
-                    var remaining = scrollBusyUntil - now();
-                    if (globalSubtree && remaining > 0) {
-                      timer = setTimeout(flush, Math.min(220, Math.ceil(remaining) + 16));
-                      return;
-                    }
-                    if (!queued.length) return;
-                    var records = queued.splice(0, queued.length);
-                    callback.call(nativeObserver, records, nativeObserver);
-                  }
-
-                  nativeObserver = new NativeMO(function(records){
-                    if (!globalSubtree) {
-                      callback.call(nativeObserver, records, nativeObserver);
-                      return;
-                    }
-                    Array.prototype.push.apply(queued, records);
-                    if (timer) return;
-                    var remaining = scrollBusyUntil - now();
-                    timer = setTimeout(flush, remaining > 0 ? Math.min(220, Math.ceil(remaining) + 16) : 32);
-                  });
-
-                  var nativeObserve = nativeObserver.observe.bind(nativeObserver);
-                  nativeObserver.observe = function(target, options){
-                    try {
-                      if (
-                        target === document.documentElement &&
-                        options &&
-                        options.childList &&
-                        options.subtree
-                      ) {
-                        globalSubtree = true;
-                      }
-                    } catch (_) {}
-                    return nativeObserve(target, options);
-                  };
-
-                  var nativeDisconnect = nativeObserver.disconnect.bind(nativeObserver);
-                  nativeObserver.disconnect = function(){
-                    if (timer) clearTimeout(timer);
-                    timer = 0;
-                    queued.length = 0;
-                    return nativeDisconnect();
-                  };
-
-                  return nativeObserver;
-                }
-
-                AndroidMutationObserver.prototype = NativeMO.prototype;
-                window.MutationObserver = AndroidMutationObserver;
-                if (window.WebKitMutationObserver === NativeMO) {
-                  window.WebKitMutationObserver = AndroidMutationObserver;
-                }
+                var STYLE_ID='__mc_android_loader_guard';
+                if(document.getElementById(STYLE_ID)) return;
+                var s=document.createElement('style');
+                s.id=STYLE_ID;
+                s.textContent=
+                  '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}';
+                (document.head||document.documentElement).appendChild(s);
               } catch (_) {}
             })();
         """
 
-        private const val NATIVE_PAGE_FIXES_JS = """
-            (function(){
-              try {
-                var STYLE_ID='__mc_android_native_fixes';
-
-                function ensureStyle(){
-                  if(document.getElementById(STYLE_ID)) return;
-                  var s=document.createElement('style');
-                  s.id=STYLE_ID;
-                  s.textContent=
-                    '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}' +
-                    'html,html body.mc-android-smooth{scroll-behavior:auto!important;overscroll-behavior-y:none!important}' +
-                    'html body.mc-android-smooth.weather-theme-ready,html body.mc-android-smooth.tod-night{background-attachment:scroll!important}' +
-                    'html body.mc-android-smooth .top,html body.mc-android-smooth.weather-theme-ready .top,html body.mc-android-smooth.tod-night .top,html body.mc-android-smooth .card,html body.mc-android-smooth.weather-theme-ready .card,html body.mc-android-smooth.tod-night .card,html body.mc-android-smooth .community-footer,html body.mc-android-smooth .side-menu,html body.mc-android-smooth .faux-search,html body.mc-android-smooth .page-heading,html body.mc-android-smooth .global-notice{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}' +
-                    'html body.mc-android-smooth #chhachhWeatherBg{animation:none!important;transform:none!important;filter:none!important;background-attachment:scroll!important;will-change:auto!important}' +
-                    'html body.mc-android-smooth #chhachhWeatherBg:before,html body.mc-android-smooth #chhachhWeatherBg:after{display:none!important;animation:none!important;filter:none!important}' +
-                    'html body.mc-android-smooth #chhachhWeatherBg>*{display:none!important;animation:none!important;filter:none!important;transform:none!important;will-change:auto!important}' +
-                    'html body.mc-android-smooth #mcLiveWeatherStage{transition:none!important;will-change:auto!important}' +
-                    'html body.mc-android-smooth #mcLiveWeatherStage .mcwx-photo{inset:0!important;transform:none!important;transition:none!important;filter:none!important;will-change:auto!important}' +
-                    'html body.mc-android-smooth.mcwx-night #mcLiveWeatherStage .mcwx-photo{filter:none!important}' +
-                    'html body.mc-android-smooth #mcLiveWeatherStage .mcwx-tone{transition:none!important}' +
-                    'html body.mc-android-smooth #mcLiveWeatherStage .mcwx-cloud,html body.mc-android-smooth #mcLiveWeatherStage .mcwx-haze,html body.mc-android-smooth #mcLiveWeatherStage .mcwx-sun,html body.mc-android-smooth #mcLiveWeatherStage .mcwx-moon,html body.mc-android-smooth #mcLiveWeatherStage .mcwx-stars,html body.mc-android-smooth #mcLiveWeatherStage .mcwx-fog,html body.mc-android-smooth #mcLiveWeatherStage .mcwx-rain,html body.mc-android-smooth #mcLiveWeatherStage .mcwx-flash{display:none!important;opacity:0!important;animation:none!important;filter:none!important;transform:none!important;will-change:auto!important}' +
-                    'html body.mc-android-smooth video{will-change:auto!important;transform:none!important}';
-                  (document.head||document.documentElement).appendChild(s);
-                }
-
-                function applyFiniteFixes(){
-                  ensureStyle();
-                  if(document.body){
-                    document.body.classList.add('mc-android-smooth','theme-motion-off');
-                  }
-
-                  var legacy=document.getElementById('chhachhWeatherBg');
-                  if(legacy){
-                    legacy.style.setProperty('animation','none','important');
-                    legacy.style.setProperty('transform','none','important');
-                    legacy.style.setProperty('filter','none','important');
-                    legacy.style.setProperty('background-attachment','scroll','important');
-                    legacy.style.setProperty('will-change','auto','important');
-                    Array.prototype.forEach.call(legacy.children,function(el){
-                      el.style.setProperty('display','none','important');
-                      el.style.setProperty('animation','none','important');
-                      el.style.setProperty('filter','none','important');
-                      el.style.setProperty('will-change','auto','important');
-                    });
-                  }
-
-                  var stage=document.getElementById('mcLiveWeatherStage');
-                  if(stage){
-                    stage.style.setProperty('transition','none','important');
-                    stage.style.setProperty('will-change','auto','important');
-                    var photo=stage.querySelector('.mcwx-photo');
-                    if(photo){
-                      photo.style.setProperty('inset','0','important');
-                      photo.style.setProperty('transform','none','important');
-                      photo.style.setProperty('transition','none','important');
-                      photo.style.setProperty('filter','none','important');
-                      photo.style.setProperty('will-change','auto','important');
-                    }
-                    var tone=stage.querySelector('.mcwx-tone');
-                    if(tone) tone.style.setProperty('transition','none','important');
-                    Array.prototype.forEach.call(
-                      stage.querySelectorAll('.mcwx-cloud,.mcwx-haze,.mcwx-sun,.mcwx-moon,.mcwx-stars,.mcwx-fog,.mcwx-rain,.mcwx-flash'),
-                      function(el){
-                        el.style.setProperty('display','none','important');
-                        el.style.setProperty('opacity','0','important');
-                        el.style.setProperty('animation','none','important');
-                        el.style.setProperty('filter','none','important');
-                        el.style.setProperty('transform','none','important');
-                        el.style.setProperty('will-change','auto','important');
-                      }
-                    );
-                  }
-
-                  Array.prototype.forEach.call(document.querySelectorAll('video'),function(v){
-                    try{
-                      v.autoplay=false;
-                      v.removeAttribute('autoplay');
-                      v.preload='metadata';
-                      v.setAttribute('playsinline','');
-                      v.setAttribute('webkit-playsinline','');
-                    }catch(_){}
-                  });
-                  Array.prototype.forEach.call(document.querySelectorAll('img'),function(img){
-                    try{
-                      if(!img.hasAttribute('loading')) img.setAttribute('loading','lazy');
-                      img.setAttribute('decoding','async');
-                    }catch(_){}
-                  });
-                }
-
-                applyFiniteFixes();
-                setTimeout(applyFiniteFixes,350);
-                setTimeout(applyFiniteFixes,1400);
-                setTimeout(applyFiniteFixes,3200);
-              } catch(e) {}
-            })();
-        """
     }
 }
