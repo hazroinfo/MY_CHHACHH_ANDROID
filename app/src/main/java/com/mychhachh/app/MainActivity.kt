@@ -114,6 +114,21 @@ class MainActivity : ComponentActivity() {
         webView.isHorizontalScrollBarEnabled = false
 
         webView.webViewClient = object : WebViewClient() {
+            override fun onPageStarted(view: WebView, url: String?, favicon: android.graphics.Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                applyAppOnlyPolish(view)
+            }
+
+            override fun onPageCommitVisible(view: WebView, url: String?) {
+                super.onPageCommitVisible(view, url)
+                applyAppOnlyPolish(view)
+            }
+
+            override fun onPageFinished(view: WebView, url: String?) {
+                super.onPageFinished(view, url)
+                applyAppOnlyPolish(view)
+            }
+
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 return handleUri(request.url)
             }
@@ -193,6 +208,60 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun applyAppOnlyPolish(view: WebView) {
+        val script = """
+            (function() {
+              try {
+                var STYLE_ID = 'mc-android-app-only-polish';
+                var style = document.getElementById(STYLE_ID);
+                if (!style) {
+                  style = document.createElement('style');
+                  style.id = STYLE_ID;
+                  (document.head || document.documentElement).appendChild(style);
+                }
+                style.textContent = [
+                  'header.top{top:4px!important;margin-top:4px!important;}',
+                  '#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;}'
+                ].join('');
+
+                function hideThinTopLoader(root) {
+                  var nodes = (root || document).querySelectorAll ? (root || document).querySelectorAll('*') : [];
+                  for (var i = 0; i < nodes.length; i++) {
+                    var el = nodes[i];
+                    if (!el || el.tagName === 'HEADER') continue;
+                    var name = ((el.id || '') + ' ' + (typeof el.className === 'string' ? el.className : '')).toLowerCase();
+                    var named = /(loader|loading|progress|pace|nprogress)/.test(name);
+                    if (!named) continue;
+                    var cs = getComputedStyle(el);
+                    var r = el.getBoundingClientRect();
+                    var positioned = cs.position === 'fixed' || cs.position === 'absolute';
+                    var thinTop = positioned && r.top <= 10 && r.height > 0 && r.height <= 8 && r.width >= innerWidth * 0.35;
+                    if (thinTop) {
+                      el.style.setProperty('display', 'none', 'important');
+                      el.style.setProperty('opacity', '0', 'important');
+                      el.style.setProperty('visibility', 'hidden', 'important');
+                    }
+                  }
+                }
+
+                hideThinTopLoader(document);
+                if (!window.__mcAndroidPolishObserver) {
+                  window.__mcAndroidPolishObserver = new MutationObserver(function(mutations) {
+                    for (var i = 0; i < mutations.length; i++) {
+                      for (var j = 0; j < mutations[i].addedNodes.length; j++) {
+                        var node = mutations[i].addedNodes[j];
+                        if (node && node.nodeType === 1) hideThinTopLoader(node.parentNode || document);
+                      }
+                    }
+                  });
+                  window.__mcAndroidPolishObserver.observe(document.documentElement, {childList:true, subtree:true});
+                }
+              } catch (e) {}
+            })();
+        """.trimIndent()
+        view.evaluateJavascript(script, null)
     }
 
     private fun handleUri(uri: Uri): Boolean {
