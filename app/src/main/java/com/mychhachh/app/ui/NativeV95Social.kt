@@ -606,8 +606,18 @@ internal fun NativeProfile(c: V95Controller) {
                             NVButton(c.t("Settings", "ترتیبات"), Modifier.weight(1f), icon = NVIcons.Gear) { c.route = V95Route.SETTINGS }
                         }
                     } else {
-                        NVButton(if (person.followed) c.t("Following", "فالوونگ") else c.t("Follow", "فالو"), primary = !person.followed, icon = NVIcons.Follow) {
-                            if (c.user == null) c.route = V95Route.AUTH else c.follow(person)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            NVButton(
+                                if (person.followed) c.t("Following", "فالوونگ") else c.t("Follow", "فالو"),
+                                Modifier.weight(1f),
+                                primary = !person.followed,
+                                icon = NVIcons.Follow
+                            ) {
+                                if (c.user == null) c.route = V95Route.AUTH else c.follow(person)
+                            }
+                            NVButton(c.t("Message", "پیغام"), Modifier.weight(1f), icon = NVIcons.Message) {
+                                if (c.user == null) c.route = V95Route.AUTH else c.openChat(person)
+                            }
                         }
                     }
                 }
@@ -615,16 +625,16 @@ internal fun NativeProfile(c: V95Controller) {
         }
         item {
             val details = listOf(
-                NVIcons.Pin to person.village,
-                NVIcons.Pin to person.area,
-                NVIcons.Map to person.city,
-                NVIcons.Home to person.hometown,
-                NVIcons.User to person.gender,
+                NVIcons.Village to person.village,
+                NVIcons.Mohalla to person.area,
+                NVIcons.City to person.city,
+                NVIcons.Hometown to person.hometown,
+                NVIcons.Gender to person.gender,
                 NVIcons.Heart to person.relationshipStatus,
-                NVIcons.Info to person.work,
-                NVIcons.Info to person.school,
+                NVIcons.Work to person.work,
+                NVIcons.School to person.school,
                 NVIcons.Phone to if (person.showPhone) person.phone else "",
-                NVIcons.Message to if (person.showEmail) person.email else ""
+                NVIcons.Mail to if (person.showEmail) person.email else ""
             ).filter { it.second.isNotBlank() }
 
             if (details.isNotEmpty()) {
@@ -639,6 +649,28 @@ internal fun NativeProfile(c: V95Controller) {
                                     Image(painterResource(icon), null, Modifier.size(25.dp))
                                     Spacer(Modifier.width(5.dp))
                                     Text(value, color = NVInk, fontSize = 9.5.sp, maxLines = 2)
+                                }
+                            }
+                            if (row.size == 1) Spacer(Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            val socials = listOf(
+                Triple(NVIcons.Facebook, "Facebook", "facebook" to person.socialFacebook),
+                Triple(NVIcons.Instagram, "Instagram", "instagram" to person.socialInstagram),
+                Triple(NVIcons.Youtube, "YouTube", "youtube" to person.socialYoutube),
+                Triple(NVIcons.Website, c.t("Website", "ویب سائٹ"), "website" to person.socialWebsite)
+            ).filter { it.third.second.isNotBlank() }
+            if (socials.isNotEmpty()) {
+                NVCard(radius = 22.dp, padding = 10.dp) {
+                    socials.chunked(2).forEach { row ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            row.forEach { (icon, label, target) ->
+                                NVButton(label, Modifier.weight(1f), icon = icon) {
+                                    c.openSocial(target.first, target.second)
                                 }
                             }
                             if (row.size == 1) Spacer(Modifier.weight(1f))
@@ -698,22 +730,42 @@ internal fun NativeShopDetail(c: V95Controller) {
         item {
             NVCard(radius = 22.dp, padding = 12.dp) {
                 val details = listOf(
-                    c.t("Village", "گاؤں") to shop.village,
-                    c.t("Area", "علاقہ") to shop.area,
-                    c.t("City", "شہر") to shop.city,
-                    c.t("Phone", "فون") to shop.phone,
-                    "WhatsApp" to shop.whatsapp,
-                    c.t("Address", "پتہ") to shop.location,
-                    c.t("Username", "یوزرنیم") to shop.username
-                ).filter { it.second.isNotBlank() }
-                details.forEach { (label, value) ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(label, color = NVMuted, fontSize = 10.sp)
+                    Triple(NVIcons.Village, c.t("Village", "گاؤں"), shop.village),
+                    Triple(NVIcons.Mohalla, c.t("Area", "علاقہ"), shop.area),
+                    Triple(NVIcons.City, c.t("City", "شہر"), shop.city),
+                    Triple(NVIcons.Phone, c.t("Phone", "فون"), shop.phone),
+                    Triple(NVIcons.Whatsapp, "WhatsApp", shop.whatsapp),
+                    Triple(NVIcons.Address, c.t("Address", "پتہ"), shop.location),
+                    Triple(NVIcons.User, c.t("Username", "یوزرنیم"), shop.username)
+                ).filter { it.third.isNotBlank() }
+                details.forEach { (icon, label, value) ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Image(painterResource(icon), null, Modifier.size(25.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(label, color = NVMuted, fontSize = 10.sp, modifier = Modifier.weight(1f))
                         Text(value, color = NVInk, fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
                     }
                 }
+                if (shop.phone.isNotBlank()) {
+                    NVButton(c.t("Call shop", "دکان کو کال کریں"), Modifier.fillMaxWidth(), icon = NVIcons.Phone) { c.dialPhone(shop.phone) }
+                }
+                if (shop.whatsapp.isNotBlank()) {
+                    NVButton("WhatsApp", Modifier.fillMaxWidth(), icon = NVIcons.Whatsapp) { c.openWhatsApp(shop.whatsapp) }
+                }
+                if (shop.locationUrl.isNotBlank() || shop.location.isNotBlank()) {
+                    NVButton(c.t("Start navigation", "نیویگیشن شروع کریں"), Modifier.fillMaxWidth(), primary = true, icon = NVIcons.Map) { c.navigateToShop(shop) }
+                }
                 NVButton(c.t("Followers", "فالوورز"), Modifier.fillMaxWidth()) { c.openShopFollowers(shop) }
             }
+        }
+        item {
+            NVHeading(c.t("Shop posts", "دکان کی پوسٹس"), c.t("Latest posts from this shop", "اس دکان کی تازہ پوسٹس"))
+        }
+        if (c.selectedShopPosts.isEmpty() && !c.busy) {
+            item { NVEmpty(c.t("No shop posts yet", "ابھی دکان کی کوئی پوسٹ نہیں")) }
+        }
+        items(c.selectedShopPosts, key = { "shop-" + it.id }) { post ->
+            NativePostCard(c, post)
         }
     }
 }
