@@ -87,13 +87,24 @@ jobs:
           mkdir -p "$ARTIFACT_DIR"
 
           export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
           AVDMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
+          mkdir -p "$ANDROID_AVD_HOME"
 
           if [ -e /dev/kvm ]; then
             sudo chmod 666 /dev/kvm || true
           fi
 
-          echo "no" | "$AVDMANAGER" create avd             --force             --name MyChhachhCI             --package "system-images;android-35;google_apis;x86_64"             --device "pixel_6"
+          rm -rf "$ANDROID_AVD_HOME/MyChhachhCI.avd" "$ANDROID_AVD_HOME/MyChhachhCI.ini"
+          echo "no" | "$AVDMANAGER" create avd --force --name MyChhachhCI --package "system-images;android-35;google_apis;x86_64" --device "pixel_6" --path "$ANDROID_AVD_HOME/MyChhachhCI.avd"
+          cat > "$ANDROID_AVD_HOME/MyChhachhCI.ini" <<EOF
+avd.ini.encoding=UTF-8
+path=$ANDROID_AVD_HOME/MyChhachhCI.avd
+path.rel=avd/MyChhachhCI.avd
+target=android-35
+EOF
+          emulator -list-avds | tee "$ARTIFACT_DIR/avd-list.txt"
+          grep -qx "MyChhachhCI" "$ARTIFACT_DIR/avd-list.txt"
 
           adb kill-server || true
           adb start-server
