@@ -101,7 +101,12 @@ internal fun V95ThemeBuilder(c: V95Controller) {
     var guestRegister by remember(featuresKey) { mutableStateOf(c.features.optInt("theme_guest_register_button", 1) != 0) }
 
     val headerAll = remember { listOf("home", "people", "shop", "map", "messages") }
-    val menuAll = remember { listOf("votes", "saved", "settings", "theme", "admin", "logout") }
+    val menuAll = remember {
+        listOf(
+            "home", "people", "shop", "votes", "saved", "map", "messages",
+            "announcements", "notifications", "profile", "settings", "theme", "admin", "logout"
+        )
+    }
 
     val headerOrder = remember(featuresKey) {
         mutableStateListOf<String>().apply {
