@@ -100,6 +100,7 @@ fun V95App() {
                             V95Route.RELATIONS -> V95Relations(c)
                             V95Route.THEME -> V95ThemeBuilder(c)
                             V95Route.ANNOUNCEMENT_DETAIL -> V95AnnouncementDetail(c)
+                            V95Route.VOTE_DETAIL -> V95VoteDetail(c)
                         }
                         if (c.busy) {
                             Box(Modifier.matchParentSize().background(Color.White.copy(alpha = .28f)), contentAlignment = Alignment.Center) {
