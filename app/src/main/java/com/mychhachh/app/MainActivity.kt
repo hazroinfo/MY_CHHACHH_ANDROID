@@ -23,7 +23,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : ComponentActivity() {
 
@@ -69,7 +71,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         WebView.setWebContentsDebuggingEnabled(false)
 
         val chromeBlue = Color.rgb(223, 247, 255)
@@ -93,9 +95,7 @@ class MainActivity : ComponentActivity() {
                 FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.MATCH_PARENT
-                ).apply {
-                    topMargin = headerGap
-                }
+                )
             )
 
             addView(
@@ -109,12 +109,18 @@ class MainActivity : ComponentActivity() {
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     topLineMaskHeight,
                     Gravity.TOP
-                ).apply {
-                    topMargin = headerGap
-                }
+                )
             )
         }
         setContentView(root)
+
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            val statusBars = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+            val navigationBars = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            view.setPadding(0, statusBars.top + headerGap, 0, navigationBars.bottom)
+            insets
+        }
+        ViewCompat.requestApplyInsets(root)
 
         configureWebView()
 

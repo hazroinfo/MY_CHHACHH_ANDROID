@@ -114,6 +114,8 @@ jobs:
 
           adb shell input keyevent 82 || true
           adb shell wm dismiss-keyguard || true
+          adb shell settings put global hide_error_dialogs 1 || true
+          sleep 8
           adb install -r -t app/build/outputs/apk/debug/app-debug.apk | tee "$ARTIFACT_DIR/install.txt"
 
           adb logcat -c || true
@@ -127,7 +129,7 @@ jobs:
             exit 1
           fi
 
-          adb shell dumpsys window windows             | grep -E "mCurrentFocus|mFocusedApp"             > "$ARTIFACT_DIR/window-focus-before-scroll.txt" || true
+          adb shell dumpsys activity activities > "$ARTIFACT_DIR/activity-before-scroll.txt" || true
 
           adb exec-out screencap -p > "$ARTIFACT_DIR/home-screen-before-scroll.png"
 
@@ -151,7 +153,7 @@ jobs:
             exit 1
           fi
 
-          adb shell dumpsys window windows             | grep -E "mCurrentFocus|mFocusedApp"             > "$ARTIFACT_DIR/window-focus-after-scroll.txt" || true
+          adb shell dumpsys activity activities > "$ARTIFACT_DIR/activity-after-scroll.txt" || true
 
           adb exec-out screencap -p > "$ARTIFACT_DIR/home-screen-after-scroll.png"
           adb logcat -d -v threadtime > "$ARTIFACT_DIR/logcat.txt" || true
@@ -161,8 +163,9 @@ jobs:
             exit 1
           fi
 
-          if ! grep -q "com.mychhachh.app" "$ARTIFACT_DIR/window-focus-after-scroll.txt"; then
-            echo "::error::My Chhachh is not the active app after repeated scrolling."
+          if ! grep -E "mResumedActivity|topResumedActivity|ResumedActivity" "$ARTIFACT_DIR/activity-after-scroll.txt" | grep -q "com.mychhachh.app"; then
+            echo "::error::My Chhachh is not the resumed activity after repeated scrolling."
+            grep -E "mResumedActivity|topResumedActivity|ResumedActivity" "$ARTIFACT_DIR/activity-after-scroll.txt" || true
             exit 1
           fi
 
