@@ -105,6 +105,23 @@ jobs:
           test "$(adb get-state 2>/dev/null || true)" = "device"
           test "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)" = "1"
 
+          echo "Waiting for emulator DNS/network before launching the WebView..."
+          network_deadline=$((SECONDS + 180))
+          network_ok=0
+          while [ $SECONDS -lt $network_deadline ]; do
+            if adb shell ping -c 1 -W 2 chhachh.pages.dev > "$ARTIFACT_DIR/network-check.txt" 2>&1; then
+              network_ok=1
+              break
+            fi
+            sleep 5
+          done
+          if [ "$network_ok" -ne 1 ]; then
+            echo "::error::Emulator could not resolve/reach chhachh.pages.dev before app launch."
+            cat "$ARTIFACT_DIR/network-check.txt" || true
+            exit 1
+          fi
+          echo "Emulator network is ready."
+
           adb install -r -t app/build/outputs/apk/debug/app-debug.apk | tee "$ARTIFACT_DIR/install.txt"
 
           PACKAGE="com.mychhachh.loaderfix"
@@ -115,8 +132,18 @@ jobs:
           adb shell am force-stop "$PACKAGE" || true
           adb shell am start -W -n "$COMPONENT" | tee "$ARTIFACT_DIR/app-launch.txt"
 
-          sleep 15
+          sleep 20
+          adb shell uiautomator dump /sdcard/mychhachh-window.xml || true
+          adb pull /sdcard/mychhachh-window.xml "$ARTIFACT_DIR/window-before.xml" || true
           adb exec-out screencap -p > "$ARTIFACT_DIR/before-scroll.png"
+
+          if [ -s "$ARTIFACT_DIR/window-before.xml" ]; then
+            if ! grep -Eqi 'My Chhachh|Connect with people|Voting|Weather|Announcements|For You' "$ARTIFACT_DIR/window-before.xml"; then
+              echo "::error::Live website UI text was not detected in the WebView accessibility tree."
+              cat "$ARTIFACT_DIR/window-before.xml" || true
+              exit 1
+            fi
+          fi
 
           for i in 1 2 3 4 5 6; do
             adb shell input swipe 360 1550 360 450 300
