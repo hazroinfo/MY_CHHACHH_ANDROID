@@ -122,24 +122,29 @@ jobs:
           # Android "Webpage not available" error page, so retry transient DNS/network
           # failures and require live visual evidence before scrolling.
           live_loaded=0
-          for attempt in 1 2 3 4; do
+          for attempt in 1 2 3; do
             adb shell am force-stop "$PACKAGE" || true
             adb shell am start -W -n "$COMPONENT" | tee "$ARTIFACT_DIR/app-launch-$attempt.txt"
-            sleep 20
 
-            adb exec-out screencap -p > "$ARTIFACT_DIR/live-attempt-$attempt.png"
-            bytes="$(stat -c%s "$ARTIFACT_DIR/live-attempt-$attempt.png" 2>/dev/null || echo 0)"
-            echo "Live screenshot attempt $attempt: $bytes bytes"
+            # Do not begin the scroll sample while the feed is still painting.
+            # A fully rendered current home feed is well above 1.2 MB, while the
+            # DNS error page is tiny and the header-only intermediate state is smaller.
+            for sample in 1 2 3 4 5 6; do
+              sleep 10
+              shot="$ARTIFACT_DIR/live-attempt-$attempt-sample-$sample.png"
+              adb exec-out screencap -p > "$shot"
+              bytes="$(stat -c%s "$shot" 2>/dev/null || echo 0)"
+              echo "Live screenshot attempt $attempt sample $sample: $bytes bytes"
 
-            if [ "$bytes" -ge 250000 ]; then
-              cp "$ARTIFACT_DIR/live-attempt-$attempt.png" "$ARTIFACT_DIR/before-scroll.png"
-              live_loaded=1
-              break
-            fi
+              if [ "$bytes" -ge 1200000 ]; then
+                cp "$shot" "$ARTIFACT_DIR/before-scroll.png"
+                live_loaded=1
+                break 2
+              fi
+            done
 
             adb logcat -d -v threadtime > "$ARTIFACT_DIR/logcat-attempt-$attempt.txt" || true
-            echo "Live My Chhachh not proven on attempt $attempt; retrying after transient WebView/network failure."
-            sleep 5
+            echo "Fully rendered My Chhachh feed not proven on attempt $attempt; restarting WebView."
           done
 
           if [ "$live_loaded" -ne 1 ]; then
