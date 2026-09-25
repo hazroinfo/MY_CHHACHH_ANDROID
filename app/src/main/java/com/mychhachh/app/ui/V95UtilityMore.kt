@@ -462,10 +462,21 @@ internal fun V95Map(c: V95Controller) {
     val context = LocalContext.current
     var query by remember { mutableStateOf("") }
     var target by remember { mutableStateOf<GeoPoint?>(null) }
+    var selectedPlace by remember { mutableStateOf<CheckinPlace?>(null) }
+
     Configuration.getInstance().userAgentValue = context.packageName
-    Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        V95PageHeading(c.t("Chhachh Map", "چھچھ نقشہ"), c.t("Real native map", "حقیقی نیٹو نقشہ"))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+
+    Column(
+        Modifier.fillMaxSize().padding(horizontal = 7.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        V95PageHeading(
+            if (c.mapPickForPost) c.t("Choose check-in", "چیک اِن منتخب کریں") else c.t("Chhachh Map", "چھچھ نقشہ"),
+            if (c.mapPickForPost) c.t("Search a real place and use it in your post", "حقیقی جگہ تلاش کر کے پوسٹ میں شامل کریں")
+            else c.t("Real native map", "حقیقی نیٹو نقشہ")
+        )
+
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             V95Field(query, c.t("Search destination", "منزل تلاش کریں"), Modifier.weight(1f)) { query = it }
             V95Button(c.t("Find", "تلاش"), primary = true, icon = V95Icons.Search) {
                 if (query.isNotBlank()) {
@@ -473,12 +484,34 @@ internal fun V95Map(c: V95Controller) {
                     CoroutineScope(Dispatchers.Main).launch {
                         try {
                             val places = withContext(Dispatchers.IO) { c.api.geocodePlaces(query) }
-                            target = places.firstOrNull()?.let { GeoPoint(it.lat, it.lng) }
-                        } catch (e: Throwable) { c.error = e.message } finally { c.busy = false }
+                            selectedPlace = places.firstOrNull()
+                            target = selectedPlace?.let { GeoPoint(it.lat, it.lng) }
+                            if (places.isEmpty()) c.error = c.t("No place found.", "جگہ نہیں ملی۔")
+                        } catch (e: Throwable) {
+                            c.error = e.message
+                        } finally {
+                            c.busy = false
+                        }
                     }
                 }
             }
         }
+
+        if (c.mapPickForPost) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                V95Button(c.t("Cancel", "منسوخ"), Modifier.weight(1f)) { c.cancelPostCheckin() }
+                V95Button(
+                    selectedPlace?.name?.take(34) ?: c.t("Select a place", "جگہ منتخب کریں"),
+                    Modifier.weight(1.6f),
+                    primary = selectedPlace != null,
+                    enabled = selectedPlace != null,
+                    icon = V95Icons.Pin
+                ) {
+                    selectedPlace?.let(c::setPostCheckin)
+                }
+            }
+        }
+
         V95GlassCard(Modifier.weight(1f), padding = 6.dp) {
             AndroidView(
                 factory = { ctx ->
@@ -492,7 +525,11 @@ internal fun V95Map(c: V95Controller) {
                 update = { map ->
                     target?.let { p ->
                         map.overlays.removeAll { it is Marker }
-                        val marker = Marker(map).apply { position = p; setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM) }
+                        val marker = Marker(map).apply {
+                            position = p
+                            title = selectedPlace?.name
+                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        }
                         map.overlays.add(marker)
                         map.controller.animateTo(p)
                         map.controller.setZoom(16.0)
