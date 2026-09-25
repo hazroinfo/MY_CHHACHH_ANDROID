@@ -4,7 +4,7 @@ name: WebView Final Stable QA
 
 on:
   push:
-    branches: [ webview-final-stable ]
+    branches: [ webview-clean-scroll-final ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -166,6 +166,7 @@ jobs:
           adb logcat -d -v threadtime > "$ART/logcat.txt" || true
           adb shell dumpsys activity exit-info com.mychhachh.app > "$ART/exit-info.txt" || true
           adb shell dumpsys gfxinfo com.mychhachh.app > "$ART/gfxinfo-after-scroll.txt" || true
+          grep -E "Total frames rendered:|Janky frames:|50th percentile:|90th percentile:|95th percentile:|99th percentile:|Number Missed Vsync:|Number Slow UI thread:|Number Slow issue draw commands:|Number Frame deadline missed:" "$ART/gfxinfo-after-scroll.txt" > "$ART/scroll-frame-summary.txt" || true
 
           if grep -E "FATAL EXCEPTION|ANR in com\.mychhachh\.app|Process: com\.mychhachh\.app.*has died" "$ART/logcat.txt"; then
             adb shell dumpsys activity lastanr > "$ART/lastanr.txt" 2>&1 || true
