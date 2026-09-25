@@ -1,6 +1,8 @@
 package com.mychhachh.app.ui
 
 import android.content.Context
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,7 +12,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -133,6 +137,28 @@ internal fun NativeSettings(c: V95Controller) {
     var privateProfile by remember(user.id, user.profileVisibility) { mutableStateOf(user.profileVisibility == "private") }
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
+    var verificationPhone by remember(user.id, user.phone) { mutableStateOf(user.phone) }
+    var verificationType by remember { mutableStateOf("id_card") }
+    var verificationFront by remember { mutableStateOf("") }
+    var verificationBack by remember { mutableStateOf("") }
+    var verificationSelfie by remember { mutableStateOf("") }
+    var supportCategory by remember { mutableStateOf("problem") }
+    var supportSubject by remember { mutableStateOf("") }
+    var supportMessage by remember { mutableStateOf("") }
+    var deleteDialog by remember { mutableStateOf(false) }
+    var deletePassword by remember { mutableStateOf("") }
+
+    val verificationFrontPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) c.upload(uri, "verification_front") { verificationFront = it }
+    }
+    val verificationBackPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) c.upload(uri, "verification_back") { verificationBack = it }
+    }
+    val verificationSelfiePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) c.upload(uri, "verification_selfie") { verificationSelfie = it }
+    }
+
+    LaunchedEffect(user.id) { c.loadAccountTools(false) }
 
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = 8.dp),
@@ -202,6 +228,114 @@ internal fun NativeSettings(c: V95Controller) {
 
         item {
             NVCard {
+                NativeSettingsTitle(NVIcons.Shield, c.t("Verification", "ویریفکیشن"))
+                val verification = c.verificationState?.optJSONObject("verification") ?: c.verificationState
+                val status = verification?.optString("status", "unverified").orEmpty().ifBlank { "unverified" }
+                Text(
+                    c.t("Status: ", "حالت: ") + status,
+                    color = if (status.equals("approved", true)) NVGreen else NVPurple,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black
+                )
+                if (!status.equals("approved", true)) {
+                    NVInput(verificationPhone, c.t("Phone number", "فون نمبر")) { verificationPhone = it }
+                    NVButton(
+                        if (verificationType == "passport") c.t("Passport", "پاسپورٹ") else c.t("ID card", "شناختی کارڈ"),
+                        Modifier.fillMaxWidth()
+                    ) {
+                        verificationType = if (verificationType == "id_card") "passport" else "id_card"
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        NVButton(
+                            if (verificationFront.isBlank()) c.t("ID front", "کارڈ فرنٹ") else c.t("Front ✓", "فرنٹ ✓"),
+                            Modifier.weight(1f),
+                            icon = NVIcons.Photo
+                        ) { verificationFrontPicker.launch("image/*") }
+                        NVButton(
+                            if (verificationBack.isBlank()) c.t("ID back", "کارڈ بیک") else c.t("Back ✓", "بیک ✓"),
+                            Modifier.weight(1f),
+                            icon = NVIcons.Photo
+                        ) { verificationBackPicker.launch("image/*") }
+                        NVButton(
+                            if (verificationSelfie.isBlank()) c.t("Selfie", "سیلفی") else c.t("Selfie ✓", "سیلفی ✓"),
+                            Modifier.weight(1f),
+                            icon = NVIcons.User
+                        ) { verificationSelfiePicker.launch("image/*") }
+                    }
+                    NVButton(
+                        c.t("Submit verification", "ویریفکیشن جمع کریں"),
+                        Modifier.fillMaxWidth(),
+                        primary = true,
+                        enabled = verificationPhone.isNotBlank() && verificationFront.isNotBlank() && verificationBack.isNotBlank() && verificationSelfie.isNotBlank()
+                    ) {
+                        c.submitVerification(
+                            verificationPhone,
+                            verificationType,
+                            verificationFront,
+                            verificationBack,
+                            verificationSelfie
+                        ) {
+                            verificationFront = ""
+                            verificationBack = ""
+                            verificationSelfie = ""
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            NVCard {
+                NativeSettingsTitle(NVIcons.Comment, c.t("Support", "سپورٹ"))
+                NVButton(
+                    when (supportCategory) {
+                        "safety" -> c.t("Safety", "سیفٹی")
+                        "feedback" -> c.t("Feedback", "رائے")
+                        else -> c.t("Problem", "مسئلہ")
+                    },
+                    Modifier.fillMaxWidth()
+                ) {
+                    supportCategory = when (supportCategory) {
+                        "problem" -> "safety"
+                        "safety" -> "feedback"
+                        else -> "problem"
+                    }
+                }
+                NVInput(supportSubject, c.t("Subject", "عنوان")) { supportSubject = it }
+                NVInput(supportMessage, c.t("Describe the issue…", "مسئلہ لکھیں…"), Modifier.fillMaxWidth(), singleLine = false) { supportMessage = it }
+                NVButton(
+                    c.t("Send to My Chhachh Support", "My Chhachh سپورٹ کو بھیجیں"),
+                    Modifier.fillMaxWidth(),
+                    primary = true,
+                    enabled = supportSubject.isNotBlank() && supportMessage.isNotBlank()
+                ) {
+                    c.submitSupport(supportCategory, supportSubject, supportMessage) {
+                        supportSubject = ""
+                        supportMessage = ""
+                    }
+                }
+                if (c.supportTickets.isNotEmpty()) {
+                    Text(
+                        c.t("Support history: ", "سپورٹ ہسٹری: ") + c.supportTickets.size,
+                        color = NVMuted,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    c.supportTickets.take(3).forEach { ticket ->
+                        val reply = ticket.optString("admin_reply", "")
+                        Text(
+                            ticket.optString("subject", c.t("Support ticket", "سپورٹ ٹکٹ")) +
+                                if (reply.isNotBlank()) c.t(" · Replied", " · جواب آ گیا") else "",
+                            color = if (reply.isNotBlank()) NVGreen else NVInk,
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            NVCard {
                 NativeSettingsTitle(NVIcons.Shield, c.t("Blocked users", "بلاک یوزرز"))
                 NVButton(c.t("Load blocked users", "بلاک یوزرز دیکھیں"), Modifier.fillMaxWidth()) { c.loadBlockedUsers() }
                 c.blockedUsersList.forEach { person ->
@@ -214,6 +348,53 @@ internal fun NativeSettings(c: V95Controller) {
                 }
             }
         }
+
+        item {
+            NVCard {
+                NativeSettingsTitle(NVIcons.Delete, c.t("Delete account", "اکاؤنٹ حذف کریں"))
+                Text(
+                    c.t("Permanently delete your account and sign out.", "اپنا اکاؤنٹ مستقل طور پر حذف کریں اور سائن آؤٹ ہو جائیں۔"),
+                    color = NVMuted,
+                    fontSize = 10.5.sp
+                )
+                NVButton(c.t("Delete account", "اکاؤنٹ حذف کریں"), Modifier.fillMaxWidth(), danger = true) {
+                    deleteDialog = true
+                }
+            }
+        }
+    }
+
+    if (deleteDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                deleteDialog = false
+                deletePassword = ""
+            },
+            title = { Text(c.t("Delete account?", "اکاؤنٹ حذف کریں؟"), fontWeight = FontWeight.Black) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(c.t("Enter your password to confirm permanent deletion.", "مستقل حذف کی تصدیق کے لیے پاس ورڈ درج کریں۔"))
+                    NVPasswordInput(deletePassword, c.t("Password", "پاس ورڈ")) { deletePassword = it }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = deletePassword.isNotBlank(),
+                    onClick = {
+                        val password = deletePassword
+                        deleteDialog = false
+                        deletePassword = ""
+                        c.deleteAccount(password)
+                    }
+                ) { Text(c.t("Delete", "حذف کریں"), color = NVDanger, fontWeight = FontWeight.Black) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    deleteDialog = false
+                    deletePassword = ""
+                }) { Text(c.t("Cancel", "منسوخ")) }
+            }
+        )
     }
 }
 
