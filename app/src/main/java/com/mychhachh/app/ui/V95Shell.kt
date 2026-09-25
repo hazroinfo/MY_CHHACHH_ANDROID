@@ -185,7 +185,7 @@ private fun V95TopAuthButton(
     compact: Boolean = false,
     onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(c.features.optDouble("theme_input_radius", 20.0).toFloat().dp)
+    val shape = RoundedCornerShape(999.dp)
     Box(
         Modifier
             .height(42.dp)
