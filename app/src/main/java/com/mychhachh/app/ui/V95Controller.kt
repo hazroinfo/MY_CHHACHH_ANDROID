@@ -50,7 +50,7 @@ import java.util.Locale
 
 internal enum class V95Route {
     HOME, PEOPLE, SHOPS, MAP, MESSAGES, VOTES, ANNOUNCEMENTS, NOTIFICATIONS,
-    PROFILE, SHOP_DETAIL, CHAT, SEARCH, WEATHER, SETTINGS, ADMIN, AUTH
+    PROFILE, SHOP_DETAIL, CHAT, SEARCH, WEATHER, SETTINGS, ADMIN, AUTH, POST_DETAIL
 }
 
 internal class V95Controller(context: Context) {
@@ -84,6 +84,8 @@ internal class V95Controller(context: Context) {
     var selectedShop by mutableStateOf<Shop?>(null)
     var selectedChatUser by mutableStateOf<User?>(null)
     var chatMessages by mutableStateOf<List<Message>>(emptyList())
+    var selectedPost by mutableStateOf<Post?>(null)
+    var postCommentsList by mutableStateOf<List<Comment>>(emptyList())
     var adminState by mutableStateOf<JSONObject?>(null)
 
     fun dispose() { scope.cancel() }
@@ -166,6 +168,36 @@ internal class V95Controller(context: Context) {
 
     fun sharePost(post: Post) = work(false) {
         withContext(Dispatchers.IO) { api.sharePost(post) }
+    }
+
+
+    fun openPost(post: Post) = work {
+        selectedPost = post
+        postCommentsList = withContext(Dispatchers.IO) { api.postComments(post).comments() }
+        route = V95Route.POST_DETAIL
+    }
+
+    fun reloadPostComments(showBusy: Boolean = false) = work(showBusy) {
+        val post = selectedPost ?: return@work
+        postCommentsList = withContext(Dispatchers.IO) { api.postComments(post).comments() }
+    }
+
+    fun addPostComment(text: String, done: () -> Unit) = work(false) {
+        val post = selectedPost ?: return@work
+        withContext(Dispatchers.IO) { api.addComment(post, text) }
+        postCommentsList = withContext(Dispatchers.IO) { api.postComments(post).comments() }
+        done()
+    }
+
+    fun deletePost(post: Post) = work {
+        withContext(Dispatchers.IO) { api.deletePost(post.id) }
+        feed = feed.filterNot { it.id == post.id }
+        if (selectedPost?.id == post.id) selectedPost = null
+        route = V95Route.HOME
+    }
+
+    fun reportPost(post: Post) = work(false) {
+        withContext(Dispatchers.IO) { api.reportPost(post.id, "Reported from Android app") }
     }
 
     fun loadPeople() = work {
