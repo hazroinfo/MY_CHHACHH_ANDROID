@@ -70,6 +70,7 @@ jobs:
 
       - name: Commit test APK
         if: success()
+        continue-on-error: true
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
@@ -79,7 +80,7 @@ jobs:
           git push
 
       - name: Upload build outputs
-        if: success()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: MY_CHHACHH-build-outputs
