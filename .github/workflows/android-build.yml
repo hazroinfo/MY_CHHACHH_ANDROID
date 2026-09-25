@@ -180,26 +180,35 @@ jobs:
           # not contaminate the scroll sample.
           adb shell dumpsys gfxinfo "$PACKAGE" reset >/dev/null 2>&1 || true
 
-          # Touch-free repeated scroll; tolerate an individual adb input hiccup,
-          # but require multiple successful page-scroll commands overall.
+          # Use real touch swipes, not PAGE_DOWN/PAGE_UP key events. Key events can
+          # move focus inside WebView without proving that the page actually scrolled.
           scroll_ok=0
           for i in 1 2 3 4 5; do
-            if timeout 6 adb shell input keyevent KEYCODE_PAGE_DOWN; then
+            if timeout 8 adb shell input swipe 540 1600 540 650 500; then
               scroll_ok=$((scroll_ok + 1))
             fi
-            sleep 0.4
+            sleep 0.6
           done
+
+          sleep 2
+          adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity" | grep "$PACKAGE" > "$ARTIFACT_DIR/resumed-after-down-swipes.txt"
+          adb exec-out screencap -p > "$ARTIFACT_DIR/after-down-scroll.png"
+          down_hash="$(sha256sum "$ARTIFACT_DIR/after-down-scroll.png" | awk '{print $1}')"
+          if [ "$before_hash" = "$down_hash" ]; then
+            echo "::error::Five real upward swipes produced no visible page movement."
+            exit 1
+          fi
 
           for i in 1 2 3; do
-            if timeout 6 adb shell input keyevent KEYCODE_PAGE_UP; then
+            if timeout 8 adb shell input swipe 540 650 540 1600 500; then
               scroll_ok=$((scroll_ok + 1))
             fi
-            sleep 0.4
+            sleep 0.6
           done
 
-          echo "Successful page-scroll commands: $scroll_ok" | tee "$ARTIFACT_DIR/scroll-command-count.txt"
-          if [ "$scroll_ok" -lt 4 ]; then
-            echo "::error::Too few scroll commands reached the running app."
+          echo "Successful real swipe commands: $scroll_ok" | tee "$ARTIFACT_DIR/scroll-command-count.txt"
+          if [ "$scroll_ok" -lt 6 ]; then
+            echo "::error::Too few real swipe commands reached the running app."
             exit 1
           fi
 
@@ -207,11 +216,7 @@ jobs:
           adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity" | grep "$PACKAGE" > "$ARTIFACT_DIR/resumed-after-scroll.txt"
           adb exec-out screencap -p > "$ARTIFACT_DIR/after-scroll.png"
           after_hash="$(sha256sum "$ARTIFACT_DIR/after-scroll.png" | awk '{print $1}')"
-          printf "before=%s\nafter=%s\n" "$before_hash" "$after_hash" > "$ARTIFACT_DIR/screenshot-hashes.txt"
-          if [ "$before_hash" = "$after_hash" ]; then
-            echo "::error::Repeated page-scroll commands produced no visible page movement."
-            exit 1
-          fi
+          printf "before=%s\nafter_down=%s\nafter=%s\n" "$before_hash" "$down_hash" "$after_hash" > "$ARTIFACT_DIR/screenshot-hashes.txt"
 
           adb shell dumpsys gfxinfo "$PACKAGE" > "$ARTIFACT_DIR/gfxinfo.txt" || true
           adb logcat -d -v threadtime > "$ARTIFACT_DIR/logcat.txt" || true
