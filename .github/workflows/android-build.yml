@@ -152,6 +152,24 @@ jobs:
             exit 1
           fi
 
+          # Hold the fully rendered feed for 30 seconds before any scroll input.
+          # This catches delayed WebView stalls/reloads without relying on UIAutomator.
+          sleep 30
+          adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity" | grep "$PACKAGE" > "$ARTIFACT_DIR/resumed-after-30s.txt"
+          adb shell pidof "$PACKAGE" > "$ARTIFACT_DIR/app-pid-after-30s.txt"
+          adb exec-out screencap -p > "$ARTIFACT_DIR/after-30s.png"
+          after_30_bytes="$(stat -c%s "$ARTIFACT_DIR/after-30s.png" 2>/dev/null || echo 0)"
+          echo "30-second stability screenshot: $after_30_bytes bytes" | tee "$ARTIFACT_DIR/after-30s-size.txt"
+          if [ "$after_30_bytes" -lt 1000000 ]; then
+            echo "::error::Feed did not remain fully rendered through the 30-second stability hold."
+            exit 1
+          fi
+          adb logcat -d -v threadtime > "$ARTIFACT_DIR/logcat-after-30s.txt" || true
+          if grep -Eqi "ANR in $PACKAGE|FATAL EXCEPTION.*$PACKAGE|Process: $PACKAGE.*FATAL" "$ARTIFACT_DIR/logcat-after-30s.txt"; then
+            echo "::error::Crash/ANR detected during the 30-second stability hold."
+            exit 1
+          fi
+
           # UIAutomator is intentionally not used here: Android WebView does not
           # reliably expose the live page tree and the dump can stall the emulator.
           adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity" | grep "$PACKAGE" > "$ARTIFACT_DIR/resumed-before-scroll.txt"
