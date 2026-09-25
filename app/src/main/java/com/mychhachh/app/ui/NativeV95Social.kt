@@ -288,6 +288,7 @@ private fun NativeShopEditor(c: V95Controller, shop: Shop?, onClose: () -> Unit)
                 .put("location", address.trim())
                 .put("phone", phone.trim())
                 .put("whatsapp", whatsapp.trim())
+                .put("location_link", cleanMapUrl)
                 .put("location_url", cleanMapUrl)
             c.saveShop(shop, fields) { onClose() }
         }
