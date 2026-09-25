@@ -143,6 +143,16 @@ jobs:
 
           # From here on, crash/ANR and frame metrics belong only to the repeated-scroll stress test.
           adb logcat -c || true
+
+          # Record renderer facts separately so software-emulator pressure is not confused with app main-thread work.
+          {
+            echo "emulator_gpu_mode=swiftshader_indirect"
+            echo "ro.hardware.egl=$(adb shell getprop ro.hardware.egl | tr -d '\r')"
+            echo "debug.hwui.renderer=$(adb shell getprop debug.hwui.renderer | tr -d '\r')"
+            echo "ro.kernel.qemu.gles=$(adb shell getprop ro.kernel.qemu.gles | tr -d '\r')"
+            adb shell dumpsys SurfaceFlinger 2>/dev/null | grep -Ei "GLES|OpenGL|Vulkan|renderer" | head -40 || true
+          } | tee "$ART/renderer-proof.txt"
+
           adb shell dumpsys gfxinfo com.mychhachh.app reset >/dev/null 2>&1 || true
 
           # Keep swipe coordinates safely inside the WebView content area.
@@ -208,6 +218,19 @@ jobs:
             echo "slow_ui_pct=$slow_ui_pct"
             echo "deadline_missed_pct=$deadline_missed_pct"
           } | tee "$ART/scroll-frame-gate.txt"
+
+          {
+            if [ "$slow_ui_pct" -gt 10 ]; then
+              echo "app_main_thread_bottleneck=true"
+            else
+              echo "app_main_thread_bottleneck=false"
+            fi
+            if [ "$missed_vsync_pct" -gt 15 ] && [ "$slow_ui_pct" -le 10 ]; then
+              echo "renderer_or_system_pressure=true"
+            else
+              echo "renderer_or_system_pressure=false"
+            fi
+          } | tee "$ART/scroll-frame-classification.txt"
 
           if [ "$janky_pct" -gt 15 ] || [ "$missed_vsync_pct" -gt 15 ] || [ "$slow_ui_pct" -gt 10 ] || [ "$deadline_missed_pct" -gt 15 ]; then
             echo "::error::Repeated-scroll smoothness gate failed: janky=$janky_pct%, missed-vsync=$missed_vsync_pct%, slow-ui=$slow_ui_pct%, deadline-missed=$deadline_missed_pct%"
