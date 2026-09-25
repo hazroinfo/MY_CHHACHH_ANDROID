@@ -302,7 +302,7 @@ private fun V95AdminGeneric(item: JSONObject) {
         val key = keys.next()
         val value = item.opt(key)
         if (value !is JSONObject && value !is JSONArray) {
-            Text("${key.replace('_', ' ')}: ${String.valueOf(value)}", color = V95Ink, fontSize = 10.sp)
+            Text("${key.replace('_', ' ')}: ${value?.toString() ?: "null"}", color = V95Ink, fontSize = 10.sp)
             shown++
         }
     }
