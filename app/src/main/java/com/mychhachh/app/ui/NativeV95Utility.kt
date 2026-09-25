@@ -413,7 +413,7 @@ private fun NativeSettingsGuest(c: V95Controller) {
 }
 
 @Composable
-private fun NativeSettingsTitle(icon: Int, text: String) {
+internal fun NativeSettingsTitle(icon: Int, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Image(painterResource(icon), null, Modifier.size(32.dp))
         Spacer(Modifier.width(7.dp))
