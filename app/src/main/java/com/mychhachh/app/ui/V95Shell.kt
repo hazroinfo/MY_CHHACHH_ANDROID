@@ -316,17 +316,24 @@ internal fun V95SideMenu(c: V95Controller) {
             val entries = buildList {
                 configuredMenu.forEach { key ->
                     when (key) {
+                        "home" -> add(Triple(c.t("Home", "ہوم"), V95Icons.Home, V95Route.HOME))
+                        "people" -> add(Triple(c.t("People", "لوگ"), V95Icons.People, V95Route.PEOPLE))
+                        "shop" -> add(Triple(c.t("Shop", "دکانیں"), V95Icons.Shop, V95Route.SHOPS))
                         "votes" -> add(Triple(c.t("Voting", "ووٹنگ"), V95Icons.Vote, V95Route.VOTES))
                         "saved" -> add(Triple(c.t("Saved", "محفوظ"), V95Icons.Save, V95Route.SAVED))
+                        "map" -> add(Triple(c.t("Map", "نقشہ"), V95Icons.Map, V95Route.MAP))
+                        "messages" -> add(Triple(c.t("Messages", "پیغامات"), V95Icons.Message, V95Route.MESSAGES))
+                        "announcements" -> add(Triple(c.t("Announcements", "اعلانات"), V95Icons.Announcement, V95Route.ANNOUNCEMENTS))
+                        "notifications" -> add(Triple(c.t("Notifications", "اطلاعات"), V95Icons.Bell, V95Route.NOTIFICATIONS))
+                        "profile" -> if (c.user != null) add(Triple(c.t("Profile", "پروفائل"), V95Icons.User, V95Route.PROFILE))
                         "settings" -> add(Triple(c.t("Settings", "ترتیبات"), V95Icons.Gear, V95Route.SETTINGS))
-                        "theme" -> if (c.user?.isAdmin == true && c.features.optInt("theme_theme_icon_enabled", 1) != 0) add(Triple(c.t("Theme Builder", "تھیم بلڈر"), V95Icons.Palette, V95Route.THEME))
+                        "theme" -> if (c.user?.isAdmin == true && c.features.optInt("theme_theme_icon_enabled", 1) != 0) {
+                            add(Triple(c.t("Theme Builder", "تھیم بلڈر"), V95Icons.Palette, V95Route.THEME))
+                        }
                         "admin" -> if (c.user?.isAdmin == true) add(Triple(c.t("Admin Center", "ایڈمن سینٹر"), V95Icons.Shield, V95Route.ADMIN))
                         "logout" -> Unit
                     }
                 }
-                add(Triple(c.t("Announcements", "اعلانات"), V95Icons.Announcement, V95Route.ANNOUNCEMENTS))
-                add(Triple(c.t("Notifications", "اطلاعات"), V95Icons.Bell, V95Route.NOTIFICATIONS))
-                if (c.user != null) add(Triple(c.t("Profile", "پروفائل"), V95Icons.User, V95Route.PROFILE))
             }
             entries.forEach { (label, icon, route) ->
                 V95MenuRow(label, icon) {
@@ -345,8 +352,11 @@ internal fun V95SideMenu(c: V95Controller) {
                 }
             }
             Spacer(Modifier.weight(1f))
-            if (c.user != null) V95MenuRow(c.t("Logout", "لاگ آؤٹ"), V95Icons.Logout, true) { c.menuOpen = false; c.logout() }
-            else V95MenuRow(c.t("Login / Register", "لاگ اِن / رجسٹریشن"), V95Icons.User) { c.menuOpen = false; c.route = V95Route.AUTH }
+            if (c.user != null && "logout" in configuredMenu) {
+                V95MenuRow(c.t("Logout", "لاگ آؤٹ"), V95Icons.Logout, true) { c.menuOpen = false; c.logout() }
+            } else if (c.user == null) {
+                V95MenuRow(c.t("Login / Register", "لاگ اِن / رجسٹریشن"), V95Icons.User) { c.menuOpen = false; c.route = V95Route.AUTH }
+            }
         }
     }
 }
