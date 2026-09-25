@@ -100,6 +100,7 @@ internal class V95Controller(context: Context) {
     var relationTitle by mutableStateOf("")
     var selectedShop by mutableStateOf<Shop?>(null)
     var shopDetails by mutableStateOf<JSONObject?>(null)
+    var selectedShopPosts by mutableStateOf<List<Post>>(emptyList())
     var selectedChatUser by mutableStateOf<User?>(null)
     var chatMessages by mutableStateOf<List<Message>>(emptyList())
     var selectedPost by mutableStateOf<Post?>(null)
@@ -348,7 +349,14 @@ internal class V95Controller(context: Context) {
 
     fun openShop(shop: Shop) = work {
         selectedShop = shop
-        shopDetails = withContext(Dispatchers.IO) { runCatching { api.shop(shop.id) }.getOrNull() }
+        val detail = withContext(Dispatchers.IO) { runCatching { api.shop(shop.id) }.getOrNull() }
+        shopDetails = detail
+        selectedShopPosts = withContext(Dispatchers.IO) {
+            runCatching { api.shopPosts(shop.id) }.getOrElse {
+                (detail?.optJSONArray("posts") ?: JSONArray()).posts()
+                    .map { post -> if (post.shopId > 0L) post else post.copy(shopId = shop.id) }
+            }
+        }
         route = V95Route.SHOP_DETAIL
     }
 
