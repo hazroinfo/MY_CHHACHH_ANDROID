@@ -137,6 +137,39 @@ jobs:
           adb shell svc wifi enable || true
           adb shell svc data enable || true
 
+          # Prove emulator networking with the current candidate first. The candidate
+          # logs main-frame success/failure, unlike the historical baseline APK.
+          adb install -r -t app/build/outputs/apk/debug/app-debug.apk | tee "$ART/network-preflight-install.txt"
+          grep -q "Success" "$ART/network-preflight-install.txt"
+          preflight_ok=0
+          for attempt in 1 2 3 4 5 6; do
+            adb logcat -c || true
+            adb shell am force-stop com.mychhachh.app || true
+            adb shell am start -W -n com.mychhachh.app/.MainActivity | tee "$ART/network-preflight-launch-${attempt}.txt"
+            attempt_deadline=$((SECONDS + 45))
+            while [ $SECONDS -lt $attempt_deadline ]; do
+              adb logcat -d -v brief -s MyChhachhWebView:I > "$ART/network-preflight-webview-${attempt}.txt" || true
+              if grep -q "MAIN_FRAME_ERROR" "$ART/network-preflight-webview-${attempt}.txt"; then
+                break
+              fi
+              if grep -q "PAGE_FINISHED https://chhachh.pages.dev" "$ART/network-preflight-webview-${attempt}.txt"; then
+                preflight_ok=1
+                cp "$ART/network-preflight-webview-${attempt}.txt" "$ART/network-preflight-live.txt"
+                break
+              fi
+              sleep 3
+            done
+            if [ "$preflight_ok" -eq 1 ]; then
+              break
+            fi
+            sleep 10
+          done
+          if [ "$preflight_ok" -ne 1 ]; then
+            echo "::error::Emulator network never reached the live My Chhachh page"
+            exit 1
+          fi
+          adb shell am force-stop com.mychhachh.app || true
+
           # Measure the user's known-smooth historical WebView on this exact emulator first.
           physical_size="$(adb shell wm size | tr -d '\r' | tail -1 | sed -E 's/.* ([0-9]+)x([0-9]+).*/\1 \2/')"
           read -r baseline_w baseline_h <<< "$physical_size"
