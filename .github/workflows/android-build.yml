@@ -135,14 +135,14 @@ jobs:
           # Reset frame stats so launch/network rendering does not contaminate the scroll sample.
           adb shell dumpsys gfxinfo "$PACKAGE" reset >/dev/null 2>&1 || true
 
-          # Fast swipes avoid Android/WebView long-press text selection and exercise real repeated scrolling.
+          # Use touch-free page scrolling so the smoke test cannot accidentally tap links/buttons.
           for i in 1 2 3 4 5 6 7 8 9 10; do
-            adb shell input swipe 900 1800 900 650 120
+            adb shell input keyevent KEYCODE_PAGE_DOWN
             sleep 0.4
           done
 
           for i in 1 2 3 4 5; do
-            adb shell input swipe 900 650 900 1800 120
+            adb shell input keyevent KEYCODE_PAGE_UP
             sleep 0.4
           done
 
