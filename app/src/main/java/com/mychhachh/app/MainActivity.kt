@@ -17,11 +17,14 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : ComponentActivity() {
 
@@ -68,16 +71,42 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = Color.rgb(223, 247, 255)
         WebView.setWebContentsDebuggingEnabled(false)
 
+        val root = FrameLayout(this).apply {
+            setBackgroundColor(Color.rgb(223, 247, 255))
+        }
         webView = WebView(this).apply {
             setBackgroundColor(Color.rgb(223, 247, 255))
         }
-        setContentView(webView)
+        root.addView(
+            webView,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
+        setContentView(root)
 
-
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val params = webView.layoutParams as FrameLayout.LayoutParams
+            if (params.topMargin != bars.top ||
+                params.bottomMargin != bars.bottom ||
+                params.leftMargin != bars.left ||
+                params.rightMargin != bars.right
+            ) {
+                params.topMargin = bars.top
+                params.bottomMargin = bars.bottom
+                params.leftMargin = bars.left
+                params.rightMargin = bars.right
+                webView.layoutParams = params
+            }
+            insets
+        }
+        ViewCompat.requestApplyInsets(root)
         configureWebView()
 
         if (savedInstanceState != null) {
