@@ -66,6 +66,9 @@ internal class V95Controller(context: Context) {
     var announcementUnread by mutableIntStateOf(0)
     var busy by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
+    var authInfo by mutableStateOf<String?>(null)
+    var pendingVerifyUserId by mutableLongStateOf(0L)
+    var passwordResetKey by mutableStateOf("")
     var menuOpen by mutableStateOf(false)
     var language by mutableStateOf(app.getSharedPreferences("my_chhachh_v95", Context.MODE_PRIVATE).getString("lang", "en") ?: "en")
     var features by mutableStateOf(JSONObject())
@@ -143,10 +146,50 @@ internal class V95Controller(context: Context) {
     }
 
     fun register(name: String, username: String, email: String, password: String) = work {
-        withContext(Dispatchers.IO) { api.register(name, username, email, password) }
-        user = withContext(Dispatchers.IO) { api.bootstrap().user }
+        val r = withContext(Dispatchers.IO) { api.register(name, username, email, password) }
+        val pending = r.optLong("pending_user_id", 0L)
+        if (r.optBoolean("verify_required", false) && pending > 0L) {
+            pendingVerifyUserId = pending
+            authInfo = t("Verification code sent to your email.", "ویریفکیشن کوڈ آپ کی ای میل پر بھیج دیا گیا ہے۔")
+            route = V95Route.AUTH
+        } else {
+            user = r.optJSONObject("user")?.toUser() ?: withContext(Dispatchers.IO) { api.bootstrap().user }
+            pendingVerifyUserId = 0L
+            authInfo = r.optString("warning", "").takeIf { it.isNotBlank() }
+            route = V95Route.HOME
+            loadFeed(false)
+        }
+    }
+
+    fun verifyPendingEmail(code: String) = work {
+        val id = pendingVerifyUserId
+        if (id <= 0L) return@work
+        user = withContext(Dispatchers.IO) { api.verifyEmail(id, code) }
+        pendingVerifyUserId = 0L
+        authInfo = null
         route = V95Route.HOME
         loadFeed(false)
+    }
+
+    fun resendPendingEmail() = work(false) {
+        val id = pendingVerifyUserId
+        if (id <= 0L) return@work
+        withContext(Dispatchers.IO) { api.resendCode(id) }
+        authInfo = t("A new verification code was sent.", "نیا ویریفکیشن کوڈ بھیج دیا گیا ہے۔")
+    }
+
+    fun startPasswordReset(email: String) = work {
+        passwordResetKey = withContext(Dispatchers.IO) { api.forgotSend(email) }
+        authInfo = t("Password reset code sent to your email.", "پاس ورڈ ری سیٹ کوڈ آپ کی ای میل پر بھیج دیا گیا ہے۔")
+    }
+
+    fun finishPasswordReset(code: String, password: String, done: () -> Unit) = work {
+        val key = passwordResetKey
+        if (key.isBlank()) return@work
+        withContext(Dispatchers.IO) { api.forgotReset(key, code, password) }
+        passwordResetKey = ""
+        authInfo = t("Password changed. You can login now.", "پاس ورڈ تبدیل ہوگیا۔ اب لاگ اِن کریں۔")
+        done()
     }
 
     fun logout() = work {
