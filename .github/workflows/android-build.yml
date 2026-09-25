@@ -88,7 +88,7 @@ jobs:
           adb kill-server || true
           adb start-server
 
-          nohup emulator             -avd MyChhachhWebView             -no-window             -noaudio             -no-boot-anim             -no-snapshot             -no-snapshot-save             -wipe-data             -gpu swiftshader_indirect             > "$ARTIFACT_DIR/emulator.log" 2>&1 &
+          nohup emulator             -avd MyChhachhWebView             -no-window             -noaudio             -no-boot-anim             -no-snapshot             -no-snapshot-save             -wipe-data             -gpu swiftshader_indirect             -dns-server 8.8.8.8,1.1.1.1             > "$ARTIFACT_DIR/emulator.log" 2>&1 &
           echo $! > "$ARTIFACT_DIR/emulator.pid"
 
           deadline=$((SECONDS + 360))
@@ -107,22 +107,7 @@ jobs:
           test "$(adb get-state 2>/dev/null || true)" = "device"
           test "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)" = "1"
 
-          echo "Waiting for emulator DNS/network before launching the WebView..."
-          network_deadline=$((SECONDS + 180))
-          network_ok=0
-          while [ $SECONDS -lt $network_deadline ]; do
-            if adb shell ping -c 1 -W 2 chhachh.pages.dev > "$ARTIFACT_DIR/network-check.txt" 2>&1; then
-              network_ok=1
-              break
-            fi
-            sleep 5
-          done
-          if [ "$network_ok" -ne 1 ]; then
-            echo "::error::Emulator could not resolve/reach chhachh.pages.dev before app launch."
-            cat "$ARTIFACT_DIR/network-check.txt" || true
-            exit 1
-          fi
-          echo "Emulator network is ready."
+          echo "Emulator boot complete; launching app and validating live WebView content directly."
 
           adb install -r -t app/build/outputs/apk/debug/app-debug.apk | tee "$ARTIFACT_DIR/install.txt"
 
@@ -134,7 +119,7 @@ jobs:
           adb shell am force-stop "$PACKAGE" || true
           adb shell am start -W -n "$COMPONENT" | tee "$ARTIFACT_DIR/app-launch.txt"
 
-          sleep 20
+          sleep 30
           adb shell uiautomator dump /sdcard/mychhachh-window.xml || true
           adb pull /sdcard/mychhachh-window.xml "$ARTIFACT_DIR/window-before.xml" || true
           adb exec-out screencap -p > "$ARTIFACT_DIR/before-scroll.png"
