@@ -86,6 +86,7 @@ internal class V95Controller(context: Context) {
     var relationUsers by mutableStateOf<List<User>>(emptyList())
     var relationTitle by mutableStateOf("")
     var selectedShop by mutableStateOf<Shop?>(null)
+    var shopDetails by mutableStateOf<JSONObject?>(null)
     var selectedChatUser by mutableStateOf<User?>(null)
     var chatMessages by mutableStateOf<List<Message>>(emptyList())
     var selectedPost by mutableStateOf<Post?>(null)
@@ -230,8 +231,9 @@ internal class V95Controller(context: Context) {
 
     fun loadShops() = work { shops = withContext(Dispatchers.IO) { api.shops() } }
 
-    fun openShop(shop: Shop) {
+    fun openShop(shop: Shop) = work {
         selectedShop = shop
+        shopDetails = withContext(Dispatchers.IO) { runCatching { api.shop(shop.id) }.getOrNull() }
         route = V95Route.SHOP_DETAIL
     }
 
