@@ -19,14 +19,11 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 
@@ -75,37 +72,18 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        // Keep the WebView itself as the root view, matching the known-smooth baseline.
+        // Let Android fit content below system bars instead of wrapping/padding the whole WebView.
+        WindowCompat.setDecorFitsSystemWindows(window, true)
         window.statusBarColor = Color.rgb(223, 247, 255)
+        window.navigationBarColor = Color.rgb(246, 243, 255)
         WebView.setWebContentsDebuggingEnabled(false)
 
-        val root = FrameLayout(this).apply {
-            setBackgroundColor(Color.rgb(223, 247, 255))
-        }
         webView = WebView(this).apply {
             setBackgroundColor(Color.rgb(223, 247, 255))
             overScrollMode = View.OVER_SCROLL_NEVER
         }
-        root.addView(
-            webView,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            )
-        )
-        setContentView(root)
-
-        var initialInsetsApplied = false
-        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
-            if (!initialInsetsApplied) {
-                val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-                view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
-                initialInsetsApplied = true
-                ViewCompat.setOnApplyWindowInsetsListener(view, null)
-            }
-            insets
-        }
-        ViewCompat.requestApplyInsets(root)
+        setContentView(webView)
 
         configureWebView()
 
