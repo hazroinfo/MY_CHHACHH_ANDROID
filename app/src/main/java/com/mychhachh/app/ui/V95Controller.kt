@@ -380,14 +380,40 @@ internal class V95Controller(context: Context) {
     fun loadShops() = work { shops = withContext(Dispatchers.IO) { api.shops() } }
 
     fun saveShop(existing: Shop?, fields: JSONObject, done: () -> Unit = {}) = work {
-        withContext(Dispatchers.IO) {
-            if (existing == null) api.createShop(fields) else api.updateShop(existing.id, fields)
+        val me = user ?: run {
+            error = t("Please sign in to manage a shop.", "دکان مینیج کرنے کے لیے لاگ اِن کریں۔")
+            return@work
         }
+
+        if (existing != null && existing.userId != me.id && !me.isAdmin) {
+            error = t("You cannot edit this shop.", "آپ اس دکان کو ایڈٹ نہیں کر سکتے۔")
+            return@work
+        }
+
+        // Re-check the server before creating so a stale/empty local list can never
+        // create a second shop for the same user.
+        val serverShops = withContext(Dispatchers.IO) { api.shops() }
+        val ownedShop = serverShops.firstOrNull { it.userId == me.id }
+        val target = existing ?: ownedShop
+
+        withContext(Dispatchers.IO) {
+            if (target == null) {
+                api.createShop(fields)
+            } else {
+                api.updateShop(target.id, fields)
+            }
+        }
+
         shops = withContext(Dispatchers.IO) { api.shops() }
-        val mine = shops.firstOrNull { it.userId == user?.id }
-        if (mine != null) {
-            selectedShop = mine
-            shopDetails = withContext(Dispatchers.IO) { runCatching { api.shop(mine.id) }.getOrNull() }
+        val saved = target?.let { current -> shops.firstOrNull { it.id == current.id } }
+            ?: shops.firstOrNull { it.userId == me.id }
+
+        if (saved != null) {
+            selectedShop = saved
+            shopDetails = withContext(Dispatchers.IO) { runCatching { api.shop(saved.id) }.getOrNull() }
+        } else {
+            selectedShop = null
+            shopDetails = null
         }
         done()
     }
@@ -440,11 +466,23 @@ internal class V95Controller(context: Context) {
 
     fun navigateToShop(shop: Shop) {
         val raw = shop.locationUrl.trim()
+        val coordinatePattern = Regex("""^-?\\d{1,2}(?:\\.\\d+)?\\s*,\\s*-?\\d{1,3}(?:\\.\\d+)?$""")
         val destination = when {
-            raw.isNotBlank() -> Uri.parse(raw)
-            shop.location.isNotBlank() -> Uri.parse("geo:0,0?q=" + java.net.URLEncoder.encode(shop.location, "UTF-8"))
+            raw.isNotBlank() && coordinatePattern.matches(raw) ->
+                Uri.parse("google.navigation:q=" + Uri.encode(raw))
+            raw.startsWith("google.navigation:", ignoreCase = true) ||
+                raw.startsWith("geo:", ignoreCase = true) ->
+                Uri.parse(raw)
+            raw.startsWith("http://", ignoreCase = true) ||
+                raw.startsWith("https://", ignoreCase = true) ->
+                Uri.parse(raw)
+            raw.isNotBlank() ->
+                Uri.parse("https://$raw")
+            shop.location.isNotBlank() ->
+                Uri.parse("google.navigation:q=" + Uri.encode(shop.location.trim()))
             else -> null
         }
+
         if (destination == null) {
             error = t("Shop location is not set.", "دکان کی لوکیشن سیٹ نہیں ہے۔")
             return
