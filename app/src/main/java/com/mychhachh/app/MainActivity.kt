@@ -311,9 +311,13 @@ class MainActivity : ComponentActivity() {
                 s.textContent=
                   '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}' +
                   'html,body{scroll-behavior:auto!important;overscroll-behavior-y:none!important}' +
-                  '#chhachhWeatherBg{animation:none!important;transform:none!important;background-attachment:scroll!important;will-change:auto!important}' +
+                  '#chhachhWeatherBg{animation:none!important;transform:none!important;background-attachment:scroll!important;will-change:auto!important;filter:none!important}' +
                   '#chhachhWeatherBg *{animation:none!important;will-change:auto!important}' +
                   '#chhachhWeatherBg .fog{filter:none!important}' +
+                  '#mcLiveWeatherStage{transition:none!important}' +
+                  '#mcLiveWeatherStage .mcwx-photo{inset:0!important;transform:none!important;transition:none!important;filter:none!important}' +
+                  '#mcLiveWeatherStage .mcwx-tone{transition:none!important}' +
+                  '#mcLiveWeatherStage .mcwx-cloud,#mcLiveWeatherStage .mcwx-haze,#mcLiveWeatherStage .mcwx-sun,#mcLiveWeatherStage .mcwx-moon,#mcLiveWeatherStage .mcwx-stars,#mcLiveWeatherStage .mcwx-fog,#mcLiveWeatherStage .mcwx-rain,#mcLiveWeatherStage .mcwx-flash{display:none!important;animation:none!important;filter:none!important}' +
                   '.top,.card,.community-footer,.side-menu,body.menu-open:after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}';
                 (document.head||document.documentElement).appendChild(s);
                 if(document.body) document.body.classList.add('theme-motion-off');
