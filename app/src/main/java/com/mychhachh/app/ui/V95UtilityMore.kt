@@ -245,34 +245,7 @@ private fun V95SettingToggleRow(label: String, value: Boolean, onClick: () -> Un
 
 @Composable
 internal fun V95Admin(c: V95Controller) {
-    if (c.user?.isAdmin != true) { V95Empty(c.t("Administrator access required", "ایڈمن رسائی درکار ہے")); return }
-    LaunchedEffect(Unit) { c.loadAdmin() }
-    val state = c.adminState
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp), contentPadding = PaddingValues(top = 10.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { V95PageHeading(c.t("Admin Center", "ایڈمن سینٹر"), c.t("Site management", "سائٹ مینجمنٹ")) }
-        item {
-            V95GlassCard {
-                Text(c.t("Overview", "خلاصہ"), color = V95Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
-                val keys = listOf("users", "posts", "shops", "reports", "pending_verifications", "messages")
-                keys.chunked(2).forEach { pair ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        pair.forEach { key ->
-                            val fallback = state?.optInt(key, 0) ?: 0
-                            val v = state?.optJSONObject("counts")?.optInt(key, fallback) ?: fallback
-                            V95Metric(key.replace('_', ' ').replaceFirstChar { it.uppercase() }, v.toString(), Modifier.weight(1f))
-                        }
-                        if (pair.size == 1) Spacer(Modifier.weight(1f))
-                    }
-                }
-            }
-        }
-        item {
-            V95GlassCard {
-                Text(c.t("Management", "مینجمنٹ"), color = V95Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
-                Text(c.t("User controls, verification, reports, votes, announcements and activity logs use the same live admin API.", "یوزر کنٹرول، ویریفکیشن، رپورٹس، ووٹس، اعلانات اور ایکٹیویٹی لاگز اسی لائیو ایڈمن API سے چلتے ہیں۔"), color = V95Muted, fontSize = 13.sp)
-            }
-        }
-    }
+    V95AdminCenter(c)
 }
 
 @Composable
