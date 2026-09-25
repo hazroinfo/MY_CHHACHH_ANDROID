@@ -718,6 +718,7 @@ internal fun NativeMap(c: V95Controller) {
             when {
                 c.mapPickForPost -> c.t("Pick an exact post check-in", "پوسٹ کے لیے درست چیک اِن منتخب کریں")
                 c.mapPickForMessage -> c.t("Pick an exact message location", "پیغام کے لیے درست لوکیشن منتخب کریں")
+                c.mapPickForGroupMessage -> c.t("Pick an exact group location", "گروپ پیغام کے لیے درست لوکیشن منتخب کریں")
                 else -> c.t("Native map, search and exact location picker", "نیٹو نقشہ، تلاش اور درست لوکیشن پکر")
             }
         )
@@ -750,6 +751,9 @@ internal fun NativeMap(c: V95Controller) {
                     }
                     c.mapPickForMessage -> NVButton(c.t("Send this location", "یہ لوکیشن بھیجیں"), Modifier.fillMaxWidth(), primary = true) {
                         c.setMessageLocation(place)
+                    }
+                    c.mapPickForGroupMessage -> NVButton(c.t("Send to group", "گروپ میں بھیجیں"), Modifier.fillMaxWidth(), primary = true) {
+                        c.setGroupMessageLocation(place)
                     }
                     else -> NVButton(c.t("Open navigation", "نیویگیشن کھولیں"), Modifier.fillMaxWidth(), icon = NVIcons.Map) {
                         c.openCoordinates(place.lat, place.lng)
