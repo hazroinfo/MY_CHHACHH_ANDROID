@@ -62,7 +62,8 @@ fun V95App() {
 
     CompositionLocalProvider(
         LocalLayoutDirection provides direction,
-        LocalDensity provides cssDensity
+        LocalDensity provides cssDensity,
+        LocalV95Features provides c.features
     ) {
         V95Theme {
             Box(
@@ -120,9 +121,11 @@ internal fun V95Header(c: V95Controller) {
     val width = LocalConfiguration.current.screenWidthDp
     val compact = width <= 390
     val user = c.user
+    val headerRadius = c.features.optDouble("theme_header_radius", 28.0).toFloat().dp
     Column(
         Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(bottomStart = headerRadius, bottomEnd = headerRadius))
             .statusBarsPadding()
             .background(
                 Brush.verticalGradient(
@@ -181,7 +184,7 @@ private fun V95TopAuthButton(
     compact: Boolean = false,
     onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(999.dp)
+    val shape = RoundedCornerShape(c.features.optDouble("theme_input_radius", 20.0).toFloat().dp)
     Box(
         Modifier
             .height(42.dp)
@@ -254,23 +257,30 @@ internal fun V95QuickCard(text: String, icon: Int, modifier: Modifier, compact: 
 
 @Composable
 internal fun V95Nav(c: V95Controller, compact: Boolean) {
-    val shape = RoundedCornerShape(23.dp)
+    val shape = RoundedCornerShape(c.features.optDouble("theme_nav_radius", 23.0).toFloat().dp)
+    val navHeight = c.features.optDouble("theme_nav_height", 72.0).toFloat().dp
+    val configured = c.features.optString("theme_header_items", "home,people,shop,map,messages")
+        .split(',').map { it.trim() }.filter { it.isNotBlank() }
     Row(
         Modifier.fillMaxWidth().clip(shape).background(v95GlassBrush()).border(2.dp, Color.White, shape).padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 5.dp)
     ) {
-        V95NavItem(c, c.t("Home", "ہوم"), V95Icons.Home, V95Route.HOME, compact)
-        V95NavItem(c, c.t("People", "لوگ"), V95Icons.People, V95Route.PEOPLE, compact)
-        V95NavItem(c, c.t("Shop", "دکانیں"), V95Icons.Shop, V95Route.SHOPS, compact)
-        V95NavItem(c, c.t("Map", "نقشہ"), V95Icons.Map, V95Route.MAP, compact)
-        V95NavItem(c, c.t("Messages", "پیغامات"), V95Icons.Message, V95Route.MESSAGES, compact)
+        configured.forEach { key ->
+            when (key) {
+                "home" -> V95NavItem(c, c.t("Home", "ہوم"), V95Icons.Home, V95Route.HOME, compact, navHeight)
+                "people" -> V95NavItem(c, c.t("People", "لوگ"), V95Icons.People, V95Route.PEOPLE, compact, navHeight)
+                "shop" -> V95NavItem(c, c.t("Shop", "دکانیں"), V95Icons.Shop, V95Route.SHOPS, compact, navHeight)
+                "map" -> V95NavItem(c, c.t("Map", "نقشہ"), V95Icons.Map, V95Route.MAP, compact, navHeight)
+                "messages" -> V95NavItem(c, c.t("Messages", "پیغامات"), V95Icons.Message, V95Route.MESSAGES, compact, navHeight)
+            }
+        }
     }
 }
 
 @Composable
-internal fun RowScope.V95NavItem(c: V95Controller, text: String, icon: Int, target: V95Route, compact: Boolean) {
+internal fun RowScope.V95NavItem(c: V95Controller, text: String, icon: Int, target: V95Route, compact: Boolean, navHeight: androidx.compose.ui.unit.Dp) {
     val active = c.route == target
     Column(
-        Modifier.weight(1f).height(72.dp).clip(RoundedCornerShape(20.dp))
+        Modifier.weight(1f).height(navHeight).clip(RoundedCornerShape(20.dp))
             .background(if (active) Brush.linearGradient(listOf(Color(0xFFFFF0F9).copy(.7f), Color.White.copy(.45f))) else Brush.linearGradient(listOf(Color.Transparent, Color.Transparent)))
             .clickable {
                 c.route = target
@@ -299,18 +309,22 @@ internal fun V95SideMenu(c: V95Controller) {
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { V95IconButton(V95Icons.Close) { c.menuOpen = false } }
+            val configuredMenu = c.features.optString("theme_menu_items", "votes,saved,settings,theme,admin,logout")
+                .split(',').map { it.trim() }.filter { it.isNotBlank() }
             val entries = buildList {
-                add(Triple(c.t("Home", "ہوم"), V95Icons.Home, V95Route.HOME))
-                add(Triple(c.t("Voting", "ووٹنگ"), V95Icons.Vote, V95Route.VOTES))
-                add(Triple(c.t("Saved", "محفوظ"), V95Icons.Save, V95Route.SAVED))
+                configuredMenu.forEach { key ->
+                    when (key) {
+                        "votes" -> add(Triple(c.t("Voting", "ووٹنگ"), V95Icons.Vote, V95Route.VOTES))
+                        "saved" -> add(Triple(c.t("Saved", "محفوظ"), V95Icons.Save, V95Route.SAVED))
+                        "settings" -> add(Triple(c.t("Settings", "ترتیبات"), V95Icons.Gear, V95Route.SETTINGS))
+                        "theme" -> if (c.user?.isAdmin == true && c.features.optInt("theme_theme_icon_enabled", 1) != 0) add(Triple(c.t("Theme Builder", "تھیم بلڈر"), V95Icons.Palette, V95Route.THEME))
+                        "admin" -> if (c.user?.isAdmin == true) add(Triple(c.t("Admin Center", "ایڈمن سینٹر"), V95Icons.Shield, V95Route.ADMIN))
+                        "logout" -> Unit
+                    }
+                }
                 add(Triple(c.t("Announcements", "اعلانات"), V95Icons.Announcement, V95Route.ANNOUNCEMENTS))
                 add(Triple(c.t("Notifications", "اطلاعات"), V95Icons.Bell, V95Route.NOTIFICATIONS))
                 if (c.user != null) add(Triple(c.t("Profile", "پروفائل"), V95Icons.User, V95Route.PROFILE))
-                add(Triple(c.t("Settings", "ترتیبات"), V95Icons.Gear, V95Route.SETTINGS))
-                if (c.user?.isAdmin == true && c.features.optInt("theme_theme_icon_enabled", 1) != 0) {
-                    add(Triple(c.t("Theme Builder", "تھیم بلڈر"), V95Icons.Palette, V95Route.THEME))
-                }
-                if (c.user?.isAdmin == true) add(Triple(c.t("Admin Center", "ایڈمن سینٹر"), V95Icons.Shield, V95Route.ADMIN))
             }
             entries.forEach { (label, icon, route) ->
                 V95MenuRow(label, icon) {
