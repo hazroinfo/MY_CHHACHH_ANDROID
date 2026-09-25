@@ -132,16 +132,22 @@ jobs:
             fi
           fi
 
-          for i in 1 2 3 4 5 6; do
-            adb shell input swipe 360 1550 360 450 300
-            sleep 1
+          # Reset frame stats so launch/network rendering does not contaminate the scroll sample.
+          adb shell dumpsys gfxinfo "$PACKAGE" reset >/dev/null 2>&1 || true
+
+          # Fast swipes avoid Android/WebView long-press text selection and exercise real repeated scrolling.
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            adb shell input swipe 900 1800 900 650 120
+            sleep 0.4
           done
 
-          for i in 1 2 3; do
-            adb shell input swipe 360 500 360 1450 300
-            sleep 1
+          for i in 1 2 3 4 5; do
+            adb shell input swipe 900 650 900 1800 120
+            sleep 0.4
           done
 
+          sleep 2
+          adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity" | grep "$PACKAGE" > "$ARTIFACT_DIR/resumed-after-scroll.txt"
           adb exec-out screencap -p > "$ARTIFACT_DIR/after-scroll.png"
           adb shell dumpsys gfxinfo "$PACKAGE" > "$ARTIFACT_DIR/gfxinfo.txt" || true
           adb logcat -d -v threadtime > "$ARTIFACT_DIR/logcat.txt" || true
