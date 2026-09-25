@@ -349,6 +349,55 @@ class MainActivity : ComponentActivity() {
         private const val LOADER_GUARD_JS = """
             (function(){
               try {
+                if(!window.__mcAndroidDragClickGuard){
+                  window.__mcAndroidDragClickGuard=1;
+
+                  var dragStartX=0;
+                  var dragStartY=0;
+                  var dragTracking=false;
+                  var dragMoved=false;
+                  var suppressClickUntil=0;
+
+                  function clock(){
+                    return (window.performance && typeof performance.now==='function')
+                      ? performance.now()
+                      : Date.now();
+                  }
+
+                  window.addEventListener('pointerdown',function(ev){
+                    if(ev.isPrimary===false) return;
+                    dragStartX=Number(ev.clientX)||0;
+                    dragStartY=Number(ev.clientY)||0;
+                    dragMoved=false;
+                    dragTracking=true;
+                  },{capture:true,passive:true});
+
+                  window.addEventListener('pointermove',function(ev){
+                    if(!dragTracking || dragMoved || ev.isPrimary===false) return;
+                    var dx=(Number(ev.clientX)||0)-dragStartX;
+                    var dy=(Number(ev.clientY)||0)-dragStartY;
+                    if((dx*dx)+(dy*dy)>324) dragMoved=true;
+                  },{capture:true,passive:true});
+
+                  window.addEventListener('pointerup',function(ev){
+                    if(ev.isPrimary===false) return;
+                    if(dragTracking && dragMoved) suppressClickUntil=clock()+450;
+                    dragTracking=false;
+                  },{capture:true,passive:true});
+
+                  window.addEventListener('pointercancel',function(){
+                    dragTracking=false;
+                    dragMoved=false;
+                  },{capture:true,passive:true});
+
+                  window.addEventListener('click',function(ev){
+                    if(clock()>=suppressClickUntil) return;
+                    ev.preventDefault();
+                    ev.stopImmediatePropagation();
+                    ev.stopPropagation();
+                  },true);
+                }
+
                 var STYLE_ID='__mc_android_loader_guard';
                 if(document.getElementById(STYLE_ID)) return;
                 var s=document.createElement('style');
