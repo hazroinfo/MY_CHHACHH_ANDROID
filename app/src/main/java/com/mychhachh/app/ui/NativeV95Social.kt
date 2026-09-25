@@ -342,14 +342,91 @@ internal fun NativeMessages(c: V95Controller) {
         NativeRequireLogin(c)
         return
     }
-    LaunchedEffect(Unit) { if (c.conversations.isEmpty()) c.loadMessages() }
+    LaunchedEffect(Unit) { c.loadMessages() }
+    var createGroupOpen by remember { mutableStateOf(false) }
+    var groupName by remember { mutableStateOf("") }
+    var groupMembers by remember { mutableStateOf("") }
+
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = 8.dp),
         contentPadding = PaddingValues(top = 8.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        item { NVHeading(c.t("Messages", "پیغامات"), c.t("Your conversations", "آپ کی گفتگو")) }
-        if (c.conversations.isEmpty() && !c.busy) item { NVEmpty(c.t("No conversations yet", "ابھی کوئی گفتگو نہیں")) }
+        item {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    NVHeading(c.t("Messages", "پیغامات"), c.t("Private and group conversations", "نجی اور گروپ گفتگو"))
+                }
+                NVButton(
+                    if (createGroupOpen) c.t("Close", "بند") else c.t("New group", "نیا گروپ"),
+                    primary = !createGroupOpen,
+                    icon = NVIcons.Plus
+                ) { createGroupOpen = !createGroupOpen }
+            }
+        }
+
+        if (createGroupOpen) {
+            item {
+                NVCard(radius = 22.dp, padding = 10.dp) {
+                    NativeSettingsTitle(NVIcons.People, c.t("Create group", "گروپ بنائیں"))
+                    NVInput(groupName, c.t("Group name", "گروپ نام")) { groupName = it }
+                    NVInput(
+                        groupMembers,
+                        c.t("Member usernames, comma separated", "ممبر یوزرنیم، comma سے الگ"),
+                        Modifier.fillMaxWidth(),
+                        singleLine = false
+                    ) { groupMembers = it }
+                    NVButton(
+                        c.t("Create group", "گروپ بنائیں"),
+                        Modifier.fillMaxWidth(),
+                        primary = true,
+                        enabled = groupName.isNotBlank() && groupMembers.isNotBlank()
+                    ) {
+                        c.createMessageGroup(groupName.trim(), groupMembers.trim()) {
+                            groupName = ""
+                            groupMembers = ""
+                            createGroupOpen = false
+                        }
+                    }
+                }
+            }
+        }
+
+        if (c.messageGroups.isNotEmpty()) {
+            item { NativeSectionLabel(c.t("Groups", "گروپس")) }
+            items(c.messageGroups, key = { "group-" + it.id }) { group ->
+                NVCard(radius = 20.dp, padding = 10.dp) {
+                    Row(
+                        Modifier.fillMaxWidth().clickable { c.openGroup(group) },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            Modifier.size(48.dp).clip(CircleShape)
+                                .background(Brush.linearGradient(listOf(Color(0xFFFFD7ED), Color(0xFFCBEFFF), Color(0xFFFFF2B7)))),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(painterResource(NVIcons.People), null, Modifier.size(32.dp))
+                        }
+                        Spacer(Modifier.width(9.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(group.name, color = NVInk, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                            Text(
+                                c.t("Members: ", "ممبرز: ") + group.memberCount + if (group.preview.isNotBlank()) " · " + group.preview else "",
+                                color = NVMuted,
+                                fontSize = 9.5.sp,
+                                maxLines = 1
+                            )
+                        }
+                        Text("›", color = NVPurple, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                    }
+                }
+            }
+        }
+
+        item { NativeSectionLabel(c.t("Private conversations", "نجی گفتگو")) }
+        if (c.conversations.isEmpty() && c.messageGroups.isEmpty() && !c.busy) {
+            item { NVEmpty(c.t("No conversations yet", "ابھی کوئی گفتگو نہیں")) }
+        }
         items(c.conversations, key = { it.user.id }) { conv ->
             NVCard(radius = 20.dp, padding = 10.dp) {
                 Row(
@@ -517,6 +594,173 @@ internal fun NativeChat(c: V95Controller) {
                 if (text.isNotBlank() || photo.isNotBlank() || audio.isNotBlank()) {
                     c.sendRichMessage(text, photo, audio) {
                         text = ""; photo = ""; audio = ""
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun NativeGroupChat(c: V95Controller) {
+    val group = c.selectedGroup
+    if (c.user == null || group == null) {
+        NativeRequireLogin(c)
+        return
+    }
+
+    val context = LocalContext.current
+    var text by remember(group.id) { mutableStateOf("") }
+    var photo by remember(group.id) { mutableStateOf("") }
+    var audio by remember(group.id) { mutableStateOf("") }
+    var recording by remember(group.id) { mutableStateOf(false) }
+    var recorder by remember(group.id) { mutableStateOf<MediaRecorder?>(null) }
+    var recordingFile by remember(group.id) { mutableStateOf<File?>(null) }
+
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) c.upload(uri, "group_message_photo") { photo = it }
+    }
+
+    fun startRecording() {
+        val file = File(context.cacheDir, "group_message_${System.currentTimeMillis()}.m4a")
+        val next = MediaRecorder().apply {
+            setAudioSource(MediaRecorder.AudioSource.MIC)
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            setAudioEncodingBitRate(128000)
+            setAudioSamplingRate(44100)
+            setOutputFile(file.absolutePath)
+        }
+        runCatching {
+            next.prepare()
+            next.start()
+        }.onSuccess {
+            recorder = next
+            recordingFile = file
+            recording = true
+        }.onFailure {
+            runCatching { next.release() }
+            c.error = c.t("Group voice recording could not start.", "گروپ وائس ریکارڈنگ شروع نہیں ہو سکی۔")
+        }
+    }
+
+    fun stopRecording() {
+        val active = recorder
+        val file = recordingFile
+        recorder = null
+        recordingFile = null
+        recording = false
+        if (active != null) {
+            val ok = runCatching { active.stop() }.isSuccess
+            runCatching { active.release() }
+            if (ok && file != null && file.exists() && file.length() > 0L) {
+                c.uploadFile(file, "audio/mp4", "group_message_audio") { url ->
+                    audio = url
+                    runCatching { file.delete() }
+                }
+            } else {
+                runCatching { file?.delete() }
+                c.error = c.t("Group voice recording failed.", "گروپ وائس ریکارڈنگ ناکام ہو گئی۔")
+            }
+        }
+    }
+
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) startRecording()
+        else c.error = c.t("Microphone permission is required.", "مائیکروفون کی اجازت ضروری ہے۔")
+    }
+
+    DisposableEffect(group.id) {
+        onDispose {
+            val active = recorder
+            recorder = null
+            recording = false
+            if (active != null) {
+                runCatching { active.stop() }
+                runCatching { active.release() }
+            }
+        }
+    }
+
+    Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            NVIconButton(NVIcons.Close, size = 40.dp, iconSize = 29.dp) { c.route = V95Route.MESSAGES }
+            Spacer(Modifier.width(6.dp))
+            Column {
+                Text(c.selectedGroupName.ifBlank { group.name }, color = NVInk, fontWeight = FontWeight.Black, fontSize = 17.sp)
+                Text(c.t("Group conversation", "گروپ گفتگو") + " · " + group.memberCount, color = NVMuted, fontSize = 9.5.sp)
+            }
+        }
+
+        LazyColumn(
+            Modifier.weight(1f).fillMaxWidth(),
+            contentPadding = PaddingValues(vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            items(c.groupMessages, key = { it.id }) { msg ->
+                val mine = msg.senderId == c.user?.id
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start) {
+                    Column(
+                        Modifier
+                            .fillMaxWidth(.82f)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(if (mine) nvPrimaryBrush() else nvGlassBrush())
+                            .border(1.dp, Color.White, RoundedCornerShape(18.dp))
+                            .padding(10.dp)
+                    ) {
+                        if (msg.text.isNotBlank()) Text(msg.text, color = if (mine) Color.White else NVInk, fontSize = 12.sp)
+                        if (!msg.photo.isNullOrBlank()) {
+                            AsyncImage(msg.photo, null, Modifier.fillMaxWidth().heightIn(max = 240.dp).clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.Crop)
+                        }
+                        if (!msg.audio.isNullOrBlank()) NativeAnnouncementAudioPlayer(msg.audio!!)
+                        if (msg.locationLat != null && msg.locationLng != null) {
+                            NVButton(c.t("Open location", "لوکیشن کھولیں"), Modifier.fillMaxWidth(), icon = NVIcons.Pin) {
+                                c.openCoordinates(msg.locationLat, msg.locationLng)
+                            }
+                        }
+                        Text(msg.createdAt, color = if (mine) Color.White.copy(.82f) else NVMuted, fontSize = 8.sp)
+                    }
+                }
+            }
+        }
+
+        if (recording || photo.isNotBlank() || audio.isNotBlank()) {
+            Text(
+                when {
+                    recording -> "● " + c.t("Recording voice…", "وائس ریکارڈ ہو رہی ہے…")
+                    photo.isNotBlank() -> c.t("Photo attached", "فوٹو منسلک ہے")
+                    else -> c.t("Voice attached", "وائس منسلک ہے")
+                },
+                color = if (recording) NVDanger else NVGreen,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+        }
+
+        Row(
+            Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            NVIconButton(NVIcons.Photo, size = 40.dp, iconSize = 28.dp) { photoPicker.launch("image/*") }
+            NVIconButton(NVIcons.Pin, size = 40.dp, iconSize = 28.dp) { c.startGroupMessageLocation() }
+            NVIconButton(NVIcons.Message, size = 40.dp, iconSize = 28.dp) {
+                if (recording) {
+                    stopRecording()
+                } else if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    startRecording()
+                } else {
+                    micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                }
+            }
+            NVInput(text, c.t("Message…", "پیغام…"), Modifier.weight(1f)) { text = it }
+            NVIconButton(NVIcons.Send, size = 44.dp, iconSize = 32.dp) {
+                if (!recording && (text.isNotBlank() || photo.isNotBlank() || audio.isNotBlank())) {
+                    c.sendGroupRichMessage(text, photo, audio) {
+                        text = ""
+                        photo = ""
+                        audio = ""
                     }
                 }
             }
