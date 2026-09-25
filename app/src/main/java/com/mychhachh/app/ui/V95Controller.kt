@@ -1,6 +1,7 @@
 package com.mychhachh.app.ui
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -270,6 +271,24 @@ internal class V95Controller(context: Context) {
 
     fun sharePost(post: Post) = work(false) {
         withContext(Dispatchers.IO) { api.sharePost(post) }
+        val shareUrl = "https://chhachh.pages.dev/post.php?id=${post.id}"
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, shareUrl)
+        }
+        val chooser = Intent.createChooser(shareIntent, t("Share post", "پوسٹ شیئر کریں")).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        app.startActivity(chooser)
+    }
+
+    fun editPost(post: Post, text: String, privacy: String, done: () -> Unit = {}) = work {
+        withContext(Dispatchers.IO) { api.updatePost(post.id, text.trim(), privacy) }
+        if (selectedPost?.id == post.id) {
+            selectedPost = selectedPost?.copy(text = text.trim(), privacy = privacy)
+        }
+        loadFeed(false)
+        done()
     }
 
 
