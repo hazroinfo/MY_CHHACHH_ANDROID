@@ -96,25 +96,15 @@ internal fun RowScope.V95VotePlayer(c: V95Controller, person: User?, statement: 
 @Composable
 internal fun V95Announcements(c: V95Controller) {
     LaunchedEffect(Unit) { if (c.announcements.isEmpty()) c.loadAnnouncements() }
-    V95PageList(c.t("Announcements", "اعلانات"), c.t("Voice and community notices", "وائس اور کمیونٹی اعلانات"), c.announcements) { a ->
-        V95GlassCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                a.author?.let { V95Avatar(it, 46.dp) }
-                Spacer(Modifier.width(9.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(a.author?.name ?: c.t("My Chhachh", "مائی چھچھ"), fontWeight = FontWeight.Black, color = V95Ink)
-                    Text(a.createdAt, color = V95Muted, fontSize = 11.sp)
-                }
-            }
-            if (a.text.isNotBlank()) Text(a.text, color = V95Ink, fontSize = 15.sp, lineHeight = 22.sp)
-            if (!a.photo.isNullOrBlank()) AsyncImage(a.photo, null, Modifier.fillMaxWidth().heightIn(max = 360.dp).clip(RoundedCornerShape(22.dp)), contentScale = ContentScale.Crop)
-            if (!a.audio.isNullOrBlank()) V95Button(c.t("Play voice announcement", "وائس اعلان چلائیں"), primary = true, icon = V95Icons.Message) { }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                V95PostAction("${a.likes} ${c.t("Like", "لائک")}", V95Icons.Heart, a.liked) { if (c.user == null) c.route = V95Route.AUTH else c.likeAnnouncement(a) }
-                V95PostAction("${a.comments} ${c.t("Comment", "کمنٹ")}", V95Icons.Comment) { }
-                V95PostAction(c.t("Report", "رپورٹ"), V95Icons.More) { }
-            }
-        }
+    LazyColumn(
+        Modifier.fillMaxSize().padding(horizontal = 7.dp),
+        contentPadding = PaddingValues(top = 6.dp, bottom = 30.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item { V95PageHeading(c.t("Announcements", "اعلانات"), c.t("Voice and community notices", "وائس اور کمیونٹی اعلانات")) }
+        if (c.user != null) item { V95AnnouncementComposer(c) }
+        if (c.announcements.isEmpty() && !c.busy) item { V95Empty(c.t("No announcements yet", "ابھی کوئی اعلان نہیں")) }
+        items(c.announcements, key = { it.id }) { item -> V95AnnouncementCard(c, item) }
     }
 }
 
