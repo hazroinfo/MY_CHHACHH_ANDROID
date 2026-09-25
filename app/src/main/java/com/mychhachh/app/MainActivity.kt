@@ -6,11 +6,13 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -140,12 +142,28 @@ class MainActivity : ComponentActivity() {
 
             override fun onPageCommitVisible(view: WebView, url: String) {
                 super.onPageCommitVisible(view, url)
+                Log.i(WEBVIEW_LOG_TAG, "PAGE_COMMIT_VISIBLE $url")
                 hideTopLoadingLine(view)
             }
 
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
+                Log.i(WEBVIEW_LOG_TAG, "PAGE_FINISHED $url")
                 hideTopLoadingLine(view)
+            }
+
+            override fun onReceivedError(
+                view: WebView,
+                request: WebResourceRequest,
+                error: WebResourceError
+            ) {
+                super.onReceivedError(view, request, error)
+                if (request.isForMainFrame) {
+                    Log.e(
+                        WEBVIEW_LOG_TAG,
+                        "MAIN_FRAME_ERROR code=${error.errorCode} description=${error.description} url=${request.url}"
+                    )
+                }
             }
         }
 
@@ -288,6 +306,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val HOME_URL = "https://chhachh.pages.dev/"
+        private const val WEBVIEW_LOG_TAG = "MyChhachhWebView"
         private const val HIDE_TOP_LOADING_LINE_JS = """
             (function(){
               try {
