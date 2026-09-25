@@ -1213,19 +1213,36 @@ private fun NativeAdminRecord(c: V95Controller, section: String, item: JSONObjec
     NVCard(radius = 22.dp, padding = 11.dp) {
         when (section) {
             "users" -> {
+                var warning by remember(id) { mutableStateOf("") }
+                var asUserPost by remember(id) { mutableStateOf("") }
+                val blocked = item.optBoolean("blocked", false)
+                val promoted = item.optBoolean("promoted", false)
+
                 Text(item.optString("name", "User"), color = NVInk, fontWeight = FontWeight.Black, fontSize = 13.sp)
                 Text("@" + item.optString("username", "") + " · " + item.optString("email", item.optString("phone", "")), color = NVMuted, fontSize = 9.5.sp)
+
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    NVButton(c.t("Block", "بلاک"), Modifier.weight(1f), danger = true) { c.runAdminAction("toggle_user", id) }
-                    NVButton(c.t("Blue tick", "بلیو ٹک"), Modifier.weight(1f)) { c.runAdminAction("user_setting", id, JSONObject().put("key", "verified")) }
-                    NVButton(c.t("Delete", "حذف"), Modifier.weight(1f), danger = true) { c.runAdminAction("delete_user", id) }
+                    NVButton(
+                        if (blocked) c.t("Unblock", "ان بلاک") else c.t("Block", "بلاک"),
+                        Modifier.weight(1f),
+                        danger = !blocked
+                    ) { c.runAdminAction("toggle_user", id) }
+                    NVButton(c.t("Blue tick", "بلیو ٹک"), Modifier.weight(1f)) {
+                        c.runAdminAction("user_setting", id, JSONObject().put("key", "verified"))
+                    }
+                    NVButton(
+                        if (promoted) c.t("Stop promotion", "پروموشن بند") else c.t("Promote", "پروموٹ"),
+                        Modifier.weight(1f)
+                    ) { c.runAdminAction("promote_user", id) }
                 }
+
                 listOf(
                     "allow_posts" to c.t("Posts", "پوسٹس"),
                     "allow_photo_upload" to c.t("Photo", "فوٹو"),
                     "allow_video_upload" to c.t("Video", "ویڈیو"),
                     "allow_comments" to c.t("Comments", "کمنٹس"),
                     "allow_likes" to c.t("Likes", "لائکس"),
+                    "allow_follows" to c.t("Followers", "فالوورز"),
                     "allow_messages" to c.t("Messages", "پیغامات")
                 ).chunked(3).forEach { controls ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1236,6 +1253,31 @@ private fun NativeAdminRecord(c: V95Controller, section: String, item: JSONObjec
                         }
                         repeat(3 - controls.size) { Spacer(Modifier.weight(1f)) }
                     }
+                }
+
+                NVInput(warning, c.t("Write warning…", "وارننگ لکھیں…"), Modifier.fillMaxWidth(), singleLine = false) { warning = it }
+                NVButton(
+                    c.t("Send warning", "وارننگ بھیجیں"),
+                    Modifier.fillMaxWidth(),
+                    enabled = warning.isNotBlank()
+                ) {
+                    c.runAdminAction("warning", id, JSONObject().put("message", warning.trim()))
+                    warning = ""
+                }
+
+                NVInput(asUserPost, c.t("Publish a post as this user…", "اس یوزر کے نام سے پوسٹ لکھیں…"), Modifier.fillMaxWidth(), singleLine = false) { asUserPost = it }
+                NVButton(
+                    c.t("Publish as user", "یوزر کے نام سے شائع کریں"),
+                    Modifier.fillMaxWidth(),
+                    primary = true,
+                    enabled = asUserPost.isNotBlank()
+                ) {
+                    c.runAdminAction("admin_user_post", id, JSONObject().put("text", asUserPost.trim()))
+                    asUserPost = ""
+                }
+
+                NVButton(c.t("Delete user account", "یوزر اکاؤنٹ حذف کریں"), Modifier.fillMaxWidth(), danger = true, icon = NVIcons.Delete) {
+                    c.runAdminAction("delete_user", id)
                 }
             }
             "verifications" -> {
