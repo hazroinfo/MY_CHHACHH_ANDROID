@@ -76,6 +76,7 @@ internal class V95Controller(context: Context) {
 
     var feedMode by mutableStateOf("for_you")
     var mapPickForPost by mutableStateOf(false)
+    var mapPickForMessage by mutableStateOf(false)
     var composerCheckinName by mutableStateOf("")
     var composerCheckinLat by mutableStateOf<Double?>(null)
     var composerCheckinLng by mutableStateOf<Double?>(null)
@@ -255,6 +256,37 @@ internal class V95Controller(context: Context) {
     fun cancelPostCheckin() {
         mapPickForPost = false
         route = V95Route.HOME
+    }
+
+    fun startMessageLocation() {
+        if (selectedChatUser == null) return
+        mapPickForMessage = true
+        route = V95Route.MAP
+    }
+
+    fun setMessageLocation(place: CheckinPlace) = work {
+        val to = selectedChatUser ?: return@work
+        withContext(Dispatchers.IO) {
+            api.sendMessage(
+                to = to.id,
+                text = place.name,
+                locationLat = place.lat,
+                locationLng = place.lng
+            )
+        }
+        mapPickForMessage = false
+        val result = withContext(Dispatchers.IO) { api.chat(to.id) }
+        chatMessages = result.second
+        route = V95Route.CHAT
+    }
+
+    fun openCoordinates(lat: Double, lng: Double) {
+        val uri = Uri.parse("geo:$lat,$lng?q=$lat,$lng")
+        val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        runCatching { app.startActivity(intent) }
+            .onFailure { error = t("Map app could not open.", "میپ ایپ نہیں کھل سکی۔") }
     }
 
     fun upload(uri: Uri, kind: String, done: (String) -> Unit) = work {
