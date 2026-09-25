@@ -618,8 +618,11 @@ internal fun NativeMap(c: V95Controller) {
                 results.take(5).forEach { place ->
                     Row(
                         Modifier.fillMaxWidth().heightIn(min = 42.dp).clickable {
-                            if (c.mapPickForPost) c.setPostCheckin(place)
-                            else query = place.name
+                            when {
+                                c.mapPickForPost -> c.setPostCheckin(place)
+                                c.mapPickForMessage -> c.setMessageLocation(place)
+                                else -> query = place.name
+                            }
                         },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
