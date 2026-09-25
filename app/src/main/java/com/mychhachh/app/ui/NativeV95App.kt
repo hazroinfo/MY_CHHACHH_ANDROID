@@ -48,7 +48,7 @@ fun NativeV95App() {
 
     val direction = if (c.language == "ur") LayoutDirection.Rtl else LayoutDirection.Ltr
     val weatherNow = c.weather?.optJSONObject("current") ?: c.weather
-    val weatherText = weatherNow?.optString("condition", weatherNow.optString("weather", ""))?.lowercase().orEmpty()
+    val weatherText = weatherNow?.let { it.optString("condition", it.optString("weather", "")) }?.lowercase().orEmpty()
     val liveBackground = when {
         currentHour < 6 || currentHour >= 18 -> Brush.verticalGradient(
             listOf(Color(0xFF18264C), Color(0xFF2C3C6D), Color(0xFF493B6A))
