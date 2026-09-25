@@ -607,16 +607,21 @@ private fun NativeAdminRecord(c: V95Controller, section: String, item: JSONObjec
                     NVButton(c.t("Blue tick", "بلیو ٹک"), Modifier.weight(1f)) { c.runAdminAction("user_setting", id, JSONObject().put("key", "verified")) }
                     NVButton(c.t("Delete", "حذف"), Modifier.weight(1f), danger = true) { c.runAdminAction("delete_user", id) }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    listOf(
-                        "allow_posts" to c.t("Posts", "پوسٹس"),
-                        "allow_photo_upload" to c.t("Photo", "فوٹو"),
-                        "allow_video_upload" to c.t("Video", "ویڈیو"),
-                        "allow_comments" to c.t("Comments", "کمنٹس"),
-                        "allow_likes" to c.t("Likes", "لائکس"),
-                        "allow_messages" to c.t("Messages", "پیغامات")
-                    ).take(3).forEach { (key, label) ->
-                        NVButton(label, Modifier.weight(1f)) { c.runAdminAction("user_setting", id, JSONObject().put("key", key)) }
+                listOf(
+                    "allow_posts" to c.t("Posts", "پوسٹس"),
+                    "allow_photo_upload" to c.t("Photo", "فوٹو"),
+                    "allow_video_upload" to c.t("Video", "ویڈیو"),
+                    "allow_comments" to c.t("Comments", "کمنٹس"),
+                    "allow_likes" to c.t("Likes", "لائکس"),
+                    "allow_messages" to c.t("Messages", "پیغامات")
+                ).chunked(3).forEach { controls ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        controls.forEach { (key, label) ->
+                            NVButton(label, Modifier.weight(1f)) {
+                                c.runAdminAction("user_setting", id, JSONObject().put("key", key))
+                            }
+                        }
+                        repeat(3 - controls.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
             }
