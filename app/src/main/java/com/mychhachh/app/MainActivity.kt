@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.view.Gravity
 import android.view.View
 import android.widget.FrameLayout
 import android.webkit.CookieManager
@@ -79,8 +80,11 @@ class MainActivity : ComponentActivity() {
 
         webView = WebView(this).apply {
             setBackgroundColor(chromeBlue)
-            setLayerType(View.LAYER_TYPE_HARDWARE, null)
+            setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_BOUND, true)
         }
+
+        val density = resources.displayMetrics.density
+        val topLineMaskHeight = maxOf(2, (1.5f * density).toInt())
 
         val root = FrameLayout(this).apply {
             setBackgroundColor(chromeBlue)
@@ -91,13 +95,27 @@ class MainActivity : ComponentActivity() {
                     FrameLayout.LayoutParams.MATCH_PARENT
                 )
             )
+
+            addView(
+                View(this@MainActivity).apply {
+                    setBackgroundColor(chromeBlue)
+                    isClickable = false
+                    isFocusable = false
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                },
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    topLineMaskHeight,
+                    Gravity.TOP
+                )
+            )
         }
         setContentView(root)
 
         ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
             val statusBars = insets.getInsets(WindowInsetsCompat.Type.statusBars())
             val navigationBars = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
-            val extraHeaderGap = (3f * resources.displayMetrics.density).toInt()
+            val extraHeaderGap = (6f * resources.displayMetrics.density).toInt()
             view.setPadding(0, statusBars.top + extraHeaderGap, 0, navigationBars.bottom)
             insets
         }
@@ -144,11 +162,17 @@ class MainActivity : ComponentActivity() {
 
         webView.isVerticalScrollBarEnabled = false
         webView.isHorizontalScrollBarEnabled = false
+        webView.isScrollbarFadingEnabled = true
         webView.overScrollMode = View.OVER_SCROLL_NEVER
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 return handleUri(request.url)
+            }
+
+            override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                view.evaluateJavascript(NO_TOP_LOADING_LINE_JS, null)
             }
 
             override fun onPageCommitVisible(view: WebView, url: String) {
@@ -308,7 +332,7 @@ class MainActivity : ComponentActivity() {
                 if(!document.getElementById(sid)){
                   var s=document.createElement('style');
                   s.id=sid;
-                  s.textContent='#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"],body>progress{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}';
+                  s.textContent='#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"],body>progress,body>div[id*="progress" i],body>div[class*="progress" i],body>div[id*="loading" i],body>div[class*="loading" i]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}html,body{overscroll-behavior-y:none!important;scroll-behavior:auto!important}';
                   (document.head||document.documentElement).appendChild(s);
                 }
               }catch(e){}
