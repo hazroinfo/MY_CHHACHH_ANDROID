@@ -28,15 +28,41 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalLayoutDirection
 import coil.compose.AsyncImage
+import kotlinx.coroutines.delay
+import java.time.LocalTime
 
 @Composable
 fun NativeV95App() {
     val context = LocalContext.current
     val c = remember { V95Controller(context) }
     DisposableEffect(Unit) { onDispose { c.dispose() } }
-    LaunchedEffect(Unit) { c.bootstrap() }
+    var currentHour by remember { mutableIntStateOf(LocalTime.now().hour) }
+    LaunchedEffect(Unit) {
+        c.bootstrap()
+        c.loadWeather(false)
+        while (true) {
+            currentHour = LocalTime.now().hour
+            delay(60_000)
+        }
+    }
 
     val direction = if (c.language == "ur") LayoutDirection.Rtl else LayoutDirection.Ltr
+    val weatherNow = c.weather?.optJSONObject("current") ?: c.weather
+    val weatherText = weatherNow?.optString("condition", weatherNow.optString("weather", ""))?.lowercase().orEmpty()
+    val liveBackground = when {
+        currentHour < 6 || currentHour >= 18 -> Brush.verticalGradient(
+            listOf(Color(0xFF18264C), Color(0xFF2C3C6D), Color(0xFF493B6A))
+        )
+        weatherText.contains("rain") || weatherText.contains("storm") -> Brush.verticalGradient(
+            listOf(Color(0xFFD5E3EE), Color(0xFFE5EAF4), Color(0xFFE9E2F2))
+        )
+        weatherText.contains("fog") || weatherText.contains("mist") -> Brush.verticalGradient(
+            listOf(Color(0xFFE3EBEF), Color(0xFFF1F3F6), Color(0xFFECEAF3))
+        )
+        else -> Brush.verticalGradient(
+            listOf(Color(0xFFDFF7FF), Color(0xFFF6F2FF), Color(0xFFFFF1F8))
+        )
+    }
     val baseDensity = LocalDensity.current
     val cssDensity = Density(baseDensity.density, 1f)
 
@@ -48,11 +74,7 @@ fun NativeV95App() {
             Box(
                 Modifier
                     .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color(0xFFDFF7FF), Color(0xFFF6F2FF), Color(0xFFFFF1F8))
-                        )
-                    )
+                    .background(liveBackground)
             ) {
                 Column(Modifier.fillMaxSize()) {
                     NativeHeader(c)
