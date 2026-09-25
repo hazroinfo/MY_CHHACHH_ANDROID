@@ -8,11 +8,11 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.mychhachh.app"
+        applicationId = "com.mychhachh.app.noline"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "3.0.0"
+        versionCode = 12
+        versionName = "2.0.1"
     }
 
     compileOptions {
