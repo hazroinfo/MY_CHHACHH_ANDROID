@@ -87,55 +87,51 @@ jobs:
           test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
           adb devices -l | tee "$ART/adb-devices.txt"
 
-          # A booted emulator is not enough: wait until the emulator itself can reach the live site.
+          # Keep radios enabled; live-site success is verified by WebView callbacks below.
           adb shell settings put global airplane_mode_on 0 || true
           adb shell svc wifi enable || true
           adb shell svc data enable || true
-          network_ok=0
-          network_deadline=$((SECONDS + 180))
-          while [ $SECONDS -lt $network_deadline ]; do
-            if adb shell ping -c 1 -W 5 chhachh.pages.dev > "$ART/network-ping.txt" 2>&1; then
-              network_ok=1
-              break
-            fi
-            sleep 5
-          done
-          if [ "$network_ok" -ne 1 ]; then
-            echo "::error::Emulator has no live network/DNS access to chhachh.pages.dev"
-            cat "$ART/network-ping.txt" || true
-            exit 1
-          fi
 
           adb install -r -t app/build/outputs/apk/debug/app-debug.apk | tee "$ART/install.txt"
           grep -q "Success" "$ART/install.txt"
 
-          adb logcat -c || true
-          adb shell am force-stop com.mychhachh.app || true
-          adb shell am start -W -n com.mychhachh.app/.MainActivity | tee "$ART/app-launch.txt"
+          # Retry clean launches because a freshly booted emulator can expose WebView before its network is ready.
+          live_ok=0
+          for attempt in 1 2 3 4 5 6; do
+            adb logcat -c || true
+            adb shell am force-stop com.mychhachh.app || true
+            adb shell am start -W -n com.mychhachh.app/.MainActivity | tee "$ART/app-launch-attempt-${attempt}.txt"
 
-          # Do not accept an Android/WebView error page as a successful live-load test.
-          page_ok=0
-          page_deadline=$((SECONDS + 90))
-          while [ $SECONDS -lt $page_deadline ]; do
-            adb logcat -d -v brief -s MyChhachhWebView:I > "$ART/webview-live-load.txt" || true
-            if grep -q "MAIN_FRAME_ERROR" "$ART/webview-live-load.txt"; then
-              echo "::error::Main WebView frame failed to load"
-              cat "$ART/webview-live-load.txt" || true
-              exit 1
-            fi
-            if grep -q "PAGE_FINISHED https://chhachh.pages.dev" "$ART/webview-live-load.txt"; then
-              page_ok=1
+            attempt_deadline=$((SECONDS + 45))
+            while [ $SECONDS -lt $attempt_deadline ]; do
+              adb logcat -d -v brief -s MyChhachhWebView:I > "$ART/webview-live-load-attempt-${attempt}.txt" || true
+              if grep -q "PAGE_FINISHED https://chhachh.pages.dev" "$ART/webview-live-load-attempt-${attempt}.txt"; then
+                live_ok=1
+                cp "$ART/app-launch-attempt-${attempt}.txt" "$ART/app-launch.txt"
+                cp "$ART/webview-live-load-attempt-${attempt}.txt" "$ART/webview-live-load.txt"
+                break
+              fi
+              if grep -q "MAIN_FRAME_ERROR" "$ART/webview-live-load-attempt-${attempt}.txt"; then
+                break
+              fi
+              sleep 3
+            done
+
+            if [ "$live_ok" -eq 1 ]; then
               break
             fi
-            sleep 3
+            sleep 10
           done
-          if [ "$page_ok" -ne 1 ]; then
-            echo "::error::Live My Chhachh page did not finish loading in WebView"
-            cat "$ART/webview-live-load.txt" || true
+
+          if [ "$live_ok" -ne 1 ]; then
+            echo "::error::Live My Chhachh page did not load successfully in WebView"
+            for f in "$ART"/webview-live-load-attempt-*.txt; do
+              echo "===== $f ====="
+              cat "$f" || true
+            done
             exit 1
           fi
           sleep 3
-
           pid="$(adb shell pidof com.mychhachh.app | tr -d '\r')"
           test -n "$pid"
           echo "$pid" > "$ART/app-pid-before-scroll.txt"
@@ -175,7 +171,7 @@ jobs:
             exit 1
           fi
 
-          echo "PASS: install, emulator network, live My Chhachh page load, process-alive, repeated scroll, screenshots and crash/ANR checks completed."
+          echo "PASS: install, verified live My Chhachh WebView load, process-alive, repeated scroll, screenshots and crash/ANR checks completed."
 
       - name: Upload fresh APK
         if: always()
