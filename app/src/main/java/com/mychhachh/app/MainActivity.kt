@@ -18,11 +18,14 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 
@@ -71,15 +74,37 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = Color.rgb(223, 247, 255)
         WebView.setWebContentsDebuggingEnabled(false)
 
+        val root = FrameLayout(this).apply {
+            setBackgroundColor(Color.rgb(223, 247, 255))
+        }
         webView = WebView(this).apply {
             setBackgroundColor(Color.rgb(223, 247, 255))
             overScrollMode = View.OVER_SCROLL_NEVER
         }
-        setContentView(webView)
+        root.addView(
+            webView,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
+        setContentView(root)
+
+        var initialInsetsApplied = false
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            if (!initialInsetsApplied) {
+                val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+                view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+                initialInsetsApplied = true
+                ViewCompat.setOnApplyWindowInsetsListener(view, null)
+            }
+            insets
+        }
+        ViewCompat.requestApplyInsets(root)
 
         configureWebView()
 
@@ -407,26 +432,98 @@ class MainActivity : ComponentActivity() {
         private const val NATIVE_PAGE_FIXES_JS = """
             (function(){
               try {
-                var id='__mc_android_native_fixes';
-                if(document.getElementById(id)){
-                  if(document.body) document.body.classList.add('theme-motion-off');
-                  return;
+                var STYLE_ID='__mc_android_native_fixes';
+
+                function ensureStyle(){
+                  if(document.getElementById(STYLE_ID)) return;
+                  var s=document.createElement('style');
+                  s.id=STYLE_ID;
+                  s.textContent=
+                    '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}' +
+                    'html,html body.mc-android-smooth{scroll-behavior:auto!important;overscroll-behavior-y:none!important}' +
+                    'html body.mc-android-smooth.weather-theme-ready,html body.mc-android-smooth.tod-night{background-attachment:scroll!important}' +
+                    'html body.mc-android-smooth .top,html body.mc-android-smooth.weather-theme-ready .top,html body.mc-android-smooth.tod-night .top,html body.mc-android-smooth .card,html body.mc-android-smooth.weather-theme-ready .card,html body.mc-android-smooth.tod-night .card,html body.mc-android-smooth .community-footer,html body.mc-android-smooth .side-menu,html body.mc-android-smooth .faux-search,html body.mc-android-smooth .page-heading,html body.mc-android-smooth .global-notice{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}' +
+                    'html body.mc-android-smooth #chhachhWeatherBg{animation:none!important;transform:none!important;filter:none!important;background-attachment:scroll!important;will-change:auto!important}' +
+                    'html body.mc-android-smooth #chhachhWeatherBg:before,html body.mc-android-smooth #chhachhWeatherBg:after{display:none!important;animation:none!important;filter:none!important}' +
+                    'html body.mc-android-smooth #chhachhWeatherBg>*{display:none!important;animation:none!important;filter:none!important;transform:none!important;will-change:auto!important}' +
+                    'html body.mc-android-smooth #mcLiveWeatherStage{transition:none!important;will-change:auto!important}' +
+                    'html body.mc-android-smooth #mcLiveWeatherStage .mcwx-photo{inset:0!important;transform:none!important;transition:none!important;filter:none!important;will-change:auto!important}' +
+                    'html body.mc-android-smooth.mcwx-night #mcLiveWeatherStage .mcwx-photo{filter:none!important}' +
+                    'html body.mc-android-smooth #mcLiveWeatherStage .mcwx-tone{transition:none!important}' +
+                    'html body.mc-android-smooth #mcLiveWeatherStage .mcwx-cloud,html body.mc-android-smooth #mcLiveWeatherStage .mcwx-haze,html body.mc-android-smooth #mcLiveWeatherStage .mcwx-sun,html body.mc-android-smooth #mcLiveWeatherStage .mcwx-moon,html body.mc-android-smooth #mcLiveWeatherStage .mcwx-stars,html body.mc-android-smooth #mcLiveWeatherStage .mcwx-fog,html body.mc-android-smooth #mcLiveWeatherStage .mcwx-rain,html body.mc-android-smooth #mcLiveWeatherStage .mcwx-flash{display:none!important;opacity:0!important;animation:none!important;filter:none!important;transform:none!important;will-change:auto!important}' +
+                    'html body.mc-android-smooth video{will-change:auto!important;transform:none!important}';
+                  (document.head||document.documentElement).appendChild(s);
                 }
-                var s=document.createElement('style');
-                s.id=id;
-                s.textContent=
-                  '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}' +
-                  'html,body{scroll-behavior:auto!important;overscroll-behavior-y:none!important}' +
-                  '#chhachhWeatherBg{animation:none!important;transform:none!important;background-attachment:scroll!important;will-change:auto!important;filter:none!important}' +
-                  '#chhachhWeatherBg *{animation:none!important;will-change:auto!important}' +
-                  '#chhachhWeatherBg .fog{filter:none!important}' +
-                  '#mcLiveWeatherStage{transition:none!important}' +
-                  '#mcLiveWeatherStage .mcwx-photo{inset:0!important;transform:none!important;transition:none!important;filter:none!important}' +
-                  '#mcLiveWeatherStage .mcwx-tone{transition:none!important}' +
-                  '#mcLiveWeatherStage .mcwx-cloud,#mcLiveWeatherStage .mcwx-haze,#mcLiveWeatherStage .mcwx-sun,#mcLiveWeatherStage .mcwx-moon,#mcLiveWeatherStage .mcwx-stars,#mcLiveWeatherStage .mcwx-fog,#mcLiveWeatherStage .mcwx-rain,#mcLiveWeatherStage .mcwx-flash{display:none!important;animation:none!important;filter:none!important}' +
-                  '.top,.card,.community-footer,.side-menu,body.menu-open:after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}';
-                (document.head||document.documentElement).appendChild(s);
-                if(document.body) document.body.classList.add('theme-motion-off');
+
+                function applyFiniteFixes(){
+                  ensureStyle();
+                  if(document.body){
+                    document.body.classList.add('mc-android-smooth','theme-motion-off');
+                  }
+
+                  var legacy=document.getElementById('chhachhWeatherBg');
+                  if(legacy){
+                    legacy.style.setProperty('animation','none','important');
+                    legacy.style.setProperty('transform','none','important');
+                    legacy.style.setProperty('filter','none','important');
+                    legacy.style.setProperty('background-attachment','scroll','important');
+                    legacy.style.setProperty('will-change','auto','important');
+                    Array.prototype.forEach.call(legacy.children,function(el){
+                      el.style.setProperty('display','none','important');
+                      el.style.setProperty('animation','none','important');
+                      el.style.setProperty('filter','none','important');
+                      el.style.setProperty('will-change','auto','important');
+                    });
+                  }
+
+                  var stage=document.getElementById('mcLiveWeatherStage');
+                  if(stage){
+                    stage.style.setProperty('transition','none','important');
+                    stage.style.setProperty('will-change','auto','important');
+                    var photo=stage.querySelector('.mcwx-photo');
+                    if(photo){
+                      photo.style.setProperty('inset','0','important');
+                      photo.style.setProperty('transform','none','important');
+                      photo.style.setProperty('transition','none','important');
+                      photo.style.setProperty('filter','none','important');
+                      photo.style.setProperty('will-change','auto','important');
+                    }
+                    var tone=stage.querySelector('.mcwx-tone');
+                    if(tone) tone.style.setProperty('transition','none','important');
+                    Array.prototype.forEach.call(
+                      stage.querySelectorAll('.mcwx-cloud,.mcwx-haze,.mcwx-sun,.mcwx-moon,.mcwx-stars,.mcwx-fog,.mcwx-rain,.mcwx-flash'),
+                      function(el){
+                        el.style.setProperty('display','none','important');
+                        el.style.setProperty('opacity','0','important');
+                        el.style.setProperty('animation','none','important');
+                        el.style.setProperty('filter','none','important');
+                        el.style.setProperty('transform','none','important');
+                        el.style.setProperty('will-change','auto','important');
+                      }
+                    );
+                  }
+
+                  Array.prototype.forEach.call(document.querySelectorAll('video'),function(v){
+                    try{
+                      v.autoplay=false;
+                      v.removeAttribute('autoplay');
+                      v.preload='metadata';
+                      v.setAttribute('playsinline','');
+                      v.setAttribute('webkit-playsinline','');
+                    }catch(_){}
+                  });
+                  Array.prototype.forEach.call(document.querySelectorAll('img'),function(img){
+                    try{
+                      if(!img.hasAttribute('loading')) img.setAttribute('loading','lazy');
+                      img.setAttribute('decoding','async');
+                    }catch(_){}
+                  });
+                }
+
+                applyFiniteFixes();
+                setTimeout(applyFiniteFixes,350);
+                setTimeout(applyFiniteFixes,1400);
+                setTimeout(applyFiniteFixes,3200);
               } catch(e) {}
             })();
         """
