@@ -321,6 +321,16 @@ internal class V95Controller(context: Context) {
         done()
     }
 
+
+    fun deleteAccount(password: String) = work {
+        withContext(Dispatchers.IO) { api.deleteAccount(password) }
+        user = null
+        selectedUser = null
+        feed = emptyList()
+        route = V95Route.HOME
+        loadFeed(false)
+    }
+
     fun loadBlockedUsers() = work {
         blockedUsersList = withContext(Dispatchers.IO) { api.blockedUsers() }
     }
