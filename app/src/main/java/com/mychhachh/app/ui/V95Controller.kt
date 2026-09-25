@@ -74,6 +74,10 @@ internal class V95Controller(context: Context) {
     var features by mutableStateOf(JSONObject())
 
     var feedMode by mutableStateOf("for_you")
+    var mapPickForPost by mutableStateOf(false)
+    var composerCheckinName by mutableStateOf("")
+    var composerCheckinLat by mutableStateOf<Double?>(null)
+    var composerCheckinLng by mutableStateOf<Double?>(null)
     var feed by mutableStateOf<List<Post>>(emptyList())
     var people by mutableStateOf<List<User>>(emptyList())
     var shops by mutableStateOf<List<Shop>>(emptyList())
@@ -201,10 +205,52 @@ internal class V95Controller(context: Context) {
         loadFeed(false)
     }
 
-    fun createPost(text: String, photo: String, video: String, onDone: () -> Unit) = work {
-        withContext(Dispatchers.IO) { api.createPost(text = text, photo = photo, video = video) }
+    fun createPost(
+        text: String,
+        photo: String,
+        video: String,
+        privacy: String = "public",
+        feeling: String = "",
+        onDone: () -> Unit
+    ) = work {
+        val checkin = composerCheckinName
+        val lat = composerCheckinLat
+        val lng = composerCheckinLng
+        withContext(Dispatchers.IO) {
+            api.createPost(
+                text = text,
+                privacy = privacy,
+                checkin = checkin,
+                feeling = feeling,
+                photo = photo,
+                video = video,
+                checkinLat = lat,
+                checkinLng = lng
+            )
+        }
+        composerCheckinName = ""
+        composerCheckinLat = null
+        composerCheckinLng = null
         onDone()
         loadFeed(false)
+    }
+
+    fun startPostCheckin() {
+        mapPickForPost = true
+        route = V95Route.MAP
+    }
+
+    fun setPostCheckin(place: CheckinPlace) {
+        composerCheckinName = place.name
+        composerCheckinLat = place.lat
+        composerCheckinLng = place.lng
+        mapPickForPost = false
+        route = V95Route.HOME
+    }
+
+    fun cancelPostCheckin() {
+        mapPickForPost = false
+        route = V95Route.HOME
     }
 
     fun upload(uri: Uri, kind: String, done: (String) -> Unit) = work {
