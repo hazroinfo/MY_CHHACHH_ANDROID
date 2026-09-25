@@ -233,6 +233,7 @@ object V95Icons {
     val Logout = R.drawable.jelly_logout
     val Send = R.drawable.jelly_send
     val Phone = R.drawable.jelly_phone
+    val Mail = R.drawable.jelly_mail
     val Whatsapp = R.drawable.jelly_whatsapp
     val Clock = R.drawable.jelly_clock
     val Crown = R.drawable.jelly_crown
