@@ -59,28 +59,28 @@ jobs:
 
           # Add logging only so CI can prove the historical baseline loaded the live page.
           python3 - "$BASELINE_DIR/app/src/main/java/com/mychhachh/app/MainActivity.kt" <<'PY'
-import pathlib, sys
-p = pathlib.Path(sys.argv[1])
-s = p.read_text()
-if "import android.util.Log" not in s:
-    s = s.replace("import android.provider.Settings\n", "import android.provider.Settings\nimport android.util.Log\n")
-needle = '''            @Deprecated("Deprecated in Java")
-            override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-                return handleUri(Uri.parse(url))
-            }
-'''
-addition = needle + '''
-            override fun onPageFinished(view: WebView, url: String) {
-                super.onPageFinished(view, url)
-                Log.i("BaselineWebView", "PAGE_FINISHED $url")
-            }
-'''
-if "BaselineWebView" not in s:
-    if needle not in s:
-        raise SystemExit("baseline WebViewClient anchor not found")
-    s = s.replace(needle, addition)
-p.write_text(s)
-PY
+          import pathlib, sys
+          p = pathlib.Path(sys.argv[1])
+          s = p.read_text()
+          if "import android.util.Log" not in s:
+              s = s.replace("import android.provider.Settings\n", "import android.provider.Settings\nimport android.util.Log\n")
+          needle = '''            @Deprecated("Deprecated in Java")
+                      override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
+                          return handleUri(Uri.parse(url))
+                      }
+          '''
+          addition = needle + '''
+                      override fun onPageFinished(view: WebView, url: String) {
+                          super.onPageFinished(view, url)
+                          Log.i("BaselineWebView", "PAGE_FINISHED $url")
+                      }
+          '''
+          if "BaselineWebView" not in s:
+              if needle not in s:
+                  raise SystemExit("baseline WebViewClient anchor not found")
+              s = s.replace(needle, addition)
+          p.write_text(s)
+          PY
 
           pushd "$BASELINE_DIR"
           chmod +x gradlew
