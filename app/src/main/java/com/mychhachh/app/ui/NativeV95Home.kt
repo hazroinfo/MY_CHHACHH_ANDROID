@@ -11,7 +11,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,11 +23,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.mychhachh.app.data.Post
 import java.time.Instant
@@ -97,6 +106,7 @@ private fun NativeComposer(c: V95Controller) {
     var photo by remember { mutableStateOf("") }
     var video by remember { mutableStateOf("") }
     var feeling by remember { mutableStateOf("") }
+    var privacy by remember { mutableStateOf("public") }
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) c.upload(uri, "post_photo") { photo = it }
     }
@@ -127,7 +137,14 @@ private fun NativeComposer(c: V95Controller) {
             NativeComposerTool(c.t("Video", "ویڈیو"), NVIcons.Video, Modifier.weight(1f)) { videoPicker.launch("video/*") }
             NativeComposerTool(c.t("Check in", "چیک اِن"), NVIcons.Pin, Modifier.weight(1f)) { c.startPostCheckin() }
             NativeComposerTool(c.t("Feeling", "احساس"), NVIcons.Feeling, Modifier.weight(1f)) {
-                feeling = if (feeling.isBlank()) c.t("Happy", "خوش") else ""
+                val options = listOf(
+                    c.t("Happy", "خوش"),
+                    c.t("Excited", "پرجوش"),
+                    c.t("Thankful", "شکر گزار"),
+                    c.t("Sad", "اداس")
+                )
+                val current = options.indexOf(feeling)
+                feeling = if (current < 0) options.first() else if (current == options.lastIndex) "" else options[current + 1]
             }
             NativeComposerTool(c.t("Mention", "مینشن"), NVIcons.Mention, Modifier.weight(1f)) {
                 text = if (text.endsWith(" ") || text.isBlank()) text + "@" else text + " @"
@@ -153,15 +170,26 @@ private fun NativeComposer(c: V95Controller) {
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            NVButton(c.t("Public", "پبلک"), Modifier.weight(1f)) { }
+            val privacyLabel = when (privacy) {
+                "followers" -> c.t("Followers", "فالوورز")
+                "private" -> c.t("Only me", "صرف میں")
+                else -> c.t("Public", "پبلک")
+            }
+            NVButton(privacyLabel, Modifier.weight(1f)) {
+                privacy = when (privacy) {
+                    "public" -> "followers"
+                    "followers" -> "private"
+                    else -> "public"
+                }
+            }
             NVButton(
                 c.t("Post", "پوسٹ"),
                 Modifier.weight(.72f),
                 primary = true,
                 enabled = text.isNotBlank() || photo.isNotBlank() || video.isNotBlank()
             ) {
-                c.createPost(text, photo, video, feeling = feeling) {
-                    text = ""; photo = ""; video = ""; feeling = ""
+                c.createPost(text, photo, video, privacy = privacy, feeling = feeling) {
+                    text = ""; photo = ""; video = ""; feeling = ""; privacy = "public"
                 }
             }
         }
@@ -182,6 +210,13 @@ private fun NativeComposerTool(text: String, icon: Int, modifier: Modifier, onCl
 
 @Composable
 internal fun NativePostCard(c: V95Controller, post: Post, compact: Boolean = false) {
+    var menuOpen by remember(post.id) { mutableStateOf(false) }
+    var editOpen by remember(post.id) { mutableStateOf(false) }
+    var deleteConfirm by remember(post.id) { mutableStateOf(false) }
+    var editText by remember(post.id) { mutableStateOf(post.text) }
+    var editPrivacy by remember(post.id) { mutableStateOf(post.privacy.ifBlank { "public" }) }
+    val canManage = c.user?.id == post.user.id || c.user?.isAdmin == true
+
     NVCard(
         modifier = Modifier.clickable { c.openPost(post) },
         radius = 28.dp,
@@ -200,7 +235,48 @@ internal fun NativePostCard(c: V95Controller, post: Post, compact: Boolean = fal
                 }
                 Text("@" + post.user.username + " · " + nvFormatDate(post.createdAt), color = NVMuted, fontSize = 9.5.sp, maxLines = 1)
             }
-            Image(painterResource(NVIcons.More), null, Modifier.size(26.dp))
+            Box {
+                Image(
+                    painterResource(NVIcons.More),
+                    null,
+                    Modifier.size(30.dp).clickable { menuOpen = true }
+                )
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text(if (post.saved) c.t("Saved", "محفوظ") else c.t("Save post", "پوسٹ محفوظ کریں")) },
+                        onClick = {
+                            menuOpen = false
+                            if (c.user == null) c.route = V95Route.AUTH else c.savePost(post)
+                        }
+                    )
+                    if (canManage) {
+                        DropdownMenuItem(
+                            text = { Text(c.t("Edit post", "پوسٹ میں ترمیم")) },
+                            onClick = {
+                                menuOpen = false
+                                editText = post.text
+                                editPrivacy = post.privacy.ifBlank { "public" }
+                                editOpen = true
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(c.t("Delete post", "پوسٹ حذف کریں"), color = NVDanger) },
+                            onClick = {
+                                menuOpen = false
+                                deleteConfirm = true
+                            }
+                        )
+                    } else if (c.user != null) {
+                        DropdownMenuItem(
+                            text = { Text(c.t("Report post", "پوسٹ رپورٹ کریں"), color = NVDanger) },
+                            onClick = {
+                                menuOpen = false
+                                c.reportPost(post)
+                            }
+                        )
+                    }
+                }
+            }
         }
         if (post.text.isNotBlank()) Text(post.text, color = NVInk, fontSize = 13.sp, lineHeight = 19.sp)
         if (!post.feeling.isNullOrBlank() || !post.checkin.isNullOrBlank()) {
@@ -220,13 +296,7 @@ internal fun NativePostCard(c: V95Controller, post: Post, compact: Boolean = fal
             )
         }
         if (!post.video.isNullOrBlank()) {
-            Box(
-                Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(22.dp))
-                    .background(Brush.linearGradient(listOf(Color(0xFFE7F8FF), Color(0xFFEFE4FF)))),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(painterResource(NVIcons.Video), null, Modifier.size(58.dp))
-            }
+            NativeVideoPlayer(post.video!!)
         }
         if (post.reactionTotal > 0 || post.comments > 0 || post.shares > 0) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -257,6 +327,97 @@ internal fun NativePostCard(c: V95Controller, post: Post, compact: Boolean = fal
             }
         }
     }
+
+    if (editOpen) {
+        AlertDialog(
+            onDismissRequest = { editOpen = false },
+            title = { Text(c.t("Edit post", "پوسٹ میں ترمیم"), fontWeight = FontWeight.Black) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    val shape = RoundedCornerShape(18.dp)
+                    Box(
+                        Modifier.fillMaxWidth().heightIn(min = 96.dp).clip(shape)
+                            .background(nvInputBrush()).border(1.dp, Color.White, shape).padding(10.dp)
+                    ) {
+                        BasicTextField(
+                            value = editText,
+                            onValueChange = { editText = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = TextStyle(color = NVInk, fontSize = 13.sp)
+                        )
+                    }
+                    val privacyLabel = when (editPrivacy) {
+                        "followers" -> c.t("Followers", "فالوورز")
+                        "private" -> c.t("Only me", "صرف میں")
+                        else -> c.t("Public", "پبلک")
+                    }
+                    NVButton(privacyLabel, Modifier.fillMaxWidth()) {
+                        editPrivacy = when (editPrivacy) {
+                            "public" -> "followers"
+                            "followers" -> "private"
+                            else -> "public"
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        c.editPost(post, editText, editPrivacy) { editOpen = false }
+                    },
+                    enabled = editText.isNotBlank() || !post.photo.isNullOrBlank() || !post.video.isNullOrBlank()
+                ) { Text(c.t("Save", "محفوظ کریں"), fontWeight = FontWeight.Black) }
+            },
+            dismissButton = {
+                TextButton(onClick = { editOpen = false }) { Text(c.t("Cancel", "منسوخ")) }
+            }
+        )
+    }
+
+    if (deleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { deleteConfirm = false },
+            title = { Text(c.t("Delete post?", "پوسٹ حذف کریں؟"), fontWeight = FontWeight.Black) },
+            text = { Text(c.t("This post will be permanently deleted.", "یہ پوسٹ مستقل طور پر حذف ہو جائے گی۔")) },
+            confirmButton = {
+                TextButton(onClick = {
+                    deleteConfirm = false
+                    c.deletePost(post)
+                }) { Text(c.t("Delete", "حذف کریں"), color = NVDanger, fontWeight = FontWeight.Black) }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteConfirm = false }) { Text(c.t("Cancel", "منسوخ")) }
+            }
+        )
+    }
+}
+
+@Composable
+private fun NativeVideoPlayer(url: String) {
+    val context = LocalContext.current
+    val player = remember(url) {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(url))
+            prepare()
+            playWhenReady = false
+        }
+    }
+    DisposableEffect(player) {
+        onDispose { player.release() }
+    }
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                useController = true
+                this.player = player
+            }
+        },
+        update = { it.player = player },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(220.dp)
+            .clip(RoundedCornerShape(22.dp))
+    )
 }
 
 @Composable
