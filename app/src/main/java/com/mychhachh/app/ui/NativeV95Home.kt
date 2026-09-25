@@ -70,10 +70,10 @@ internal fun NativeHome(c: V95Controller) {
 
 @Composable
 private fun NativeFeedTab(text: String, active: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(999.dp)
     Box(
-        modifier.height(44.dp).clip(shape)
-            .background(if (active) nvPrimaryBrush() else Brush.linearGradient(listOf(Color.White.copy(.82f), Color.White.copy(.64f))))
+        modifier.height(43.dp).clip(shape)
+            .background(if (active) Brush.linearGradient(listOf(Color(0xFFFF6EC0), Color(0xFFFF4CAD), Color(0xFFB671F1))) else Brush.linearGradient(listOf(Color.White.copy(.82f), Color.White.copy(.64f))))
             .border(1.5.dp, Color.White.copy(.96f), shape)
             .clickable(onClick = onClick).padding(horizontal = 6.dp),
         contentAlignment = Alignment.Center
@@ -84,12 +84,12 @@ private fun NativeFeedTab(text: String, active: Boolean, modifier: Modifier, onC
 
 @Composable
 private fun NativeGuestCard(c: V95Controller) {
-    NVCard(radius = 28.dp, padding = 14.dp) {
+    NVCard(radius = 22.dp, padding = 16.dp) {
         Text(c.t("Welcome to My Chhachh", "My Chhachh میں خوش آمدید"), color = NVInk, fontWeight = FontWeight.Black, fontSize = 14.sp)
         Text(
             c.t(
-                "Browse public posts. Login only when you want to post, like, comment or message.",
-                "عوامی پوسٹس دیکھیں۔ پوسٹ، لائک، کمنٹ یا پیغام کے لیے لاگ اِن کریں۔"
+                "Browse public posts, or sign in to like, comment, message and post.",
+                "عوامی پوسٹس دیکھیں، اور لائک، کمنٹ، پیغام یا پوسٹ کے لیے لاگ اِن کریں۔"
             ),
             color = NVMuted, fontSize = 11.sp, lineHeight = 16.sp
         )
