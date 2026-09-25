@@ -128,7 +128,23 @@ internal fun NativeSettings(c: V95Controller) {
     }
     var name by remember(user.id, user.name) { mutableStateOf(user.name) }
     var username by remember(user.id, user.username) { mutableStateOf(user.username) }
+    var phone by remember(user.id, user.phone) { mutableStateOf(user.phone) }
+    var email by remember(user.id, user.email) { mutableStateOf(user.email) }
     var bio by remember(user.id, user.bio) { mutableStateOf(user.bio) }
+    var avatar by remember(user.id, user.avatar) { mutableStateOf(user.avatar.orEmpty()) }
+    var cover by remember(user.id, user.cover) { mutableStateOf(user.cover.orEmpty()) }
+    var gender by remember(user.id, user.gender) { mutableStateOf(user.gender) }
+    var relationship by remember(user.id, user.relationshipStatus) { mutableStateOf(user.relationshipStatus) }
+    var work by remember(user.id, user.work) { mutableStateOf(user.work) }
+    var school by remember(user.id, user.school) { mutableStateOf(user.school) }
+    var city by remember(user.id, user.city) { mutableStateOf(user.city) }
+    var hometown by remember(user.id, user.hometown) { mutableStateOf(user.hometown) }
+    var village by remember(user.id, user.village) { mutableStateOf(user.village) }
+    var area by remember(user.id, user.area) { mutableStateOf(user.area) }
+    var facebook by remember(user.id, user.socialFacebook) { mutableStateOf(user.socialFacebook) }
+    var instagram by remember(user.id, user.socialInstagram) { mutableStateOf(user.socialInstagram) }
+    var youtube by remember(user.id, user.socialYoutube) { mutableStateOf(user.socialYoutube) }
+    var website by remember(user.id, user.socialWebsite) { mutableStateOf(user.socialWebsite) }
     var showEmail by remember(user.id, user.showEmail) { mutableStateOf(user.showEmail) }
     var showPhone by remember(user.id, user.showPhone) { mutableStateOf(user.showPhone) }
     var showLocation by remember(user.id, user.showLocation) { mutableStateOf(user.showLocation) }
@@ -147,6 +163,13 @@ internal fun NativeSettings(c: V95Controller) {
     var supportMessage by remember { mutableStateOf("") }
     var deleteDialog by remember { mutableStateOf(false) }
     var deletePassword by remember { mutableStateOf("") }
+
+    val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) c.upload(uri, "avatar") { avatar = it }
+    }
+    val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) c.upload(uri, "profile-cover") { cover = it }
+    }
 
     val verificationFrontPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) c.upload(uri, "verification_front") { verificationFront = it }
@@ -180,11 +203,113 @@ internal fun NativeSettings(c: V95Controller) {
         item {
             NVCard {
                 NativeSettingsTitle(NVIcons.User, c.t("Edit profile", "پروفائل ایڈٹ"))
+
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    NVButton(
+                        if (avatar.isBlank()) c.t("Profile photo", "پروفائل فوٹو") else c.t("Photo ✓", "فوٹو ✓"),
+                        Modifier.weight(1f),
+                        icon = NVIcons.Photo
+                    ) { avatarPicker.launch("image/*") }
+                    NVButton(
+                        if (cover.isBlank()) c.t("Cover photo", "کور فوٹو") else c.t("Cover ✓", "کور ✓"),
+                        Modifier.weight(1f),
+                        icon = NVIcons.Photo
+                    ) { coverPicker.launch("image/*") }
+                }
+
                 NVInput(name, c.t("Name", "نام")) { name = it }
                 NVInput(username, c.t("Username", "یوزرنیم")) { username = it }
-                NVInput(bio, c.t("Bio", "بایو"), Modifier.fillMaxWidth(), singleLine = false) { bio = it }
-                NVButton(c.t("Save changes", "تبدیلیاں محفوظ کریں"), Modifier.fillMaxWidth(), primary = true) {
-                    c.updateProfile(name, username, bio)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    NVInput(phone, c.t("Phone number", "فون نمبر"), Modifier.weight(1f)) { phone = it }
+                    NVInput(email, c.t("Email", "ای میل"), Modifier.weight(1f)) { email = it }
+                }
+                NVInput(bio, c.t("Short bio", "مختصر بایو"), Modifier.fillMaxWidth(), singleLine = false) { bio = it }
+
+                NativeSettingsTitle(NVIcons.Info, c.t("Personal details", "ذاتی تفصیل"))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    NVButton(
+                        when (gender) {
+                            "male" -> c.t("Male", "مرد")
+                            "female" -> c.t("Female", "خاتون")
+                            "prefer_not_say" -> c.t("Prefer not to say", "نہیں بتانا")
+                            else -> c.t("Gender", "جنس")
+                        },
+                        Modifier.weight(1f)
+                    ) {
+                        gender = when (gender) {
+                            "" -> "male"
+                            "male" -> "female"
+                            "female" -> "prefer_not_say"
+                            else -> ""
+                        }
+                    }
+                    NVButton(
+                        when (relationship) {
+                            "single" -> c.t("Single", "سنگل")
+                            "married" -> c.t("Married", "شادی شدہ")
+                            "engaged" -> c.t("Engaged", "منگنی شدہ")
+                            "prefer_not_say" -> c.t("Prefer not to say", "نہیں بتانا")
+                            else -> c.t("Relationship", "رشتہ")
+                        },
+                        Modifier.weight(1f)
+                    ) {
+                        relationship = when (relationship) {
+                            "" -> "single"
+                            "single" -> "married"
+                            "married" -> "engaged"
+                            "engaged" -> "prefer_not_say"
+                            else -> ""
+                        }
+                    }
+                }
+
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    NVInput(work, c.t("Work / profession", "کام / پیشہ"), Modifier.weight(1f)) { work = it }
+                    NVInput(school, c.t("School / college", "سکول / کالج"), Modifier.weight(1f)) { school = it }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    NVInput(city, c.t("Current city", "موجودہ شہر"), Modifier.weight(1f)) { city = it }
+                    NVInput(hometown, c.t("From / hometown", "آبائی جگہ"), Modifier.weight(1f)) { hometown = it }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    NVInput(village, c.t("Village", "گاؤں"), Modifier.weight(1f)) { village = it }
+                    NVInput(area, c.t("Mohalla / area", "محلہ / علاقہ"), Modifier.weight(1f)) { area = it }
+                }
+
+                NativeSettingsTitle(NVIcons.Website, c.t("Social links", "سوشل لنکس"))
+                NVInput(facebook, c.t("Facebook link", "Facebook لنک")) { facebook = it }
+                NVInput(instagram, c.t("Instagram link", "Instagram لنک")) { instagram = it }
+                NVInput(youtube, c.t("YouTube link", "YouTube لنک")) { youtube = it }
+                NVInput(website, c.t("Website", "ویب سائٹ")) { website = it }
+
+                NVButton(
+                    c.t("Save profile", "پروفائل محفوظ کریں"),
+                    Modifier.fillMaxWidth(),
+                    primary = true,
+                    enabled = name.isNotBlank() && username.isNotBlank()
+                ) {
+                    c.updateProfileFields(
+                        JSONObject()
+                            .put("name", name.trim())
+                            .put("username", username.trim())
+                            .put("phone", phone.trim())
+                            .put("email", email.trim())
+                            .put("bio", bio.trim())
+                            .put("avatar", avatar)
+                            .put("cover_photo", cover)
+                            .put("gender", gender)
+                            .put("relationship_status", relationship)
+                            .put("work", work.trim())
+                            .put("school", school.trim())
+                            .put("city", city.trim())
+                            .put("hometown", hometown.trim())
+                            .put("village", village.trim())
+                            .put("area", area.trim())
+                            .put("social_facebook", facebook.trim())
+                            .put("social_instagram", instagram.trim())
+                            .put("social_youtube", youtube.trim())
+                            .put("social_website", website.trim())
+                    )
                 }
             }
         }
