@@ -530,6 +530,45 @@ internal class V95Controller(context: Context) {
 
     fun loadVotes() = work { votes = withContext(Dispatchers.IO) { api.votes() } }
 
+    fun createVote(opponentUsername: String, durationHours: Int, statement: String, done: () -> Unit = {}) = work {
+        withContext(Dispatchers.IO) { api.createVote(opponentUsername, durationHours, statement) }
+        votes = withContext(Dispatchers.IO) { api.votes() }
+        done()
+    }
+
+    fun respondVote(vote: Vote, decision: String) = work {
+        withContext(Dispatchers.IO) { api.respondVote(vote.id, decision) }
+        votes = withContext(Dispatchers.IO) { api.votes() }
+        selectedVote = votes.firstOrNull { it.id == vote.id } ?: selectedVote
+    }
+
+    fun startVote(vote: Vote) = work {
+        withContext(Dispatchers.IO) { api.startVote(vote.id) }
+        votes = withContext(Dispatchers.IO) { api.votes() }
+        selectedVote = votes.firstOrNull { it.id == vote.id } ?: selectedVote
+    }
+
+    fun cancelVote(vote: Vote) = work {
+        withContext(Dispatchers.IO) { api.cancelVote(vote.id) }
+        votes = withContext(Dispatchers.IO) { api.votes() }
+        selectedVote = votes.firstOrNull { it.id == vote.id }
+        if (selectedVote == null) route = V95Route.VOTES
+    }
+
+    fun leaveVote(vote: Vote) = work {
+        withContext(Dispatchers.IO) { api.leaveVote(vote.id) }
+        votes = withContext(Dispatchers.IO) { api.votes() }
+        selectedVote = votes.firstOrNull { it.id == vote.id }
+        if (selectedVote == null) route = V95Route.VOTES
+    }
+
+    fun updateVoteStatement(vote: Vote, text: String, done: () -> Unit = {}) = work {
+        withContext(Dispatchers.IO) { api.updateVoteStatement(vote.id, text) }
+        votes = withContext(Dispatchers.IO) { api.votes() }
+        selectedVote = votes.firstOrNull { it.id == vote.id } ?: selectedVote
+        done()
+    }
+
 
     fun openVote(vote: Vote) = work {
         selectedVote = vote
@@ -547,9 +586,21 @@ internal class V95Controller(context: Context) {
     fun castVote(vote: Vote, userId: Long) = work(false) {
         withContext(Dispatchers.IO) { api.castVote(vote.id, userId) }
         votes = withContext(Dispatchers.IO) { api.votes() }
+        selectedVote = votes.firstOrNull { it.id == vote.id } ?: selectedVote
     }
 
-    fun shareVote(vote: Vote) = work(false) { withContext(Dispatchers.IO) { api.shareVote(vote.id) } }
+    fun shareVote(vote: Vote) = work(false) {
+        withContext(Dispatchers.IO) { api.shareVote(vote.id) }
+        val url = "https://chhachh.pages.dev/vote.php?id=${vote.id}"
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, url)
+        }
+        val chooser = Intent.createChooser(shareIntent, t("Share voting", "ووٹنگ شیئر کریں")).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        app.startActivity(chooser)
+    }
 
     fun loadAnnouncements() = work {
         val r = withContext(Dispatchers.IO) { api.announcements() }
