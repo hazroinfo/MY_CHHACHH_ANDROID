@@ -23,7 +23,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 
@@ -72,9 +74,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Keep the WebView itself as the root view, matching the known-smooth baseline.
-        // Let Android fit content below system bars instead of wrapping/padding the whole WebView.
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+        // Keep the WebView itself as the root view. Android 15+ enforces edge-to-edge,
+        // so apply the stable system-bar insets directly to the WebView instead of
+        // wrapping the page or changing anything during scrolling.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = Color.rgb(223, 247, 255)
         window.navigationBarColor = Color.rgb(246, 243, 255)
         WebView.setWebContentsDebuggingEnabled(false)
@@ -84,6 +87,20 @@ class MainActivity : ComponentActivity() {
             overScrollMode = View.OVER_SCROLL_NEVER
         }
         setContentView(webView)
+
+        ViewCompat.setOnApplyWindowInsetsListener(webView) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            if (
+                view.paddingLeft != bars.left ||
+                view.paddingTop != bars.top ||
+                view.paddingRight != bars.right ||
+                view.paddingBottom != bars.bottom
+            ) {
+                view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            }
+            insets
+        }
+        ViewCompat.requestApplyInsets(webView)
 
         configureWebView()
 
