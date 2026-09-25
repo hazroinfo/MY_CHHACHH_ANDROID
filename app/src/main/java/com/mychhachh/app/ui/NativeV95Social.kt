@@ -14,7 +14,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -85,12 +87,57 @@ internal fun NativePeople(c: V95Controller) {
 @Composable
 internal fun NativeShops(c: V95Controller) {
     LaunchedEffect(Unit) { if (c.shops.isEmpty()) c.loadShops() }
+    var editorOpen by remember { mutableStateOf(false) }
+    val myShop = c.user?.let { me -> c.shops.firstOrNull { it.userId == me.id } }
+
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = 8.dp),
         contentPadding = PaddingValues(top = 8.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item { NVHeading(c.t("Shops", "دکانیں"), c.t("Local shops and services", "مقامی دکانیں اور سروسز")) }
+
+        if (c.user != null) {
+            item {
+                NVCard(radius = 22.dp, padding = 10.dp) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Image(painterResource(NVIcons.Shop), null, Modifier.size(36.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                myShop?.name ?: c.t("Your shop", "آپ کی دکان"),
+                                color = NVInk,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 13.sp
+                            )
+                            Text(
+                                if (myShop == null) c.t("Create one professional shop profile", "ایک پروفیشنل دکان پروفائل بنائیں")
+                                else c.t("Manage shop details and posts", "دکان کی تفصیل اور پوسٹس مینیج کریں"),
+                                color = NVMuted,
+                                fontSize = 9.5.sp
+                            )
+                        }
+                        NVButton(
+                            if (myShop == null) c.t("Create", "بنائیں") else c.t("Manage", "مینیج"),
+                            primary = true,
+                            icon = if (myShop == null) NVIcons.Plus else NVIcons.Edit
+                        ) { editorOpen = true }
+                    }
+                    if (myShop != null) {
+                        NVButton(c.t("Open my shop", "میری دکان کھولیں"), Modifier.fillMaxWidth(), icon = NVIcons.Shop) {
+                            c.openShop(myShop)
+                        }
+                    }
+                }
+            }
+        }
+
+        if (editorOpen && c.user != null) {
+            item {
+                NativeShopEditor(c, myShop) { editorOpen = false }
+            }
+        }
+
         if (c.shops.isEmpty() && !c.busy) item { NVEmpty(c.t("No shops found", "کوئی دکان نہیں ملی")) }
         items(c.shops, key = { it.id }) { shop ->
             NVCard(radius = 22.dp, padding = 10.dp) {
@@ -103,15 +150,127 @@ internal fun NativeShops(c: V95Controller) {
                         val place = listOf(shop.village, shop.city).filter { it.isNotBlank() }.joinToString(" · ")
                         if (place.isNotBlank()) Text(place, color = NVMuted, fontSize = 9.5.sp)
                     }
-                    NVButton(
-                        if (shop.followed) c.t("Following", "فالوونگ") else c.t("Follow", "فالو"),
-                        primary = !shop.followed
-                    ) {
-                        if (c.user == null) c.route = V95Route.AUTH else c.toggleShop(shop)
+                    if (c.user?.id == shop.userId) {
+                        NVButton(c.t("Edit", "ایڈٹ"), icon = NVIcons.Edit) { editorOpen = true }
+                    } else {
+                        NVButton(
+                            if (shop.followed) c.t("Following", "فالوونگ") else c.t("Follow", "فالو"),
+                            primary = !shop.followed
+                        ) {
+                            if (c.user == null) c.route = V95Route.AUTH else c.toggleShop(shop)
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun NativeShopEditor(c: V95Controller, shop: Shop?, onClose: () -> Unit) {
+    val key = shop?.id ?: 0L
+    var name by remember(key) { mutableStateOf(shop?.name.orEmpty()) }
+    var username by remember(key) { mutableStateOf(shop?.username.orEmpty()) }
+    var category by remember(key) { mutableStateOf(shop?.category.orEmpty()) }
+    var description by remember(key) { mutableStateOf(shop?.description.orEmpty()) }
+    var photo by remember(key) { mutableStateOf(shop?.photo.orEmpty()) }
+    var cover by remember(key) { mutableStateOf(shop?.cover.orEmpty()) }
+    var city by remember(key) { mutableStateOf(shop?.city.orEmpty()) }
+    var village by remember(key) { mutableStateOf(shop?.village.orEmpty()) }
+    var area by remember(key) { mutableStateOf(shop?.area.orEmpty()) }
+    var address by remember(key) { mutableStateOf(shop?.location.orEmpty()) }
+    var phone by remember(key) { mutableStateOf(shop?.phone.orEmpty()) }
+    var whatsapp by remember(key) { mutableStateOf(shop?.whatsapp.orEmpty()) }
+    var mapUrl by remember(key) { mutableStateOf(shop?.locationUrl.orEmpty()) }
+    var deleteConfirm by remember(key) { mutableStateOf(false) }
+
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) c.upload(uri, "shop_photo") { photo = it }
+    }
+    val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) c.upload(uri, "shop_cover") { cover = it }
+    }
+
+    NVCard(radius = 25.dp, padding = 12.dp) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            NativeSettingsTitle(NVIcons.Shop, if (shop == null) c.t("Create your shop", "اپنی دکان بنائیں") else c.t("Edit your shop", "اپنی دکان ایڈٹ کریں"))
+            Spacer(Modifier.weight(1f))
+            NVIconButton(NVIcons.Close, size = 34.dp, iconSize = 27.dp) { onClose() }
+        }
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            NVButton(
+                if (photo.isBlank()) c.t("Shop photo", "دکان فوٹو") else c.t("Photo ✓", "فوٹو ✓"),
+                Modifier.weight(1f),
+                icon = NVIcons.Photo
+            ) { photoPicker.launch("image/*") }
+            NVButton(
+                if (cover.isBlank()) c.t("Cover photo", "کور فوٹو") else c.t("Cover ✓", "کور ✓"),
+                Modifier.weight(1f),
+                icon = NVIcons.Photo
+            ) { coverPicker.launch("image/*") }
+        }
+
+        NVInput(name, c.t("Shop name", "دکان کا نام")) { name = it }
+        NVInput(username, c.t("Shop username", "دکان یوزرنیم")) { username = it }
+        NVInput(category, c.t("Category", "کیٹیگری")) { category = it }
+        NVInput(description, c.t("Shop description", "دکان کی تفصیل"), Modifier.fillMaxWidth(), singleLine = false) { description = it }
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            NVInput(village, c.t("Village", "گاؤں"), Modifier.weight(1f)) { village = it }
+            NVInput(area, c.t("Area / Mohalla", "علاقہ / محلہ"), Modifier.weight(1f)) { area = it }
+        }
+        NVInput(city, c.t("City", "شہر")) { city = it }
+        NVInput(address, c.t("Full address", "مکمل پتہ"), Modifier.fillMaxWidth(), singleLine = false) { address = it }
+        NVInput(phone, c.t("Phone", "فون")) { phone = it }
+        NVInput(whatsapp, "WhatsApp") { whatsapp = it }
+        NVInput(mapUrl, c.t("Google Maps link", "Google Maps لنک")) { mapUrl = it }
+
+        NVButton(
+            if (shop == null) c.t("Create shop", "دکان بنائیں") else c.t("Save shop", "دکان محفوظ کریں"),
+            Modifier.fillMaxWidth(),
+            primary = true,
+            enabled = name.isNotBlank() && username.isNotBlank()
+        ) {
+            val fields = org.json.JSONObject()
+                .put("name", name.trim())
+                .put("username", username.trim())
+                .put("category", category.trim())
+                .put("description", description.trim())
+                .put("photo", photo)
+                .put("cover_photo", cover)
+                .put("city", city.trim())
+                .put("village", village.trim())
+                .put("area", area.trim())
+                .put("location", address.trim())
+                .put("phone", phone.trim())
+                .put("whatsapp", whatsapp.trim())
+                .put("location_url", mapUrl.trim())
+            c.saveShop(shop, fields) { onClose() }
+        }
+
+        if (shop != null) {
+            NVButton(c.t("Delete shop", "دکان حذف کریں"), Modifier.fillMaxWidth(), danger = true, icon = NVIcons.Delete) {
+                deleteConfirm = true
+            }
+        }
+    }
+
+    if (deleteConfirm && shop != null) {
+        AlertDialog(
+            onDismissRequest = { deleteConfirm = false },
+            title = { Text(c.t("Delete shop?", "دکان حذف کریں؟"), fontWeight = FontWeight.Black) },
+            text = { Text(c.t("The shop and its management access will be removed.", "دکان اور اس کی مینجمنٹ رسائی حذف ہو جائے گی۔")) },
+            confirmButton = {
+                TextButton(onClick = {
+                    deleteConfirm = false
+                    c.deleteMyShop(shop) { onClose() }
+                }) { Text(c.t("Delete", "حذف کریں"), color = NVDanger, fontWeight = FontWeight.Black) }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteConfirm = false }) { Text(c.t("Cancel", "منسوخ")) }
+            }
+        )
     }
 }
 
