@@ -161,8 +161,8 @@ jobs:
           read -r screen_w screen_h <<< "$physical_size"
           test -n "$screen_w"
           test -n "$screen_h"
-          # Scroll from the far-right page margin so a feed card cannot interpret the gesture as a click.
-          swipe_x=$((screen_w * 99 / 100))
+          # Exercise the actual feed surface: the drag-click guard must make center-feed swipes safe.
+          swipe_x=$((screen_w / 2))
           swipe_low=$((screen_h * 74 / 100))
           swipe_high=$((screen_h * 32 / 100))
           echo "screen=${screen_w}x${screen_h} swipe_x=${swipe_x} low=${swipe_low} high=${swipe_high}" | tee "$ART/scroll-coordinates.txt"
