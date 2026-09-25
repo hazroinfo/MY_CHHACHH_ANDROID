@@ -298,9 +298,6 @@ internal fun NativeVoteDetail(c: V95Controller) {
 
 @Composable
 internal fun NativeAnnouncements(c: V95Controller) {
-    if (c.user != null) {
-        NativeAnnouncementComposer(c)
-    }
     LaunchedEffect(Unit) { if (c.announcements.isEmpty()) c.loadAnnouncements() }
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = 8.dp),
