@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.view.View
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
@@ -112,10 +113,19 @@ class MainActivity : ComponentActivity() {
 
         webView.isVerticalScrollBarEnabled = false
         webView.isHorizontalScrollBarEnabled = false
+        webView.overScrollMode = View.OVER_SCROLL_NEVER
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 return handleUri(request.url)
+            }
+
+            override fun onPageCommitVisible(view: WebView, url: String) {
+                view.evaluateJavascript(NO_TOP_LOADING_LINE_JS, null)
+            }
+
+            override fun onPageFinished(view: WebView, url: String) {
+                view.evaluateJavascript(NO_TOP_LOADING_LINE_JS, null)
             }
 
             @Deprecated("Deprecated in Java")
@@ -259,5 +269,28 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val HOME_URL = "https://chhachh.pages.dev/"
+
+        private const val NO_TOP_LOADING_LINE_JS = """
+            (function(){
+              try{
+                var sid='__mc_no_top_loading_line';
+                if(!document.getElementById(sid)){
+                  var s=document.createElement('style');
+                  s.id=sid;
+                  s.textContent='html{overscroll-behavior:none!important}#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"],body>progress{display:none!important;opacity:0!important;visibility:hidden!important}';
+                  (document.head||document.documentElement).appendChild(s);
+                }
+                var cover=document.getElementById('__mc_top_line_cover');
+                if(!cover){
+                  cover=document.createElement('div');
+                  cover.id='__mc_top_line_cover';
+                  cover.style.cssText='position:fixed;left:0;right:0;top:0;height:4px;z-index:2147483647;pointer-events:none;';
+                  document.documentElement.appendChild(cover);
+                }
+                var h=document.querySelector('.top');
+                cover.style.background=h?getComputedStyle(h).backgroundColor:'#fff';
+              }catch(e){}
+            })();
+        """
     }
 }
