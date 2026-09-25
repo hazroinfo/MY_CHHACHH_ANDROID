@@ -379,6 +379,46 @@ internal class V95Controller(context: Context) {
 
     fun loadShops() = work { shops = withContext(Dispatchers.IO) { api.shops() } }
 
+    fun saveShop(existing: Shop?, fields: JSONObject, done: () -> Unit = {}) = work {
+        withContext(Dispatchers.IO) {
+            if (existing == null) api.createShop(fields) else api.updateShop(existing.id, fields)
+        }
+        shops = withContext(Dispatchers.IO) { api.shops() }
+        val mine = shops.firstOrNull { it.userId == user?.id }
+        if (mine != null) {
+            selectedShop = mine
+            shopDetails = withContext(Dispatchers.IO) { runCatching { api.shop(mine.id) }.getOrNull() }
+        }
+        done()
+    }
+
+    fun deleteMyShop(shop: Shop, done: () -> Unit = {}) = work {
+        if (shop.userId != user?.id && user?.isAdmin != true) return@work
+        withContext(Dispatchers.IO) { api.deleteShop(shop.id) }
+        shops = shops.filterNot { it.id == shop.id }
+        if (selectedShop?.id == shop.id) {
+            selectedShop = null
+            selectedShopPosts = emptyList()
+            shopDetails = null
+        }
+        done()
+        route = V95Route.SHOPS
+    }
+
+    fun createShopPost(
+        shop: Shop,
+        text: String,
+        privacy: String,
+        photo: String,
+        video: String,
+        done: () -> Unit = {}
+    ) = work {
+        if (shop.userId != user?.id && user?.isAdmin != true) return@work
+        withContext(Dispatchers.IO) { api.createShopPost(shop.id, text, privacy, photo, video) }
+        selectedShopPosts = withContext(Dispatchers.IO) { api.shopPosts(shop.id) }
+        done()
+    }
+
     fun openShop(shop: Shop) = work {
         selectedShop = shop
         val detail = withContext(Dispatchers.IO) { runCatching { api.shop(shop.id) }.getOrNull() }
