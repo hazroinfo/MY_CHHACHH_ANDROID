@@ -46,12 +46,13 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import androidx.compose.ui.viewinterop.AndroidView
 import java.util.Locale
+import java.io.File
 
 
 internal enum class V95Route {
     HOME, PEOPLE, SHOPS, MAP, MESSAGES, VOTES, ANNOUNCEMENTS, NOTIFICATIONS,
     PROFILE, SHOP_DETAIL, CHAT, SEARCH, WEATHER, SETTINGS, ADMIN, AUTH, POST_DETAIL,
-    SAVED, RELATIONS, THEME
+    SAVED, RELATIONS, THEME, ANNOUNCEMENT_DETAIL
 }
 
 internal class V95Controller(context: Context) {
@@ -76,6 +77,8 @@ internal class V95Controller(context: Context) {
     var conversations by mutableStateOf<List<Conversation>>(emptyList())
     var votes by mutableStateOf<List<Vote>>(emptyList())
     var announcements by mutableStateOf<List<Announcement>>(emptyList())
+    var selectedAnnouncement by mutableStateOf<Announcement?>(null)
+    var announcementCommentsList by mutableStateOf<List<Comment>>(emptyList())
     var notices by mutableStateOf<List<Notice>>(emptyList())
     var saved by mutableStateOf<List<Post>>(emptyList())
     var weather by mutableStateOf<JSONObject?>(null)
@@ -275,6 +278,42 @@ internal class V95Controller(context: Context) {
         announcements = r.first
         announcementUnread = r.second
         withContext(Dispatchers.IO) { runCatching { api.markAnnouncementsRead() } }
+    }
+
+
+    fun uploadFile(file: File, mime: String, kind: String, done: (String) -> Unit) = work {
+        val url = withContext(Dispatchers.IO) { api.upload(file, mime, kind) }
+        done(url)
+    }
+
+    fun openAnnouncement(item: Announcement) = work {
+        selectedAnnouncement = item
+        announcementCommentsList = withContext(Dispatchers.IO) { api.announcementComments(item.id) }
+        route = V95Route.ANNOUNCEMENT_DETAIL
+    }
+
+    fun addAnnouncementComment(text: String, done: () -> Unit) = work(false) {
+        val item = selectedAnnouncement ?: return@work
+        withContext(Dispatchers.IO) { api.addAnnouncementComment(item.id, text) }
+        announcementCommentsList = withContext(Dispatchers.IO) { api.announcementComments(item.id) }
+        done()
+    }
+
+    fun createAnnouncement(text: String, photo: String, audio: String, done: () -> Unit) = work {
+        withContext(Dispatchers.IO) { api.createAnnouncement(text, photo, audio, if (user?.isAdmin == true) "admin" else "announcement") }
+        done()
+        loadAnnouncements()
+    }
+
+    fun deleteAnnouncement(item: Announcement) = work {
+        withContext(Dispatchers.IO) { api.deleteAnnouncement(item.id) }
+        announcements = announcements.filterNot { it.id == item.id }
+        if (selectedAnnouncement?.id == item.id) selectedAnnouncement = null
+        route = V95Route.ANNOUNCEMENTS
+    }
+
+    fun reportAnnouncement(item: Announcement) = work(false) {
+        withContext(Dispatchers.IO) { api.reportAnnouncement(item.id, "Reported from Android app") }
     }
 
     fun likeAnnouncement(a: Announcement) = work(false) {
