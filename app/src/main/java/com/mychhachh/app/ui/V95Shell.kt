@@ -94,6 +94,7 @@ fun V95App() {
                             V95Route.SETTINGS -> V95Settings(c)
                             V95Route.ADMIN -> V95Admin(c)
                             V95Route.AUTH -> V95Auth(c)
+                            V95Route.POST_DETAIL -> V95PostDetail(c)
                         }
                         if (c.busy) {
                             Box(Modifier.matchParentSize().background(Color.White.copy(alpha = .28f)), contentAlignment = Alignment.Center) {
@@ -266,7 +267,7 @@ internal fun V95Nav(c: V95Controller, compact: Boolean) {
 internal fun RowScope.V95NavItem(c: V95Controller, text: String, icon: Int, target: V95Route, compact: Boolean) {
     val active = c.route == target
     Column(
-        Modifier.weight(1f).height(if (compact) 64.dp else 72.dp).clip(RoundedCornerShape(20.dp))
+        Modifier.weight(1f).height(72.dp).clip(RoundedCornerShape(20.dp))
             .background(if (active) Brush.linearGradient(listOf(Color(0xFFFFF0F9).copy(.7f), Color.White.copy(.45f))) else Brush.linearGradient(listOf(Color.Transparent, Color.Transparent)))
             .clickable {
                 c.route = target
