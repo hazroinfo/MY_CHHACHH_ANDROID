@@ -31,7 +31,7 @@ jobs:
           set -euo pipefail
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER"             "platform-tools"             "platforms;android-35"             "build-tools;35.0.0"             "emulator"             "system-images;android-35;google_apis;x86_64"
+          "$SDKMANAGER"             "platform-tools"             "platforms;android-35"             "build-tools;35.0.0"             "emulator"             "system-images;android-35;default;x86_64"
 
       - name: Build debug APK
         shell: bash
@@ -65,7 +65,7 @@ jobs:
           fi
 
           rm -rf "$ANDROID_AVD_HOME/MyChhachhCI.avd" "$ANDROID_AVD_HOME/MyChhachhCI.ini"
-          echo "no" | "$AVDMANAGER" create avd             --force             --name MyChhachhCI             --package "system-images;android-35;google_apis;x86_64"             --device "pixel_6"             --path "$ANDROID_AVD_HOME/MyChhachhCI.avd"
+          echo "no" | "$AVDMANAGER" create avd             --force             --name MyChhachhCI             --package "system-images;android-35;default;x86_64"             --device "pixel_6"             --path "$ANDROID_AVD_HOME/MyChhachhCI.avd"
 
           printf 'avd.ini.encoding=UTF-8\npath=%s/MyChhachhCI.avd\npath.rel=avd/MyChhachhCI.avd\ntarget=android-35\n'             "$ANDROID_AVD_HOME" > "$ANDROID_AVD_HOME/MyChhachhCI.ini"
 
@@ -114,8 +114,7 @@ jobs:
 
           adb shell input keyevent 82 || true
           adb shell wm dismiss-keyguard || true
-          adb shell settings put global hide_error_dialogs 1 || true
-          sleep 8
+          sleep 5
           adb install -r -t app/build/outputs/apk/debug/app-debug.apk | tee "$ARTIFACT_DIR/install.txt"
 
           adb logcat -c || true
@@ -131,6 +130,11 @@ jobs:
 
           adb shell dumpsys activity activities > "$ARTIFACT_DIR/activity-before-scroll.txt" || true
 
+          adb shell dumpsys window windows > "$ARTIFACT_DIR/window-before-scroll.txt" || true
+          if grep -qiE "isn't responding|Application Not Responding|app not responding" "$ARTIFACT_DIR/window-before-scroll.txt"; then
+            echo "::error::A system ANR dialog is covering the app before scroll."
+            exit 1
+          fi
           adb exec-out screencap -p > "$ARTIFACT_DIR/home-screen-before-scroll.png"
 
           for i in 1 2 3 4 5 6; do
@@ -155,6 +159,11 @@ jobs:
 
           adb shell dumpsys activity activities > "$ARTIFACT_DIR/activity-after-scroll.txt" || true
 
+          adb shell dumpsys window windows > "$ARTIFACT_DIR/window-after-scroll.txt" || true
+          if grep -qiE "isn't responding|Application Not Responding|app not responding" "$ARTIFACT_DIR/window-after-scroll.txt"; then
+            echo "::error::A system ANR dialog is covering the app after scroll."
+            exit 1
+          fi
           adb exec-out screencap -p > "$ARTIFACT_DIR/home-screen-after-scroll.png"
           adb logcat -d -v threadtime > "$ARTIFACT_DIR/logcat.txt" || true
 
