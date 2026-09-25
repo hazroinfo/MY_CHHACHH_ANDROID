@@ -91,26 +91,155 @@ internal fun V95Settings(c: V95Controller) {
     var name by remember(user?.id) { mutableStateOf(user?.name.orEmpty()) }
     var username by remember(user?.id) { mutableStateOf(user?.username.orEmpty()) }
     var bio by remember(user?.id) { mutableStateOf(user?.bio.orEmpty()) }
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp), contentPadding = PaddingValues(top = 10.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+
+    var profilePrivate by remember(user?.id) { mutableStateOf(user?.profileVisibility == "private") }
+    var showEmail by remember(user?.id) { mutableStateOf(user?.showEmail ?: false) }
+    var showPhone by remember(user?.id) { mutableStateOf(user?.showPhone ?: false) }
+    var showLocation by remember(user?.id) { mutableStateOf(user?.showLocation ?: false) }
+    var hideFollowers by remember(user?.id) { mutableStateOf(user?.hideFollowers ?: false) }
+    var acceptMessages by remember(user?.id) { mutableStateOf(user?.acceptMessages ?: true) }
+
+    var currentPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var deletePassword by remember { mutableStateOf("") }
+    var showDelete by remember { mutableStateOf(false) }
+
+    LazyColumn(
+        Modifier.fillMaxSize().padding(horizontal = 7.dp),
+        contentPadding = PaddingValues(top = 6.dp, bottom = 34.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp)
+    ) {
         item { V95PageHeading(c.t("Settings", "ترتیبات"), c.t("Profile, privacy and language", "پروفائل، پرائیویسی اور زبان")) }
+
         item {
             V95GlassCard {
-                Text(c.t("Language", "زبان"), color = V95Ink, fontWeight = FontWeight.Black, fontSize = 17.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    V95Button("English", primary = c.language == "en") { c.changeLanguage("en") }
-                    V95Button("اردو", primary = c.language == "ur") { c.changeLanguage("ur") }
+                Text(c.t("Language", "زبان"), color = V95Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    V95Button("English", Modifier.weight(1f), primary = c.language == "en") { c.changeLanguage("en") }
+                    V95Button("اردو", Modifier.weight(1f), primary = c.language == "ur") { c.changeLanguage("ur") }
                 }
             }
         }
-        if (user != null) item {
-            V95GlassCard {
-                Text(c.t("Edit profile", "پروفائل ایڈٹ"), color = V95Ink, fontWeight = FontWeight.Black, fontSize = 17.sp)
-                V95Field(name, c.t("Name", "نام")) { name = it }
-                V95Field(username, c.t("Username", "یوزرنیم")) { username = it }
-                V95TextArea(bio, c.t("Bio", "بائیو")) { bio = it }
-                V95Button(c.t("Save changes", "تبدیلیاں محفوظ کریں"), primary = true) { c.updateProfile(name, username, bio) { } }
+
+        if (user != null) {
+            item {
+                V95GlassCard {
+                    Text(c.t("Edit profile", "پروفائل ایڈٹ"), color = V95Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                    V95Field(name, c.t("Name", "نام")) { name = it }
+                    V95Field(username, c.t("Username", "یوزرنیم")) { username = it }
+                    V95TextArea(bio, c.t("Bio", "بائیو")) { bio = it }
+                    V95Button(c.t("Save changes", "تبدیلیاں محفوظ کریں"), Modifier.fillMaxWidth(), primary = true) {
+                        c.updateProfile(name, username, bio) { }
+                    }
+                }
             }
+
+            item {
+                V95GlassCard {
+                    Text(c.t("Privacy", "پرائیویسی"), color = V95Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                    V95SettingToggleRow(c.t("Private profile", "پرائیویٹ پروفائل"), profilePrivate) { profilePrivate = !profilePrivate }
+                    V95SettingToggleRow(c.t("Show email", "ای میل دکھائیں"), showEmail) { showEmail = !showEmail }
+                    V95SettingToggleRow(c.t("Show phone", "فون دکھائیں"), showPhone) { showPhone = !showPhone }
+                    V95SettingToggleRow(c.t("Show location", "لوکیشن دکھائیں"), showLocation) { showLocation = !showLocation }
+                    V95SettingToggleRow(c.t("Hide followers", "فالوورز چھپائیں"), hideFollowers) { hideFollowers = !hideFollowers }
+                    V95SettingToggleRow(c.t("Accept messages", "پیغامات قبول کریں"), acceptMessages) { acceptMessages = !acceptMessages }
+
+                    V95Button(c.t("Save privacy", "پرائیویسی محفوظ کریں"), Modifier.fillMaxWidth(), primary = true) {
+                        c.savePrivacy(
+                            if (profilePrivate) "private" else "public",
+                            showEmail,
+                            showPhone,
+                            showLocation,
+                            hideFollowers,
+                            acceptMessages
+                        )
+                    }
+                }
+            }
+
+            item {
+                V95GlassCard {
+                    Text(c.t("Password", "پاس ورڈ"), color = V95Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                    V95Field(currentPassword, c.t("Current password", "موجودہ پاس ورڈ")) { currentPassword = it }
+                    V95Field(newPassword, c.t("New password", "نیا پاس ورڈ")) { newPassword = it }
+                    V95Field(confirmPassword, c.t("Confirm new password", "نیا پاس ورڈ دوبارہ")) { confirmPassword = it }
+                    V95Button(
+                        c.t("Change password", "پاس ورڈ تبدیل کریں"),
+                        Modifier.fillMaxWidth(),
+                        primary = true,
+                        enabled = currentPassword.isNotBlank() && newPassword.length >= 6 && newPassword == confirmPassword
+                    ) {
+                        c.changePassword(currentPassword, newPassword) {
+                            currentPassword = ""
+                            newPassword = ""
+                            confirmPassword = ""
+                        }
+                    }
+                }
+            }
+
+            item {
+                V95GlassCard {
+                    Text(c.t("Blocked users", "بلاک کیے گئے یوزرز"), color = V95Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                    V95Button(c.t("Load blocked users", "بلاک یوزرز دکھائیں"), icon = V95Icons.People) { c.loadBlockedUsers() }
+                    c.blockedUsersList.forEach { person ->
+                        Row(
+                            Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            V95Avatar(person, 38.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text(person.name, Modifier.weight(1f), color = V95Ink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            V95Button(c.t("Unblock", "ان بلاک"), danger = true) { c.toggleBlock(person) }
+                        }
+                    }
+                }
+            }
+
+            item {
+                V95GlassCard {
+                    Text(c.t("Delete account", "اکاؤنٹ حذف کریں"), color = V95Danger, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                    if (!showDelete) {
+                        V95Button(c.t("Open delete account", "اکاؤنٹ حذف کرنے کا آپشن"), danger = true) { showDelete = true }
+                    } else {
+                        Text(
+                            c.t("Enter your password to permanently delete this account.", "اکاؤنٹ مستقل حذف کرنے کے لیے پاس ورڈ درج کریں۔"),
+                            color = V95Muted,
+                            fontSize = 11.sp
+                        )
+                        V95Field(deletePassword, c.t("Password", "پاس ورڈ")) { deletePassword = it }
+                        V95Button(
+                            c.t("Delete permanently", "مستقل حذف کریں"),
+                            Modifier.fillMaxWidth(),
+                            danger = true,
+                            enabled = deletePassword.isNotBlank()
+                        ) {
+                            c.deleteAccount(deletePassword)
+                        }
+                    }
+                }
+            }
+        } else {
+            item { V95RequireLogin(c) }
         }
+    }
+}
+
+@Composable
+private fun V95SettingToggleRow(label: String, value: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .clip(RoundedCornerShape(15.dp))
+            .background(Color.White.copy(alpha = .32f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, Modifier.weight(1f), color = V95Ink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        V95Button(if (value) "ON" else "OFF", primary = value) { onClick() }
     }
 }
 
