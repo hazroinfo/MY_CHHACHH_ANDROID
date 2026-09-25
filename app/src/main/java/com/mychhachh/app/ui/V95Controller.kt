@@ -356,6 +356,31 @@ internal class V95Controller(context: Context) {
         route = V95Route.RELATIONS
     }
 
+    fun navigateToShop(shop: Shop) {
+        val raw = shop.locationUrl.trim()
+        val destination = when {
+            raw.isNotBlank() -> Uri.parse(raw)
+            shop.location.isNotBlank() -> Uri.parse("geo:0,0?q=" + java.net.URLEncoder.encode(shop.location, "UTF-8"))
+            else -> null
+        }
+        if (destination == null) {
+            error = t("Shop location is not set.", "دکان کی لوکیشن سیٹ نہیں ہے۔")
+            return
+        }
+
+        val mapsIntent = Intent(Intent.ACTION_VIEW, destination).apply {
+            setPackage("com.google.android.apps.maps")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        val fallback = Intent(Intent.ACTION_VIEW, destination).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (runCatching { app.startActivity(mapsIntent) }.isFailure) {
+            runCatching { app.startActivity(fallback) }
+                .onFailure { error = t("No map app could open this location.", "اس لوکیشن کے لیے کوئی میپ ایپ نہیں کھل سکی۔") }
+        }
+    }
+
     fun toggleShop(shop: Shop) = work(false) {
         withContext(Dispatchers.IO) { api.toggleShopFollow(shop.id) }
         shops = shops.map { if (it.id == shop.id) it.copy(followed = !it.followed) else it }
