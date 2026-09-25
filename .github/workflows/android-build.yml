@@ -2,7 +2,7 @@ name: Android Build
 
 on:
   push:
-    branches: [ main, webview-loader-fix ]
+    branches: [ main, webview-loader-fix, webview-final-ui-stability-20260925 ]
   pull_request:
     branches: [ webview-loader-fix ]
   workflow_dispatch:
@@ -27,6 +27,8 @@ jobs:
           FILE="app/src/main/java/com/mychhachh/app/MainActivity.kt"
           grep -q '#mcSmoothRouteBar' "$FILE"
           grep -q '#mcSmoothV3Bar' "$FILE"
+          grep -q 'topLineMaskHeight' "$FILE"
+          grep -q 'RENDERER_PRIORITY_BOUND' "$FILE"
           if grep -Eq 'MutationObserver|setInterval\(|querySelectorAll\(.body \*|querySelectorAll\(.body\*' "$FILE"; then
             echo "::error::Heavy DOM scanning/observer code is present again."
             exit 1
