@@ -143,24 +143,89 @@ internal fun V95Composer(c: V95Controller) {
     var text by remember { mutableStateOf("") }
     var photo by remember { mutableStateOf("") }
     var video by remember { mutableStateOf("") }
-    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) c.upload(uri, "post_photo") { photo = it } }
-    val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) c.upload(uri, "post_video") { video = it } }
+    var privacy by remember { mutableStateOf("public") }
+    var feelingIndex by remember { mutableIntStateOf(0) }
+    val feelings = listOf("", "happy", "thankful", "excited", "sad", "proud")
+    val feeling = feelings[feelingIndex]
+
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) c.upload(uri, "post_photo") { photo = it }
+    }
+    val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) c.upload(uri, "post_video") { video = it }
+    }
+
     V95GlassCard {
-        Text(c.t("Create post", "پوسٹ بنائیں"), fontWeight = FontWeight.Black, color = V95Ink, fontSize = 17.sp)
+        Text(c.t("Create post", "پوسٹ بنائیں"), fontWeight = FontWeight.Black, color = V95Ink, fontSize = 15.sp)
         V95TextArea(text, c.t("What's happening in Chhachh?", "چھچھ میں کیا ہو رہا ہے؟")) { text = it }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             V95Tool(c.t("Photo", "فوٹو"), V95Icons.Photo, Modifier.weight(1f)) { photoPicker.launch("image/*") }
             V95Tool(c.t("Video", "ویڈیو"), V95Icons.Video, Modifier.weight(1f)) { videoPicker.launch("video/*") }
-            V95Tool(c.t("Check in", "چیک اِن"), V95Icons.Pin, Modifier.weight(1f)) { c.route = V95Route.MAP }
-            V95Tool(c.t("Feeling", "احساس"), V95Icons.Feeling, Modifier.weight(1f)) { }
-            V95Tool(c.t("Mention", "مینشن"), V95Icons.Mention, Modifier.weight(1f)) { }
+            V95Tool(c.t("Check in", "چیک اِن"), V95Icons.Pin, Modifier.weight(1f)) { c.startPostCheckin() }
+            V95Tool(c.t("Feeling", "احساس"), V95Icons.Feeling, Modifier.weight(1f)) {
+                feelingIndex = (feelingIndex + 1) % feelings.size
+            }
+            V95Tool(c.t("Mention", "مینشن"), V95Icons.Mention, Modifier.weight(1f)) {
+                text = if (text.endsWith(" ") || text.isBlank()) text + "@" else text + " @"
+            }
         }
-        if (photo.isNotBlank()) AsyncImage(photo, null, Modifier.fillMaxWidth().heightIn(max = 260.dp).clip(RoundedCornerShape(20.dp)), contentScale = ContentScale.Crop)
-        if (video.isNotBlank()) Text(c.t("Video ready to upload", "ویڈیو اپلوڈ کے لیے تیار ہے"), color = V95Green, fontWeight = FontWeight.Bold)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            V95Button(c.t("Public", "پبلک"), Modifier.weight(1f)) { }
-            V95Button(c.t("Post", "پوسٹ"), Modifier.weight(.62f), primary = true, enabled = text.isNotBlank() || photo.isNotBlank() || video.isNotBlank()) {
-                c.createPost(text, photo, video) { text = ""; photo = ""; video = "" }
+
+        if (c.composerCheckinName.isNotBlank() || feeling.isNotBlank()) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (c.composerCheckinName.isNotBlank()) {
+                    V95Button(
+                        c.composerCheckinName.take(28),
+                        Modifier.weight(1f),
+                        icon = V95Icons.Pin
+                    ) { c.startPostCheckin() }
+                }
+                if (feeling.isNotBlank()) {
+                    V95Button(
+                        c.t("Feeling: $feeling", "احساس: $feeling"),
+                        Modifier.weight(1f),
+                        icon = V95Icons.Feeling
+                    ) { feelingIndex = (feelingIndex + 1) % feelings.size }
+                }
+            }
+        }
+
+        if (photo.isNotBlank()) {
+            AsyncImage(
+                photo,
+                null,
+                Modifier.fillMaxWidth().heightIn(max = 260.dp).clip(RoundedCornerShape(20.dp)),
+                contentScale = ContentScale.Crop
+            )
+        }
+        if (video.isNotBlank()) V95NativeVideo(video)
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            val privacyLabel = when (privacy) {
+                "followers" -> c.t("Followers", "فالوورز")
+                "private" -> c.t("Only me", "صرف میں")
+                else -> c.t("Everyone", "سب")
+            }
+            V95Button(privacyLabel, Modifier.weight(1f), icon = V95Icons.Shield) {
+                privacy = when (privacy) {
+                    "public" -> "followers"
+                    "followers" -> "private"
+                    else -> "public"
+                }
+            }
+            V95Button(
+                c.t("Post", "پوسٹ"),
+                Modifier.weight(.7f),
+                primary = true,
+                enabled = text.isNotBlank() || photo.isNotBlank() || video.isNotBlank()
+            ) {
+                c.createPost(text, photo, video, privacy, feeling) {
+                    text = ""
+                    photo = ""
+                    video = ""
+                    privacy = "public"
+                    feelingIndex = 0
+                }
             }
         }
     }
