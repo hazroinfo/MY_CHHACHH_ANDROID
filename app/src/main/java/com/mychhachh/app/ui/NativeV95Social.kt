@@ -471,8 +471,55 @@ internal fun NativeVotes(c: V95Controller) {
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item { NVHeading(c.t("Voting", "ووٹنگ"), c.t("Live community voting", "لائیو کمیونٹی ووٹنگ")) }
+        if (c.user != null) item { NativeVoteCreator(c) }
         if (c.votes.isEmpty() && !c.busy) item { NVEmpty(c.t("No active voting", "کوئی ووٹنگ موجود نہیں")) }
         items(c.votes, key = { it.id }) { vote -> NativeVoteCard(c, vote) }
+    }
+}
+
+@Composable
+private fun NativeVoteCreator(c: V95Controller) {
+    var opponent by remember { mutableStateOf("") }
+    var statement by remember { mutableStateOf("") }
+    var duration by remember { mutableIntStateOf(24) }
+    var expanded by remember { mutableStateOf(false) }
+
+    NVCard(radius = 24.dp, padding = 12.dp) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Image(painterResource(NVIcons.Vote), null, Modifier.size(34.dp))
+            Spacer(Modifier.width(7.dp))
+            Column(Modifier.weight(1f)) {
+                Text(c.t("Create voting match", "ووٹنگ مقابلہ بنائیں"), color = NVInk, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                Text(c.t("Challenge another My Chhachh user", "دوسرے My Chhachh یوزر کو چیلنج کریں"), color = NVMuted, fontSize = 9.5.sp)
+            }
+            NVButton(if (expanded) c.t("Close", "بند") else c.t("Create", "بنائیں"), primary = !expanded) {
+                expanded = !expanded
+            }
+        }
+        if (expanded) {
+            NVInput(opponent, c.t("Opponent username, e.g. @name", "مقابل یوزرنیم، مثلاً @name")) { opponent = it }
+            NVInput(statement, c.t("Your statement / challenge", "آپ کا بیان / چیلنج"), Modifier.fillMaxWidth(), singleLine = false) { statement = it }
+            NVButton(c.t("Duration: ", "مدت: ") + duration + c.t(" hours", " گھنٹے"), Modifier.fillMaxWidth()) {
+                duration = when (duration) {
+                    24 -> 48
+                    48 -> 72
+                    else -> 24
+                }
+            }
+            NVButton(
+                c.t("Send challenge", "چیلنج بھیجیں"),
+                Modifier.fillMaxWidth(),
+                primary = true,
+                enabled = opponent.trim().removePrefix("@").isNotBlank()
+            ) {
+                c.createVote(opponent, duration, statement) {
+                    opponent = ""
+                    statement = ""
+                    duration = 24
+                    expanded = false
+                }
+            }
+        }
     }
 }
 
@@ -536,8 +583,13 @@ private fun NativeVoteSide(c: V95Controller, person: User?, statement: String, c
         Spacer(Modifier.height(4.dp))
         Text(person?.name ?: statement.ifBlank { c.t("Option", "آپشن") }, color = NVInk, fontWeight = FontWeight.Black, fontSize = 10.5.sp, maxLines = 2, textAlign = TextAlign.Center)
         Text(count.toString(), color = NVPurple, fontWeight = FontWeight.Black, fontSize = 15.sp)
-        NVButton(c.t("Vote", "ووٹ"), primary = vote.myChoice != id) {
-            if (c.user == null) c.route = V95Route.AUTH else if (id > 0) c.castVote(vote, id)
+        val canVote = vote.status.lowercase() in setOf("active", "started", "live") && id > 0L
+        NVButton(
+            if (vote.myChoice == id && id > 0L) c.t("Voted", "ووٹ دیا") else c.t("Vote", "ووٹ"),
+            primary = vote.myChoice != id,
+            enabled = canVote
+        ) {
+            if (c.user == null) c.route = V95Route.AUTH else c.castVote(vote, id)
         }
     }
 }
@@ -550,12 +602,63 @@ internal fun NativeVoteDetail(c: V95Controller) {
         return
     }
     var comment by remember { mutableStateOf("") }
+    var statementEdit by remember(vote.id, vote.updatedAt) {
+        mutableStateOf(
+            if (c.user?.id == vote.rightUserId) vote.rightText else vote.leftText
+        )
+    }
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = 8.dp),
         contentPadding = PaddingValues(top = 8.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item { NativeVoteCard(c, vote, detail = true) }
+
+        val meId = c.user?.id ?: 0L
+        val status = vote.status.lowercase()
+        val participant = meId > 0L && (meId == vote.leftUserId || meId == vote.rightUserId)
+        val pending = status in setOf("pending", "invited", "challenge", "challenged", "requested")
+        val ready = status in setOf("accepted", "ready")
+        val live = status in setOf("active", "started", "live")
+
+        if (participant) {
+            item {
+                NVCard(radius = 22.dp, padding = 10.dp) {
+                    if (pending && meId == vote.rightUserId) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            NVButton(c.t("Accept challenge", "چیلنج قبول کریں"), Modifier.weight(1f), primary = true) {
+                                c.respondVote(vote, "accept")
+                            }
+                            NVButton(c.t("Reject", "مسترد"), Modifier.weight(1f), danger = true) {
+                                c.respondVote(vote, "reject")
+                            }
+                        }
+                    }
+                    if (ready && meId == vote.leftUserId) {
+                        NVButton(c.t("Start voting", "ووٹنگ شروع کریں"), Modifier.fillMaxWidth(), primary = true, icon = NVIcons.Vote) {
+                            c.startVote(vote)
+                        }
+                    }
+                    if (pending || ready) {
+                        if (meId == vote.leftUserId) {
+                            NVButton(c.t("Cancel challenge", "چیلنج منسوخ کریں"), Modifier.fillMaxWidth(), danger = true) {
+                                c.cancelVote(vote)
+                            }
+                        }
+                    }
+                    if (live) {
+                        NVButton(c.t("Leave voting", "ووٹنگ چھوڑیں"), Modifier.fillMaxWidth(), danger = true) {
+                            c.leaveVote(vote)
+                        }
+                    }
+                    NVInput(statementEdit, c.t("Your statement", "آپ کا بیان"), Modifier.fillMaxWidth(), singleLine = false) { statementEdit = it }
+                    NVButton(c.t("Update statement", "بیان اپڈیٹ کریں"), Modifier.fillMaxWidth()) {
+                        c.updateVoteStatement(vote, statementEdit)
+                    }
+                }
+            }
+        }
+
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 NVInput(comment, c.t("Write a comment…", "کمنٹ لکھیں…"), Modifier.weight(1f)) { comment = it }
