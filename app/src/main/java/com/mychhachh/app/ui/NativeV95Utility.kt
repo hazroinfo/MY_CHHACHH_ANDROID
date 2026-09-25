@@ -38,9 +38,12 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import org.osmdroid.config.Configuration
+import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.MapEventsOverlay
+import org.osmdroid.views.overlay.Marker
 
 @Composable
 internal fun NativeSearch(c: V95Controller) {
@@ -702,28 +705,91 @@ private fun NVPasswordInput(value: String, placeholder: String, onValue: (String
 
 @Composable
 internal fun NativeMap(c: V95Controller) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var query by remember { mutableStateOf("") }
-    var results by remember { mutableStateOf<List<CheckinPlace>>(emptyList()) }
-    var searching by remember { mutableStateOf(false) }
+    var selected by remember { mutableStateOf<CheckinPlace?>(null) }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
-        NVHeading(c.t("Chhachh Map", "چھچھ نقشہ"), c.t("Native map and check-in", "نیٹو نقشہ اور چیک اِن"))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            NVInput(query, c.t("Search a place…", "جگہ تلاش کریں…"), Modifier.weight(1f)) { query = it }
-            NVButton(c.t("Find", "تلاش"), primary = true, icon = NVIcons.Search) {
-                if (query.isNotBlank() && !searching) {
-                    searching = true
-                    scope.launch {
-                        results = runCatching { withContext(Dispatchers.IO) { c.api.geocodePlaces(query) } }.getOrDefault(emptyList())
-                        searching = false
+        NVHeading(
+            c.t("Chhachh Map", "چھچھ نقشہ"),
+            when {
+                c.mapPickForPost -> c.t("Pick an exact post check-in", "پوسٹ کے لیے درست چیک اِن منتخب کریں")
+                c.mapPickForMessage -> c.t("Pick an exact message location", "پیغام کے لیے درست لوکیشن منتخب کریں")
+                else -> c.t("Native map, search and exact location picker", "نیٹو نقشہ، تلاش اور درست لوکیشن پکر")
+            }
+        )
+
+        NativeLocationPicker(
+            c = c,
+            modifier = Modifier.weight(1f),
+            initialQuery = "",
+            onSelected = { selected = it }
+        )
+
+        selected?.let { place ->
+            Spacer(Modifier.height(7.dp))
+            NVCard(radius = 20.dp, padding = 9.dp) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Image(painterResource(NVIcons.Pin), null, Modifier.size(28.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(place.name, color = NVInk, fontWeight = FontWeight.Black, fontSize = 10.5.sp, maxLines = 2)
+                        Text(
+                            String.format(java.util.Locale.US, "%.6f, %.6f", place.lat, place.lng),
+                            color = NVMuted,
+                            fontSize = 9.sp
+                        )
+                    }
+                }
+                when {
+                    c.mapPickForPost -> NVButton(c.t("Use this check-in", "یہ چیک اِن استعمال کریں"), Modifier.fillMaxWidth(), primary = true) {
+                        c.setPostCheckin(place)
+                    }
+                    c.mapPickForMessage -> NVButton(c.t("Send this location", "یہ لوکیشن بھیجیں"), Modifier.fillMaxWidth(), primary = true) {
+                        c.setMessageLocation(place)
+                    }
+                    else -> NVButton(c.t("Open navigation", "نیویگیشن کھولیں"), Modifier.fillMaxWidth(), icon = NVIcons.Map) {
+                        c.openCoordinates(place.lat, place.lng)
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+internal fun NativeLocationPicker(
+    c: V95Controller,
+    modifier: Modifier = Modifier,
+    initialQuery: String = "",
+    onSelected: (CheckinPlace) -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var query by remember(initialQuery) { mutableStateOf(initialQuery) }
+    var results by remember { mutableStateOf<List<CheckinPlace>>(emptyList()) }
+    var selected by remember { mutableStateOf<CheckinPlace?>(null) }
+    var searching by remember { mutableStateOf(false) }
+
+    fun selectPoint(place: CheckinPlace) {
+        selected = place
+        onSelected(place)
+    }
+
+    Column(modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            NVInput(query, c.t("Search village, place or shop…", "گاؤں، جگہ یا دکان تلاش کریں…"), Modifier.weight(1f)) { query = it }
+            NVButton(c.t("Find", "تلاش"), primary = true, icon = NVIcons.Search, enabled = query.isNotBlank() && !searching) {
+                searching = true
+                scope.launch {
+                    results = runCatching {
+                        withContext(Dispatchers.IO) { c.api.geocodePlaces(query) }
+                    }.getOrDefault(emptyList())
+                    searching = false
+                    results.firstOrNull()?.let { selectPoint(it) }
+                }
+            }
+        }
+
         Spacer(Modifier.height(7.dp))
-        NVCard(Modifier.weight(1f), radius = 22.dp, padding = 5.dp) {
+        NVCard(Modifier.weight(1f).heightIn(min = 190.dp), radius = 22.dp, padding = 5.dp) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { ctx ->
@@ -731,29 +797,74 @@ internal fun NativeMap(c: V95Controller) {
                     MapView(ctx).apply {
                         setTileSource(TileSourceFactory.MAPNIK)
                         setMultiTouchControls(true)
-                        controller.setZoom(11.0)
-                        controller.setCenter(GeoPoint(33.90, 72.49))
+                        controller.setZoom(12.0)
+                        controller.setCenter(GeoPoint(33.90977, 72.48868))
+
+                        overlays.add(
+                            MapEventsOverlay(object : MapEventsReceiver {
+                                override fun singleTapConfirmedHelper(point: GeoPoint): Boolean {
+                                    val initial = CheckinPlace(
+                                        String.format(java.util.Locale.US, "%.6f, %.6f", point.latitude, point.longitude),
+                                        point.latitude,
+                                        point.longitude
+                                    )
+                                    selectPoint(initial)
+                                    scope.launch {
+                                        val named = runCatching {
+                                            withContext(Dispatchers.IO) { c.api.reverse(point.latitude, point.longitude) }
+                                        }.getOrNull()?.let { data ->
+                                            val label = data.optString(
+                                                "display_name",
+                                                data.optString("name", data.optString("address", initial.name))
+                                            ).ifBlank { initial.name }
+                                            CheckinPlace(label, point.latitude, point.longitude)
+                                        }
+                                        if (named != null) selectPoint(named)
+                                    }
+                                    return true
+                                }
+
+                                override fun longPressHelper(point: GeoPoint): Boolean {
+                                    return singleTapConfirmedHelper(point)
+                                }
+                            })
+                        )
                     }
+                },
+                update = { map ->
+                    map.overlays.removeAll { it is Marker && it.id == "mychhachh-selected" }
+                    selected?.let { place ->
+                        val marker = Marker(map).apply {
+                            id = "mychhachh-selected"
+                            position = GeoPoint(place.lat, place.lng)
+                            title = place.name
+                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        }
+                        map.overlays.add(marker)
+                        map.controller.animateTo(marker.position)
+                    }
+                    map.invalidate()
                 }
             )
         }
+
         if (results.isNotEmpty()) {
-            Spacer(Modifier.height(7.dp))
-            NVCard(radius = 20.dp, padding = 8.dp) {
+            Spacer(Modifier.height(6.dp))
+            NVCard(radius = 18.dp, padding = 7.dp) {
                 results.take(5).forEach { place ->
                     Row(
-                        Modifier.fillMaxWidth().heightIn(min = 42.dp).clickable {
-                            when {
-                                c.mapPickForPost -> c.setPostCheckin(place)
-                                c.mapPickForMessage -> c.setMessageLocation(place)
-                                else -> query = place.name
-                            }
-                        },
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 40.dp)
+                            .clickable {
+                                query = place.name
+                                selectPoint(place)
+                            },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Image(painterResource(NVIcons.Pin), null, Modifier.size(24.dp))
+                        Image(painterResource(NVIcons.Pin), null, Modifier.size(23.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text(place.name, color = NVInk, fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+                        Text(place.name, color = NVInk, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 2)
                     }
                 }
             }
