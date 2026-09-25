@@ -634,6 +634,13 @@ internal class V95Controller(context: Context) {
         loadAnnouncements()
     }
 
+    fun editAnnouncement(item: Announcement, text: String, done: () -> Unit = {}) = work {
+        withContext(Dispatchers.IO) { api.editAnnouncement(item.id, text, item.type) }
+        announcements = withContext(Dispatchers.IO) { api.announcements().first }
+        selectedAnnouncement = announcements.firstOrNull { it.id == item.id } ?: item.copy(text = text)
+        done()
+    }
+
     fun deleteAnnouncement(item: Announcement) = work {
         withContext(Dispatchers.IO) { api.deleteAnnouncement(item.id) }
         announcements = announcements.filterNot { it.id == item.id }
