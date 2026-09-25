@@ -1,55 +1,22 @@
-name: Android Build
+name: WebView Final Exact Build
 
 on:
   push:
-    branches: [ main ]
+    branches: [webview-final-exact-native-mask-20260925]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   actions: read
 
 jobs:
-  build:
+  build-and-smoke-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Unpack uploaded source archive
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ ! -f app/build.gradle.kts ]; then
-            ZIP="MY_CHHACHH_ANDROID_STUDIO_NATIVE_V6_FINAL_CHECKED-1.zip"
-            if [ ! -f "$ZIP" ]; then
-              echo "::error::Source ZIP not found: $ZIP"
-              exit 1
-            fi
-
-            rm -rf .source_unpack
-            mkdir .source_unpack
-            unzip -q "$ZIP" -d .source_unpack
-
-            SRC="$(find .source_unpack -mindepth 1 -maxdepth 1 -type d | head -n 1)"
-            if [ -z "$SRC" ]; then
-              echo "::error::Could not find project folder inside ZIP"
-              exit 1
-            fi
-
-            rsync -a "$SRC"/ ./
-            rm -rf .source_unpack "$ZIP"
-
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add -A
-            if ! git diff --cached --quiet; then
-              git commit -m "Unpack Android source"
-              git push
-            fi
-          fi
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -61,20 +28,153 @@ jobs:
       - name: Install Android SDK packages
         shell: bash
         run: |
+          set -euo pipefail
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          "$SDKMANAGER"             "platform-tools"             "platforms;android-35"             "build-tools;35.0.0"             "emulator"             "system-images;android-35;google_apis;x86_64"
 
       - name: Build debug APK
         shell: bash
         run: |
+          set -euo pipefail
           chmod +x gradlew
-          ./gradlew --no-daemon --stacktrace assembleDebug
+          ./gradlew --no-daemon --stacktrace clean assembleDebug
 
       - name: Upload APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: MY_CHHACHH-debug-apk
+          name: MY_CHHACHH_WEBVIEW_FINAL_EXACT_NATIVE_MASK
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Boot emulator and run screenshot-scroll-crash test
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ARTIFACT_DIR="$GITHUB_WORKSPACE/emulator-artifacts"
+          mkdir -p "$ARTIFACT_DIR"
+
+          export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          AVDMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
+          mkdir -p "$ANDROID_AVD_HOME"
+
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm || true
+          fi
+
+          rm -rf "$ANDROID_AVD_HOME/MyChhachhCI.avd" "$ANDROID_AVD_HOME/MyChhachhCI.ini"
+          echo "no" | "$AVDMANAGER" create avd             --force             --name MyChhachhCI             --package "system-images;android-35;google_apis;x86_64"             --device "pixel_6"             --path "$ANDROID_AVD_HOME/MyChhachhCI.avd"
+
+          printf 'avd.ini.encoding=UTF-8\npath=%s/MyChhachhCI.avd\npath.rel=avd/MyChhachhCI.avd\ntarget=android-35\n'             "$ANDROID_AVD_HOME" > "$ANDROID_AVD_HOME/MyChhachhCI.ini"
+
+          adb kill-server || true
+          adb start-server
+
+          start_emulator() {
+            nohup emulator               -avd MyChhachhCI               -no-window               -noaudio               -no-boot-anim               -no-snapshot               -no-snapshot-save               -wipe-data               -gpu swiftshader_indirect               > "$ARTIFACT_DIR/emulator.log" 2>&1 &
+            echo $! > "$ARTIFACT_DIR/emulator.pid"
+          }
+
+          wait_for_device() {
+            local deadline=$((SECONDS + 360))
+            while [ $SECONDS -lt $deadline ]; do
+              adb devices -l > "$ARTIFACT_DIR/adb-devices.txt" || true
+              state="$(adb get-state 2>/dev/null || true)"
+              if [ "$state" = "device" ]; then
+                boot="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+                if [ "$boot" = "1" ]; then
+                  return 0
+                fi
+              elif [ "$state" = "offline" ]; then
+                adb reconnect offline || true
+                adb kill-server || true
+                sleep 2
+                adb start-server
+              fi
+              sleep 5
+            done
+            return 1
+          }
+
+          start_emulator
+          if ! wait_for_device; then
+            adb emu kill || true
+            if [ -f "$ARTIFACT_DIR/emulator.pid" ]; then
+              kill "$(cat "$ARTIFACT_DIR/emulator.pid")" 2>/dev/null || true
+            fi
+            pkill -9 -f "emulator.*MyChhachhCI" || true
+            adb kill-server || true
+            sleep 3
+            adb start-server
+            start_emulator
+            wait_for_device
+          fi
+
+          adb shell input keyevent 82 || true
+          adb shell wm dismiss-keyguard || true
+          adb install -r -t app/build/outputs/apk/debug/app-debug.apk | tee "$ARTIFACT_DIR/install.txt"
+
+          adb logcat -c || true
+          adb shell am force-stop com.mychhachh.app || true
+          adb shell am start -W -n com.mychhachh.app/.MainActivity | tee "$ARTIFACT_DIR/app-launch.txt"
+
+          sleep 15
+
+          if ! adb shell pidof com.mychhachh.app > "$ARTIFACT_DIR/app-pid-before-scroll.txt"; then
+            echo "::error::My Chhachh is not running after launch."
+            exit 1
+          fi
+
+          adb shell dumpsys window windows             | grep -E "mCurrentFocus|mFocusedApp"             > "$ARTIFACT_DIR/window-focus-before-scroll.txt" || true
+
+          adb exec-out screencap -p > "$ARTIFACT_DIR/home-screen-before-scroll.png"
+
+          for i in 1 2 3 4 5 6; do
+            adb shell input swipe 540 1750 540 520 260
+            sleep 1
+          done
+
+          for i in 1 2 3 4; do
+            adb shell input swipe 540 520 540 1700 260
+            sleep 1
+          done
+
+          for i in 1 2 3 4 5 6; do
+            adb shell input swipe 540 1750 540 520 220
+            sleep 1
+          done
+
+          if ! adb shell pidof com.mychhachh.app > "$ARTIFACT_DIR/app-pid-after-scroll.txt"; then
+            echo "::error::My Chhachh stopped during repeated scrolling."
+            exit 1
+          fi
+
+          adb shell dumpsys window windows             | grep -E "mCurrentFocus|mFocusedApp"             > "$ARTIFACT_DIR/window-focus-after-scroll.txt" || true
+
+          adb exec-out screencap -p > "$ARTIFACT_DIR/home-screen-after-scroll.png"
+          adb logcat -d -v threadtime > "$ARTIFACT_DIR/logcat.txt" || true
+
+          if grep -E "FATAL EXCEPTION|ANR in com\.mychhachh\.app|Process: com\.mychhachh\.app.*has died"             "$ARTIFACT_DIR/logcat.txt"; then
+            echo "::error::Crash or ANR signature found for My Chhachh."
+            exit 1
+          fi
+
+          if ! grep -q "com.mychhachh.app" "$ARTIFACT_DIR/window-focus-after-scroll.txt"; then
+            echo "::error::My Chhachh is not the active app after repeated scrolling."
+            exit 1
+          fi
+
+          test -s "$ARTIFACT_DIR/home-screen-before-scroll.png"
+          test -s "$ARTIFACT_DIR/home-screen-after-scroll.png"
+
+          echo "Screenshot, active-app, repeated-scroll and crash/ANR checks passed."
+
+      - name: Upload emulator proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MY_CHHACHH_WEBVIEW_EMULATOR_PROOF
+          path: emulator-artifacts/
+          if-no-files-found: warn
