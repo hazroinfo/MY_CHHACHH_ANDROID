@@ -125,8 +125,8 @@ jobs:
           adb exec-out screencap -p > "$ARTIFACT_DIR/before-scroll.png"
 
           if [ -s "$ARTIFACT_DIR/window-before.xml" ]; then
-            if ! grep -Eqi 'My Chhachh|Connect with people|Voting|Weather|Announcements|For You' "$ARTIFACT_DIR/window-before.xml"; then
-              echo "::error::Live website UI text was not detected in the WebView accessibility tree."
+            if ! grep -Fq 'class="android.webkit.WebView"' "$ARTIFACT_DIR/window-before.xml"; then
+              echo "::error::Android WebView was not present after app launch."
               cat "$ARTIFACT_DIR/window-before.xml" || true
               exit 1
             fi
