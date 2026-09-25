@@ -27,7 +27,7 @@ class MainActivity : Activity() {
     private var pendingGeoCallback: GeolocationPermissions.Callback? = null
 
     companion object {
-        private const val HOME_URL = "https://www.mychhachh.com/"
+        private const val HOME_URL = "https://chhachh.pages.dev/"
         private const val FILE_CHOOSER = 4101
         private const val WEB_PERMISSION = 4102
         private const val GEO_PERMISSION = 4103
@@ -66,7 +66,7 @@ class MainActivity : Activity() {
             setSupportZoom(false)
             textZoom = 100
             cacheMode = WebSettings.LOAD_DEFAULT
-            userAgentString = "$userAgentString MyChhachhAndroid/3.0"
+            userAgentString = "$userAgentString MyChhachhAndroid/2.0"
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) safeBrowsingEnabled = true
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) forceDark = WebSettings.FORCE_DARK_OFF
         }
@@ -83,6 +83,16 @@ class MainActivity : Activity() {
             @Suppress("DEPRECATION")
             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean =
                 handleUrl(Uri.parse(url))
+
+            override fun onPageCommitVisible(view: WebView, url: String?) {
+                super.onPageCommitVisible(view, url)
+                hideRouteProgressLine(view)
+            }
+
+            override fun onPageFinished(view: WebView, url: String?) {
+                super.onPageFinished(view, url)
+                hideRouteProgressLine(view)
+            }
         }
 
         webView.webChromeClient = object : WebChromeClient() {
@@ -153,16 +163,33 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun hideRouteProgressLine(view: WebView) {
+        val script = """
+            (function(){
+              try {
+                if (!document.getElementById('mcWebViewNoRouteLine')) {
+                  var style = document.createElement('style');
+                  style.id = 'mcWebViewNoRouteLine';
+                  style.textContent = '#mcSmoothRouteBar,#mcSmoothV3Bar{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important;}';
+                  (document.head || document.documentElement).appendChild(style);
+                }
+              } catch (e) {}
+            })();
+        """.trimIndent()
+        view.evaluateJavascript(script, null)
+    }
+
     private fun isTrustedOrigin(uri: Uri): Boolean {
         val host = uri.host?.lowercase() ?: return false
-        return host == "mychhachh.com" || host.endsWith(".mychhachh.com")
+        return host == "chhachh.pages.dev" ||
+            host == "mychhachh.com" || host.endsWith(".mychhachh.com")
     }
 
     private fun handleUrl(uri: Uri): Boolean {
         val scheme = uri.scheme?.lowercase().orEmpty()
         val host = uri.host?.lowercase().orEmpty()
         if ((scheme == "http" || scheme == "https") &&
-            (host == "mychhachh.com" || host.endsWith(".mychhachh.com"))
+            (host == "chhachh.pages.dev" || host == "mychhachh.com" || host.endsWith(".mychhachh.com"))
         ) return false
 
         return try {
