@@ -56,6 +56,32 @@ jobs:
           BASELINE_DIR="$RUNNER_TEMP/mychhachh-smooth-baseline"
           rm -rf "$BASELINE_DIR"
           git worktree add --detach "$BASELINE_DIR" "$BASELINE_SHA"
+
+          # Add logging only so CI can prove the historical baseline loaded the live page.
+          python3 - "$BASELINE_DIR/app/src/main/java/com/mychhachh/app/MainActivity.kt" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+s = p.read_text()
+if "import android.util.Log" not in s:
+    s = s.replace("import android.provider.Settings\n", "import android.provider.Settings\nimport android.util.Log\n")
+needle = '''            @Deprecated("Deprecated in Java")
+            override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
+                return handleUri(Uri.parse(url))
+            }
+'''
+addition = needle + '''
+            override fun onPageFinished(view: WebView, url: String) {
+                super.onPageFinished(view, url)
+                Log.i("BaselineWebView", "PAGE_FINISHED $url")
+            }
+'''
+if "BaselineWebView" not in s:
+    if needle not in s:
+        raise SystemExit("baseline WebViewClient anchor not found")
+    s = s.replace(needle, addition)
+p.write_text(s)
+PY
+
           pushd "$BASELINE_DIR"
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace assembleDebug
@@ -120,9 +146,36 @@ jobs:
 
           adb install -r -t "$GITHUB_WORKSPACE/known-smooth-baseline.apk" | tee "$ART/baseline-install.txt"
           grep -q "Success" "$ART/baseline-install.txt"
-          adb shell am force-stop com.mychhachh.app || true
-          adb shell am start -W -n com.mychhachh.app/.MainActivity | tee "$ART/baseline-launch.txt"
-          sleep 35
+
+          baseline_live_ok=0
+          for baseline_attempt in 1 2 3 4 5 6; do
+            adb logcat -c || true
+            adb shell am force-stop com.mychhachh.app || true
+            adb shell am start -W -n com.mychhachh.app/.MainActivity | tee "$ART/baseline-launch-attempt-${baseline_attempt}.txt"
+
+            baseline_deadline=$((SECONDS + 45))
+            while [ $SECONDS -lt $baseline_deadline ]; do
+              adb logcat -d -v brief -s BaselineWebView:I > "$ART/baseline-live-load-attempt-${baseline_attempt}.txt" || true
+              if grep -q "PAGE_FINISHED https://chhachh.pages.dev" "$ART/baseline-live-load-attempt-${baseline_attempt}.txt"; then
+                baseline_live_ok=1
+                cp "$ART/baseline-launch-attempt-${baseline_attempt}.txt" "$ART/baseline-launch.txt"
+                cp "$ART/baseline-live-load-attempt-${baseline_attempt}.txt" "$ART/baseline-live-load.txt"
+                break
+              fi
+              sleep 3
+            done
+            if [ "$baseline_live_ok" -eq 1 ]; then
+              break
+            fi
+            sleep 10
+          done
+
+          if [ "$baseline_live_ok" -ne 1 ]; then
+            echo "::error::Known-smooth baseline did not load the live My Chhachh page"
+            exit 1
+          fi
+
+          sleep 20
           baseline_pid="$(adb shell pidof com.mychhachh.app | tr -d '\r')"
           test -n "$baseline_pid"
           adb exec-out screencap -p > "$ART/baseline-before-scroll.png"
