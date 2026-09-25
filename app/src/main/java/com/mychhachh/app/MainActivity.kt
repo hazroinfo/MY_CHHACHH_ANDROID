@@ -3,9 +3,9 @@ package com.mychhachh.app
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
@@ -19,7 +19,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : ComponentActivity() {
 
@@ -47,7 +49,7 @@ class MainActivity : ComponentActivity() {
                 else -> false
             }
         }.toTypedArray()
-        if (allowed.isNotEmpty()) request.grant(allowed) else request.deny()
+        if (allowed.isNotEmpty()) request.grant(request.resources) else request.deny()
     }
 
     private val locationPermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -65,11 +67,24 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = Color.rgb(223, 247, 255)
         WebView.setWebContentsDebuggingEnabled(false)
 
-        webView = WebView(this)
+        webView = WebView(this).apply {
+            setBackgroundColor(Color.rgb(223, 247, 255))
+        }
         setContentView(webView)
+
+        ViewCompat.setOnApplyWindowInsetsListener(webView) { view, insets ->
+            val top = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+            if (view.paddingTop != top) {
+                view.setPadding(view.paddingLeft, top, view.paddingRight, view.paddingBottom)
+            }
+            insets
+        }
+        ViewCompat.requestApplyInsets(webView)
 
         configureWebView()
 
@@ -121,6 +136,16 @@ class MainActivity : ComponentActivity() {
             @Deprecated("Deprecated in Java")
             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
                 return handleUri(Uri.parse(url))
+            }
+
+            override fun onPageCommitVisible(view: WebView, url: String) {
+                super.onPageCommitVisible(view, url)
+                hideTopLoadingLine(view)
+            }
+
+            override fun onPageFinished(view: WebView, url: String) {
+                super.onPageFinished(view, url)
+                hideTopLoadingLine(view)
             }
         }
 
@@ -195,6 +220,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun hideTopLoadingLine(view: WebView) {
+        view.evaluateJavascript(HIDE_TOP_LOADING_LINE_JS, null)
+    }
+
     private fun handleUri(uri: Uri): Boolean {
         val scheme = uri.scheme?.lowercase().orEmpty()
         val host = uri.host?.lowercase().orEmpty()
@@ -259,5 +288,17 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val HOME_URL = "https://chhachh.pages.dev/"
+        private const val HIDE_TOP_LOADING_LINE_JS = """
+            (function(){
+              try {
+                var id='__mc_hide_route_progress';
+                if(document.getElementById(id)) return;
+                var s=document.createElement('style');
+                s.id=id;
+                s.textContent='#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}';
+                (document.head||document.documentElement).appendChild(s);
+              } catch(e) {}
+            })();
+        """
     }
 }
