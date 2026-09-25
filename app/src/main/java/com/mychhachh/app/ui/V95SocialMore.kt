@@ -47,6 +47,7 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import androidx.compose.ui.viewinterop.AndroidView
 import java.util.Locale
+import java.time.Instant
 
 
 
@@ -57,29 +58,113 @@ internal fun V95Votes(c: V95Controller) {
 }
 
 @Composable
-internal fun V95VoteCard(c: V95Controller, vote: Vote) {
+internal fun V95VoteCard(c: V95Controller, vote: Vote, detail: Boolean = false) {
     val mobile = LocalConfiguration.current.screenWidthDp <= 700
+    var nowMs by remember(vote.id) { mutableLongStateOf(java.lang.System.currentTimeMillis()) }
+
+    LaunchedEffect(vote.id, vote.endsAt, vote.status) {
+        while (vote.status == "active" || vote.status == "started" || vote.status == "live") {
+            nowMs = java.lang.System.currentTimeMillis()
+            delay(1000)
+        }
+    }
+
+    val remaining = v95VoteRemaining(vote.endsAt, nowMs, c)
+
     V95GlassCard {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(vote.status.uppercase(Locale.getDefault()), color = V95Muted, fontWeight = FontWeight.Black, fontSize = 10.sp)
-            Text(vote.title.ifBlank { "${vote.user1?.name.orEmpty()} VS ${vote.user2?.name.orEmpty()}" }, color = V95Ink, fontWeight = FontWeight.Black, fontSize = 18.sp, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(5.dp))
-            Text(vote.endsAt.ifBlank { c.t("Live", "لائیو") }, color = V95Purple, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text(vote.status.uppercase(Locale.getDefault()), color = V95Muted, fontWeight = FontWeight.Black, fontSize = 9.sp)
+            Text(
+                vote.title.ifBlank { "${vote.user1?.name.orEmpty()} VS ${vote.user2?.name.orEmpty()}" },
+                color = V95Ink,
+                fontWeight = FontWeight.Black,
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center
+            )
         }
-        Row(Modifier.fillMaxWidth().padding(horizontal = if (mobile) 5.dp else 8.dp, vertical = if (mobile) 6.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
+
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = if (mobile) 3.dp else 8.dp, vertical = if (mobile) 5.dp else 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             V95VotePlayer(c, vote.user1, vote.leftText, vote.votes1, vote.leftUserId, vote, Modifier.weight(1f), mobile)
-            Box(Modifier.width(if (mobile) 92.dp else 104.dp), contentAlignment = Alignment.Center) {
-                Box(Modifier.size(if (mobile) 47.dp else 62.dp).clip(CircleShape).background(v95PrimaryBrush()).border(2.dp, Color.White, CircleShape), contentAlignment = Alignment.Center) {
+
+            Column(
+                Modifier.width(if (mobile) 92.dp else 104.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(v95InputBrush())
+                        .border(1.5.dp, Color.White, RoundedCornerShape(999.dp))
+                        .padding(horizontal = 7.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(remaining, color = V95Purple, fontWeight = FontWeight.Black, fontSize = if (mobile) 9.sp else 10.sp)
+                }
+                Spacer(Modifier.height(5.dp))
+                Box(
+                    Modifier
+                        .size(if (mobile) 47.dp else 62.dp)
+                        .clip(CircleShape)
+                        .background(v95PrimaryBrush())
+                        .border(2.dp, Color.White, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text("VS", color = Color.White, fontWeight = FontWeight.Black, fontSize = if (mobile) 15.sp else 20.sp)
                 }
             }
+
             V95VotePlayer(c, vote.user2, vote.rightText, vote.votes2, vote.rightUserId, vote, Modifier.weight(1f), mobile)
         }
+
+        if (vote.status == "ended" || vote.status == "forfeit") {
+            val winnerName = when (vote.winnerUserId) {
+                vote.leftUserId -> vote.user1?.name ?: vote.leftText
+                vote.rightUserId -> vote.user2?.name ?: vote.rightText
+                else -> ""
+            }
+            Text(
+                if (vote.tie) c.t("Result: Tie", "نتیجہ: برابر")
+                else if (winnerName.isNotBlank()) c.t("Winner: $winnerName", "فاتح: $winnerName")
+                else c.t("Voting ended", "ووٹنگ ختم ہوگئی"),
+                modifier = Modifier.fillMaxWidth(),
+                color = V95Purple,
+                fontWeight = FontWeight.Black,
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center
+            )
+        }
+
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            V95Button(c.t("Comments", "کمنٹس"), Modifier.weight(1f), icon = V95Icons.Comment) { }
-            V95Button(c.t("Share", "شیئر"), Modifier.weight(1f), primary = true, icon = V95Icons.Share) { if (c.user == null) c.route = V95Route.AUTH else c.shareVote(vote) }
+            if (!detail) {
+                V95Button(c.t("Comments", "کمنٹس"), Modifier.weight(1f), icon = V95Icons.Comment) { c.openVote(vote) }
+            }
+            V95Button(
+                c.t("Share", "شیئر"),
+                Modifier.weight(1f),
+                primary = true,
+                icon = V95Icons.Share
+            ) {
+                if (c.user == null) c.route = V95Route.AUTH else c.shareVote(vote)
+            }
         }
     }
+}
+
+private fun v95VoteRemaining(endsAt: String, nowMs: Long, c: V95Controller): String {
+    if (endsAt.isBlank()) return c.t("Live", "لائیو")
+    val end = runCatching { Instant.parse(endsAt).toEpochMilli() }.getOrNull()
+        ?: return endsAt.replace('T', ' ').take(16)
+    val seconds = ((end - nowMs) / 1000L).coerceAtLeast(0L)
+    if (seconds <= 0L) return c.t("Ended", "ختم")
+    val days = seconds / 86400
+    val hours = (seconds % 86400) / 3600
+    val mins = (seconds % 3600) / 60
+    val secs = seconds % 60
+    return if (days > 0) "${days}d ${hours}h ${mins}m"
+    else String.format(Locale.US, "%02d:%02d:%02d", hours, mins, secs)
 }
 
 @Composable
