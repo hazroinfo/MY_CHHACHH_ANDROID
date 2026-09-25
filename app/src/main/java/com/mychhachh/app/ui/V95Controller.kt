@@ -574,7 +574,9 @@ internal class V95Controller(context: Context) {
         route = V95Route.SEARCH
     }
 
-    fun loadWeather() = work { weather = withContext(Dispatchers.IO) { api.weather() } }
+    fun loadWeather(showBusy: Boolean = true) = work(showBusy) {
+        weather = withContext(Dispatchers.IO) { api.weather() }
+    }
 
 
     fun savePrivacy(
