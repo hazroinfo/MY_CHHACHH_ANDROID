@@ -465,7 +465,7 @@ internal fun NativeThemeBuilder(c: V95Controller) {
     var guestLogin by remember(key) { mutableStateOf(c.features.optInt("theme_guest_login_button", 1) != 0) }
     var guestRegister by remember(key) { mutableStateOf(c.features.optInt("theme_guest_register_button", 1) != 0) }
     var headerItems by remember(key) { mutableStateOf(c.features.optString("theme_header_items", "home,people,shop,map,messages")) }
-    var menuItems by remember(key) { mutableStateOf(c.features.optString("theme_menu_items", "votes,saved,announcements,notifications,profile,settings,theme,admin,logout")) }
+    var menuItems by remember(key) { mutableStateOf(c.features.optString("theme_menu_items", "votes,saved,announcements,notifications,settings,theme,admin,logout")) }
 
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = 8.dp),
