@@ -52,7 +52,7 @@ import java.io.File
 internal enum class V95Route {
     HOME, PEOPLE, SHOPS, MAP, MESSAGES, VOTES, ANNOUNCEMENTS, NOTIFICATIONS,
     PROFILE, SHOP_DETAIL, CHAT, SEARCH, WEATHER, SETTINGS, ADMIN, AUTH, POST_DETAIL,
-    SAVED, RELATIONS, THEME, ANNOUNCEMENT_DETAIL
+    SAVED, RELATIONS, THEME, ANNOUNCEMENT_DETAIL, VOTE_DETAIL
 }
 
 internal class V95Controller(context: Context) {
@@ -79,6 +79,8 @@ internal class V95Controller(context: Context) {
     var shops by mutableStateOf<List<Shop>>(emptyList())
     var conversations by mutableStateOf<List<Conversation>>(emptyList())
     var votes by mutableStateOf<List<Vote>>(emptyList())
+    var selectedVote by mutableStateOf<Vote?>(null)
+    var voteCommentsList by mutableStateOf<List<Comment>>(emptyList())
     var announcements by mutableStateOf<List<Announcement>>(emptyList())
     var selectedAnnouncement by mutableStateOf<Announcement?>(null)
     var announcementCommentsList by mutableStateOf<List<Comment>>(emptyList())
@@ -310,6 +312,20 @@ internal class V95Controller(context: Context) {
     }
 
     fun loadVotes() = work { votes = withContext(Dispatchers.IO) { api.votes() } }
+
+
+    fun openVote(vote: Vote) = work {
+        selectedVote = vote
+        voteCommentsList = withContext(Dispatchers.IO) { api.voteComments(vote.id).comments() }
+        route = V95Route.VOTE_DETAIL
+    }
+
+    fun addVoteComment(text: String, done: () -> Unit) = work(false) {
+        val vote = selectedVote ?: return@work
+        withContext(Dispatchers.IO) { api.addVoteComment(vote.id, text) }
+        voteCommentsList = withContext(Dispatchers.IO) { api.voteComments(vote.id).comments() }
+        done()
+    }
 
     fun castVote(vote: Vote, userId: Long) = work(false) {
         withContext(Dispatchers.IO) { api.castVote(vote.id, userId) }
