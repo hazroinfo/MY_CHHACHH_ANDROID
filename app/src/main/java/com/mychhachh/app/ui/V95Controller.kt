@@ -52,7 +52,7 @@ import java.io.File
 
 internal enum class V95Route {
     HOME, PEOPLE, SHOPS, MAP, MESSAGES, VOTES, ANNOUNCEMENTS, NOTIFICATIONS,
-    PROFILE, SHOP_DETAIL, CHAT, SEARCH, WEATHER, SETTINGS, ADMIN, AUTH, POST_DETAIL,
+    PROFILE, SHOP_DETAIL, CHAT, GROUP_CHAT, SEARCH, WEATHER, SETTINGS, ADMIN, AUTH, POST_DETAIL,
     SAVED, RELATIONS, THEME, ANNOUNCEMENT_DETAIL, VOTE_DETAIL
 }
 
@@ -77,6 +77,7 @@ internal class V95Controller(context: Context) {
     var feedMode by mutableStateOf("for_you")
     var mapPickForPost by mutableStateOf(false)
     var mapPickForMessage by mutableStateOf(false)
+    var mapPickForGroupMessage by mutableStateOf(false)
     var composerCheckinName by mutableStateOf("")
     var composerCheckinLat by mutableStateOf<Double?>(null)
     var composerCheckinLng by mutableStateOf<Double?>(null)
@@ -105,6 +106,10 @@ internal class V95Controller(context: Context) {
     var selectedShopPosts by mutableStateOf<List<Post>>(emptyList())
     var selectedChatUser by mutableStateOf<User?>(null)
     var chatMessages by mutableStateOf<List<Message>>(emptyList())
+    var messageGroups by mutableStateOf<List<MessageGroup>>(emptyList())
+    var selectedGroup by mutableStateOf<MessageGroup?>(null)
+    var selectedGroupName by mutableStateOf("")
+    var groupMessages by mutableStateOf<List<Message>>(emptyList())
     var selectedPost by mutableStateOf<Post?>(null)
     var postCommentsList by mutableStateOf<List<Comment>>(emptyList())
     var adminState by mutableStateOf<JSONObject?>(null)
@@ -262,6 +267,14 @@ internal class V95Controller(context: Context) {
     fun startMessageLocation() {
         if (selectedChatUser == null) return
         mapPickForMessage = true
+        mapPickForGroupMessage = false
+        route = V95Route.MAP
+    }
+
+    fun startGroupMessageLocation() {
+        if (selectedGroup == null) return
+        mapPickForGroupMessage = true
+        mapPickForMessage = false
         route = V95Route.MAP
     }
 
@@ -279,6 +292,23 @@ internal class V95Controller(context: Context) {
         val result = withContext(Dispatchers.IO) { api.chat(to.id) }
         chatMessages = result.second
         route = V95Route.CHAT
+    }
+
+    fun setGroupMessageLocation(place: CheckinPlace) = work {
+        val group = selectedGroup ?: return@work
+        withContext(Dispatchers.IO) {
+            api.sendGroupMessage(
+                groupId = group.id,
+                text = place.name,
+                locationLat = place.lat,
+                locationLng = place.lng
+            )
+        }
+        mapPickForGroupMessage = false
+        val result = withContext(Dispatchers.IO) { api.groupChat(group.id) }
+        selectedGroupName = result.first
+        groupMessages = result.second
+        route = V95Route.GROUP_CHAT
     }
 
     fun openCoordinates(lat: Double, lng: Double) {
@@ -564,7 +594,41 @@ internal class V95Controller(context: Context) {
         selectedShop = selectedShop?.takeIf { it.id != shop.id } ?: selectedShop?.copy(followed = !shop.followed)
     }
 
-    fun loadMessages() = work { conversations = withContext(Dispatchers.IO) { api.conversations() } }
+    fun loadMessages() = work {
+        conversations = withContext(Dispatchers.IO) { api.conversations() }
+        messageGroups = withContext(Dispatchers.IO) { runCatching { api.messageGroups() }.getOrDefault(emptyList()) }
+    }
+
+    fun createMessageGroup(name: String, usernames: String, done: () -> Unit = {}) = work {
+        val id = withContext(Dispatchers.IO) { api.createMessageGroup(name, usernames) }
+        messageGroups = withContext(Dispatchers.IO) { api.messageGroups() }
+        val group = messageGroups.firstOrNull { it.id == id }
+        if (group != null) {
+            selectedGroup = group
+            val chat = withContext(Dispatchers.IO) { api.groupChat(group.id) }
+            selectedGroupName = chat.first
+            groupMessages = chat.second
+            route = V95Route.GROUP_CHAT
+        }
+        done()
+    }
+
+    fun openGroup(group: MessageGroup) = work {
+        selectedGroup = group
+        val result = withContext(Dispatchers.IO) { api.groupChat(group.id) }
+        selectedGroupName = result.first
+        groupMessages = result.second
+        route = V95Route.GROUP_CHAT
+    }
+
+    fun sendGroupRichMessage(text: String, photo: String, audio: String, done: () -> Unit = {}) = work(false) {
+        val group = selectedGroup ?: return@work
+        withContext(Dispatchers.IO) { api.sendGroupMessage(group.id, text, photo, audio) }
+        val result = withContext(Dispatchers.IO) { api.groupChat(group.id) }
+        selectedGroupName = result.first
+        groupMessages = result.second
+        done()
+    }
 
     fun openChat(person: User) = work {
         selectedChatUser = person
