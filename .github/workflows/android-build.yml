@@ -1,3 +1,4 @@
+# QA synchronized with default-branch PR validation
 name: WebView Final Stable QA
 
 on:
