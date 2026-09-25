@@ -331,6 +331,12 @@ internal class V95Controller(context: Context) {
         route = V95Route.SHOP_DETAIL
     }
 
+    fun openShopFollowers(shop: Shop) = work {
+        relationTitle = t("Shop followers", "دکان کے فالوورز")
+        relationUsers = withContext(Dispatchers.IO) { api.shopFollowers(shop.id) }
+        route = V95Route.RELATIONS
+    }
+
     fun toggleShop(shop: Shop) = work(false) {
         withContext(Dispatchers.IO) { api.toggleShopFollow(shop.id) }
         shops = shops.map { if (it.id == shop.id) it.copy(followed = !it.followed) else it }
@@ -524,7 +530,7 @@ internal class V95Controller(context: Context) {
         }
     }
 
-    fun updateProfile(name: String, username: String, bio: String, done: () -> Unit) = work {
+    fun updateProfile(name: String, username: String, bio: String, done: () -> Unit = {}) = work {
         val fields = JSONObject().put("name", name).put("username", username).put("bio", bio)
         user = withContext(Dispatchers.IO) { api.updateProfile(fields) }
         done()
