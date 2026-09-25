@@ -66,11 +66,38 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         WebView.setWebContentsDebuggingEnabled(false)
 
-        webView = WebView(this)
-        setContentView(webView)
+        val chromeBlue = Color.rgb(223, 247, 255)
+        window.statusBarColor = chromeBlue
+        window.navigationBarColor = Color.rgb(246, 243, 255)
+
+        webView = WebView(this).apply {
+            setBackgroundColor(chromeBlue)
+            setLayerType(View.LAYER_TYPE_HARDWARE, null)
+        }
+
+        val root = FrameLayout(this).apply {
+            setBackgroundColor(chromeBlue)
+            addView(
+                webView,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT
+                )
+            )
+        }
+        setContentView(root)
+
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            val statusBars = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+            val navigationBars = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            val extraHeaderGap = (3f * resources.displayMetrics.density).toInt()
+            view.setPadding(0, statusBars.top + extraHeaderGap, 0, navigationBars.bottom)
+            insets
+        }
+        ViewCompat.requestApplyInsets(root)
 
         configureWebView()
 
@@ -273,22 +300,13 @@ class MainActivity : ComponentActivity() {
         private const val NO_TOP_LOADING_LINE_JS = """
             (function(){
               try{
-                var sid='__mc_no_top_loading_line';
+                var sid='__mc_hide_route_progress';
                 if(!document.getElementById(sid)){
                   var s=document.createElement('style');
                   s.id=sid;
-                  s.textContent='html{overscroll-behavior:none!important}#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"],body>progress{display:none!important;opacity:0!important;visibility:hidden!important}';
+                  s.textContent='#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"],body>progress{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}';
                   (document.head||document.documentElement).appendChild(s);
                 }
-                var cover=document.getElementById('__mc_top_line_cover');
-                if(!cover){
-                  cover=document.createElement('div');
-                  cover.id='__mc_top_line_cover';
-                  cover.style.cssText='position:fixed;left:0;right:0;top:0;height:4px;z-index:2147483647;pointer-events:none;';
-                  document.documentElement.appendChild(cover);
-                }
-                var h=document.querySelector('.top');
-                cover.style.background=h?getComputedStyle(h).backgroundColor:'#fff';
               }catch(e){}
             })();
         """
