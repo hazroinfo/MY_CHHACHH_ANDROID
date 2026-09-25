@@ -275,4 +275,18 @@ internal object NVIcons {
     val Delete = R.drawable.jelly_delete
     val Info = R.drawable.jelly_info
     val Upload = R.drawable.jelly_upload
+    val Address = R.drawable.jelly_address
+    val Category = R.drawable.jelly_category
+    val City = R.drawable.jelly_city
+    val Gender = R.drawable.jelly_gender
+    val Hometown = R.drawable.jelly_hometown
+    val Mail = R.drawable.jelly_mail
+    val Mohalla = R.drawable.jelly_mohalla
+    val School = R.drawable.jelly_school
+    val Village = R.drawable.jelly_village
+    val Website = R.drawable.jelly_website
+    val Work = R.drawable.jelly_work
+    val Facebook = R.drawable.jelly_facebook
+    val Instagram = R.drawable.jelly_instagram
+    val Youtube = R.drawable.jelly_youtube
 }
