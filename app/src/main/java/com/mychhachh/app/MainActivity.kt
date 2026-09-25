@@ -327,70 +327,12 @@ class MainActivity : ComponentActivity() {
         private const val LOADER_GUARD_JS = """
             (function(){
               try {
-                if(document.body){
-                  document.body.classList.add('theme-motion-off','mc-android-webview-perf');
-                }
-
-                if(!window.__mcAndroidDragClickGuard){
-                  window.__mcAndroidDragClickGuard=1;
-
-                  var dragStartX=0;
-                  var dragStartY=0;
-                  var dragTracking=false;
-                  var dragMoved=false;
-                  var suppressClickUntil=0;
-
-                  function clock(){
-                    return (window.performance && typeof performance.now==='function')
-                      ? performance.now()
-                      : Date.now();
-                  }
-
-                  window.addEventListener('pointerdown',function(ev){
-                    if(ev.isPrimary===false) return;
-                    dragStartX=Number(ev.clientX)||0;
-                    dragStartY=Number(ev.clientY)||0;
-                    dragMoved=false;
-                    dragTracking=true;
-                  },{capture:true,passive:true});
-
-                  window.addEventListener('pointermove',function(ev){
-                    if(!dragTracking || dragMoved || ev.isPrimary===false) return;
-                    var dx=(Number(ev.clientX)||0)-dragStartX;
-                    var dy=(Number(ev.clientY)||0)-dragStartY;
-                    if((dx*dx)+(dy*dy)>324) dragMoved=true;
-                  },{capture:true,passive:true});
-
-                  window.addEventListener('pointerup',function(ev){
-                    if(ev.isPrimary===false) return;
-                    if(dragTracking && dragMoved) suppressClickUntil=clock()+450;
-                    dragTracking=false;
-                  },{capture:true,passive:true});
-
-                  window.addEventListener('pointercancel',function(){
-                    dragTracking=false;
-                    dragMoved=false;
-                  },{capture:true,passive:true});
-
-                  window.addEventListener('click',function(ev){
-                    if(clock()>=suppressClickUntil) return;
-                    ev.preventDefault();
-                    ev.stopImmediatePropagation();
-                    ev.stopPropagation();
-                  },true);
-                }
-
                 var STYLE_ID='__mc_android_loader_guard';
                 if(document.getElementById(STYLE_ID)) return;
                 var s=document.createElement('style');
                 s.id=STYLE_ID;
                 s.textContent=
-                  '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}' +
-                  'html,body{scroll-behavior:auto!important;overscroll-behavior-y:none!important}' +
-                  'body.mc-android-webview-perf .top,body.mc-android-webview-perf .card,body.mc-android-webview-perf .community-footer,body.mc-android-webview-perf .side-menu,body.mc-android-webview-perf .faux-search,body.mc-android-webview-perf .page-heading,body.mc-android-webview-perf .global-notice{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}' +
-                  'body.mc-android-webview-perf #chhachhWeatherBg{background-attachment:scroll!important;animation:none!important;transform:none!important;will-change:auto!important}' +
-                  'body.mc-android-webview-perf #chhachhWeatherBg *,body.mc-android-webview-perf #chhachhWeatherBg:before,body.mc-android-webview-perf #chhachhWeatherBg:after{animation:none!important;will-change:auto!important}' +
-                  'body.mc-android-webview-perf #mcLiveWeatherStage,body.mc-android-webview-perf #mcLiveWeatherStage *{animation:none!important;transition:none!important;will-change:auto!important}';
+                  '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}';
                 (document.head||document.documentElement).appendChild(s);
               } catch (_) {}
             })();
