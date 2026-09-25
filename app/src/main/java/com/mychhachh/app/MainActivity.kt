@@ -315,6 +315,95 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val HOME_URL = "https://chhachh.pages.dev/"
         private const val WEBVIEW_LOG_TAG = "MyChhachhWebView"
+        private const val DOCUMENT_START_PERF_JS = """
+            (function(){
+              try {
+                if (window.__mcAndroidScrollPerfBoot) return;
+                window.__mcAndroidScrollPerfBoot = 1;
+
+                var NativeMO = window.MutationObserver;
+                if (!NativeMO) return;
+
+                var now = function(){
+                  return (window.performance && typeof performance.now === 'function')
+                    ? performance.now()
+                    : Date.now();
+                };
+                var scrollBusyUntil = 0;
+                var markScrollBusy = function(ms){
+                  var until = now() + ms;
+                  if (until > scrollBusyUntil) scrollBusyUntil = until;
+                };
+
+                addEventListener('scroll', function(){ markScrollBusy(180); }, {passive:true,capture:true});
+                addEventListener('touchstart', function(){ markScrollBusy(360); }, {passive:true,capture:true});
+                addEventListener('touchmove', function(){ markScrollBusy(220); }, {passive:true,capture:true});
+                addEventListener('touchend', function(){ markScrollBusy(120); }, {passive:true,capture:true});
+
+                function AndroidMutationObserver(callback){
+                  var globalSubtree = false;
+                  var queued = [];
+                  var timer = 0;
+                  var nativeObserver;
+
+                  function flush(){
+                    timer = 0;
+                    var remaining = scrollBusyUntil - now();
+                    if (globalSubtree && remaining > 0) {
+                      timer = setTimeout(flush, Math.min(220, Math.ceil(remaining) + 16));
+                      return;
+                    }
+                    if (!queued.length) return;
+                    var records = queued.splice(0, queued.length);
+                    callback.call(nativeObserver, records, nativeObserver);
+                  }
+
+                  nativeObserver = new NativeMO(function(records){
+                    if (!globalSubtree) {
+                      callback.call(nativeObserver, records, nativeObserver);
+                      return;
+                    }
+                    Array.prototype.push.apply(queued, records);
+                    if (timer) return;
+                    var remaining = scrollBusyUntil - now();
+                    timer = setTimeout(flush, remaining > 0 ? Math.min(220, Math.ceil(remaining) + 16) : 32);
+                  });
+
+                  var nativeObserve = nativeObserver.observe.bind(nativeObserver);
+                  nativeObserver.observe = function(target, options){
+                    try {
+                      if (
+                        target === document.documentElement &&
+                        options &&
+                        options.childList &&
+                        options.subtree
+                      ) {
+                        globalSubtree = true;
+                      }
+                    } catch (_) {}
+                    return nativeObserve(target, options);
+                  };
+
+                  var nativeDisconnect = nativeObserver.disconnect.bind(nativeObserver);
+                  nativeObserver.disconnect = function(){
+                    if (timer) clearTimeout(timer);
+                    timer = 0;
+                    queued.length = 0;
+                    return nativeDisconnect();
+                  };
+
+                  return nativeObserver;
+                }
+
+                AndroidMutationObserver.prototype = NativeMO.prototype;
+                window.MutationObserver = AndroidMutationObserver;
+                if (window.WebKitMutationObserver === NativeMO) {
+                  window.WebKitMutationObserver = AndroidMutationObserver;
+                }
+              } catch (_) {}
+            })();
+        """
+
         private const val NATIVE_PAGE_FIXES_JS = """
             (function(){
               try {
