@@ -207,6 +207,7 @@ object V95Icons {
     val Feeling = R.drawable.jelly_feeling
     val Mention = R.drawable.jelly_mention
     val Heart = R.drawable.jelly_heart
+    val Eye = R.drawable.jelly_eye
     val Comment = R.drawable.jelly_comment
     val Share = R.drawable.jelly_share
     val Save = R.drawable.jelly_save
