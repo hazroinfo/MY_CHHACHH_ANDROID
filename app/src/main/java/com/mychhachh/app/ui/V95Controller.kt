@@ -383,6 +383,45 @@ internal class V95Controller(context: Context) {
         }
     }
 
+    fun dialPhone(raw: String) {
+        val phone = raw.trim()
+        if (phone.isBlank()) return
+        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(phone))).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        runCatching { app.startActivity(intent) }
+            .onFailure { error = t("Phone app could not open.", "فون ایپ نہیں کھل سکی۔") }
+    }
+
+    fun openWhatsApp(raw: String) {
+        val digits = raw.filter { it.isDigit() }
+        if (digits.isBlank()) return
+        val uri = Uri.parse("https://wa.me/$digits")
+        val whatsapp = Intent(Intent.ACTION_VIEW, uri).apply {
+            setPackage("com.whatsapp")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        val fallback = Intent(Intent.ACTION_VIEW, uri).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+        if (runCatching { app.startActivity(whatsapp) }.isFailure) {
+            runCatching { app.startActivity(fallback) }
+                .onFailure { error = t("WhatsApp link could not open.", "WhatsApp لنک نہیں کھل سکا۔") }
+        }
+    }
+
+    fun openSocial(kind: String, raw: String) {
+        val value = raw.trim()
+        if (value.isBlank()) return
+        val url = if (value.startsWith("http://") || value.startsWith("https://")) value else when (kind) {
+            "facebook" -> "https://facebook.com/" + value.removePrefix("@")
+            "instagram" -> "https://instagram.com/" + value.removePrefix("@")
+            "youtube" -> "https://youtube.com/" + value.removePrefix("@")
+            else -> "https://" + value
+        }
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+        runCatching { app.startActivity(intent) }
+            .onFailure { error = t("Link could not open.", "لنک نہیں کھل سکا۔") }
+    }
+
     fun toggleShop(shop: Shop) = work(false) {
         withContext(Dispatchers.IO) { api.toggleShopFollow(shop.id) }
         shops = shops.map { if (it.id == shop.id) it.copy(followed = !it.followed) else it }
