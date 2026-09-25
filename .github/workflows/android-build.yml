@@ -132,13 +132,17 @@ jobs:
             done
             exit 1
           fi
-          sleep 3
+          # Let the live page finish its initial animation/rendering before stress scrolling.
+          sleep 30
           pid="$(adb shell pidof com.mychhachh.app | tr -d '\r')"
           test -n "$pid"
           echo "$pid" > "$ART/app-pid-before-scroll.txt"
           adb shell dumpsys window windows | grep -E "mCurrentFocus|mFocusedApp" | tee "$ART/focus-before.txt" || true
           adb exec-out screencap -p > "$ART/before-scroll.png"
           test -s "$ART/before-scroll.png"
+
+          # From here on, crash/ANR evidence belongs to the repeated-scroll stress test.
+          adb logcat -c || true
 
           for i in $(seq 1 8); do
             adb shell input swipe 540 1850 540 450 320
