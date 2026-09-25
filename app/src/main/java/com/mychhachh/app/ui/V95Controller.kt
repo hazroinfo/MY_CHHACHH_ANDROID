@@ -50,7 +50,8 @@ import java.util.Locale
 
 internal enum class V95Route {
     HOME, PEOPLE, SHOPS, MAP, MESSAGES, VOTES, ANNOUNCEMENTS, NOTIFICATIONS,
-    PROFILE, SHOP_DETAIL, CHAT, SEARCH, WEATHER, SETTINGS, ADMIN, AUTH, POST_DETAIL
+    PROFILE, SHOP_DETAIL, CHAT, SEARCH, WEATHER, SETTINGS, ADMIN, AUTH, POST_DETAIL,
+    SAVED, RELATIONS, THEME
 }
 
 internal class V95Controller(context: Context) {
@@ -81,12 +82,18 @@ internal class V95Controller(context: Context) {
     var searchBundle by mutableStateOf<SearchBundle?>(null)
     var searchText by mutableStateOf("")
     var selectedUser by mutableStateOf<User?>(null)
+    var profileDetails by mutableStateOf<JSONObject?>(null)
+    var relationUsers by mutableStateOf<List<User>>(emptyList())
+    var relationTitle by mutableStateOf("")
     var selectedShop by mutableStateOf<Shop?>(null)
     var selectedChatUser by mutableStateOf<User?>(null)
     var chatMessages by mutableStateOf<List<Message>>(emptyList())
     var selectedPost by mutableStateOf<Post?>(null)
     var postCommentsList by mutableStateOf<List<Comment>>(emptyList())
     var adminState by mutableStateOf<JSONObject?>(null)
+    var adminSection by mutableStateOf("overview")
+    var adminSectionData by mutableStateOf<JSONObject?>(null)
+    var blockedUsersList by mutableStateOf<List<User>>(emptyList())
 
     fun dispose() { scope.cancel() }
 
@@ -209,9 +216,16 @@ internal class V95Controller(context: Context) {
         people = people.map { if (it.id == person.id) it.copy(followed = !it.followed) else it }
     }
 
-    fun openProfile(person: User) {
+    fun openProfile(person: User) = work {
         selectedUser = person
+        profileDetails = withContext(Dispatchers.IO) { runCatching { api.user(person.id) }.getOrNull() }
         route = V95Route.PROFILE
+    }
+
+    fun openRelations(person: User, mode: String) = work {
+        relationTitle = if (mode == "following") t("Following", "فالوونگ") else t("Followers", "فالوورز")
+        relationUsers = withContext(Dispatchers.IO) { api.relationUsers(person.id, mode) }
+        route = V95Route.RELATIONS
     }
 
     fun loadShops() = work { shops = withContext(Dispatchers.IO) { api.shops() } }
@@ -283,14 +297,87 @@ internal class V95Controller(context: Context) {
 
     fun loadWeather() = work { weather = withContext(Dispatchers.IO) { api.weather() } }
 
+
+    fun savePrivacy(
+        profileVisibility: String,
+        showEmail: Boolean,
+        showPhone: Boolean,
+        showLocation: Boolean,
+        hideFollowers: Boolean,
+        acceptMessages: Boolean
+    ) = work {
+        val fields = JSONObject()
+            .put("profile_visibility", profileVisibility)
+            .put("show_email", showEmail)
+            .put("show_phone", showPhone)
+            .put("show_location", showLocation)
+            .put("hide_followers", hideFollowers)
+            .put("accept_messages", acceptMessages)
+        user = withContext(Dispatchers.IO) { api.updatePrivacy(fields) }
+    }
+
+    fun changePassword(current: String, next: String, done: () -> Unit) = work {
+        withContext(Dispatchers.IO) { api.changePassword(current, next) }
+        done()
+    }
+
+    fun loadBlockedUsers() = work {
+        blockedUsersList = withContext(Dispatchers.IO) { api.blockedUsers() }
+    }
+
+    fun toggleBlock(person: User) = work(false) {
+        withContext(Dispatchers.IO) { api.toggleBlockUser(person.id) }
+        blockedUsersList = blockedUsersList.filterNot { it.id == person.id }
+    }
+
+    fun openAdminSection(section: String) = work {
+        adminSection = section
+        adminSectionData = if (section == "overview") {
+            withContext(Dispatchers.IO) { api.adminState() }
+        } else {
+            withContext(Dispatchers.IO) { api.adminList(section) }
+        }
+    }
+
+    fun runAdminAction(action: String, id: Long = 0L, fields: JSONObject = JSONObject()) = work {
+        withContext(Dispatchers.IO) { api.adminAction(action, id, fields) }
+        if (adminSection == "overview") loadAdmin(false) else {
+            adminSectionData = withContext(Dispatchers.IO) { api.adminList(adminSection) }
+        }
+    }
+
+    fun saveThemeFields(fields: JSONObject) = work {
+        val r = withContext(Dispatchers.IO) { api.saveTheme(fields) }
+        val saved = r.optJSONObject("settings")
+        if (saved != null) {
+            features = JSONObject(features.toString()).apply {
+                saved.keys().forEach { key -> put(key, saved.opt(key)) }
+            }
+        }
+    }
+
+    fun saveBrandFields(fields: JSONObject) = work {
+        val r = withContext(Dispatchers.IO) { api.saveBranding(fields) }
+        val saved = r.optJSONObject("settings")
+        if (saved != null) {
+            features = JSONObject(features.toString()).apply {
+                saved.keys().forEach { key -> put(key, saved.opt(key)) }
+            }
+        }
+    }
+
     fun updateProfile(name: String, username: String, bio: String, done: () -> Unit) = work {
         val fields = JSONObject().put("name", name).put("username", username).put("bio", bio)
         user = withContext(Dispatchers.IO) { api.updateProfile(fields) }
         done()
     }
 
-    fun loadAdmin() = work {
-        if (user?.isAdmin == true) adminState = withContext(Dispatchers.IO) { api.adminState() }
+    fun loadAdmin(showBusy: Boolean = true) = work(showBusy) {
+        if (user?.isAdmin == true) {
+            adminState = withContext(Dispatchers.IO) { api.adminState() }
+            adminSectionData = adminState
+            adminSection = "overview"
+        }
     }
 }
 
