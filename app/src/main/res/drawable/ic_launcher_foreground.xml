@@ -1,5 +1,38 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#FFFFFFFF" android:pathData="M20,18h68a20,20 0,0 1,20 20v32a20,20 0,0 1,-20 20h-68a20,20 0,0 1,-20 -20v-32a20,20 0,0 1,20 -20z"/>
-    <path android:fillColor="#FFFF4FAF" android:pathData="M26,31h12l16,25 16,-25h12v46h-12v-26l-12,18h-8l-12,-18v26h-12z"/>
-    <path android:fillColor="#FF678CFF" android:pathData="M78,31h8v46h-8z"/>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Soft jelly halo on the same white base used by the website header. -->
+    <path
+        android:fillColor="#2256C9FF"
+        android:pathData="M54,14a40,40 0,1 0,0 80a40,40 0,1 0,0 -80z" />
+    <path
+        android:fillColor="#20F456C3"
+        android:pathData="M54,20a34,34 0,1 0,0 68a34,34 0,1 0,0 -68z" />
+
+    <!-- M -->
+    <path
+        android:fillColor="#FFFF47B3"
+        android:pathData="M23,34h10l11,17l11,-17h10v40h-10v-23l-8,12h-6l-8,-12v23h-10z" />
+
+    <!-- C -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FF56C9FF"
+        android:strokeWidth="9"
+        android:strokeLineCap="round"
+        android:pathData="M84,40 C79,34 72,32 65,35 C57,38 53,45 53,54 C53,63 58,71 66,74 C73,77 80,74 85,68" />
+
+    <!-- Rainbow accents from the My Chhachh wordmark. -->
+    <path
+        android:fillColor="#FFFFB642"
+        android:pathData="M28,24a5,5 0,1 0,0 10a5,5 0,1 0,0 -10z" />
+    <path
+        android:fillColor="#FF62DC9D"
+        android:pathData="M78,24a5,5 0,1 0,0 10a5,5 0,1 0,0 -10z" />
+    <path
+        android:fillColor="#FF8B75F5"
+        android:pathData="M82,76a4,4 0,1 0,0 8a4,4 0,1 0,0 -8z" />
 </vector>
