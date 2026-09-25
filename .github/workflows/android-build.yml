@@ -97,12 +97,7 @@ jobs:
 
           rm -rf "$ANDROID_AVD_HOME/MyChhachhCI.avd" "$ANDROID_AVD_HOME/MyChhachhCI.ini"
           echo "no" | "$AVDMANAGER" create avd --force --name MyChhachhCI --package "system-images;android-35;google_apis;x86_64" --device "pixel_6" --path "$ANDROID_AVD_HOME/MyChhachhCI.avd"
-          cat > "$ANDROID_AVD_HOME/MyChhachhCI.ini" <<EOF
-avd.ini.encoding=UTF-8
-path=$ANDROID_AVD_HOME/MyChhachhCI.avd
-path.rel=avd/MyChhachhCI.avd
-target=android-35
-EOF
+          printf 'avd.ini.encoding=UTF-8\npath=%s/MyChhachhCI.avd\npath.rel=avd/MyChhachhCI.avd\ntarget=android-35\n' "$ANDROID_AVD_HOME" > "$ANDROID_AVD_HOME/MyChhachhCI.ini"
           emulator -list-avds | tee "$ARTIFACT_DIR/avd-list.txt"
           grep -qx "MyChhachhCI" "$ARTIFACT_DIR/avd-list.txt"
 
