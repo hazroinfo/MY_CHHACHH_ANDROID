@@ -132,7 +132,7 @@ internal fun V95Settings(c: V95Controller) {
                     V95Field(username, c.t("Username", "یوزرنیم")) { username = it }
                     V95TextArea(bio, c.t("Bio", "بائیو")) { bio = it }
                     V95Button(c.t("Save changes", "تبدیلیاں محفوظ کریں"), Modifier.fillMaxWidth(), primary = true) {
-                        c.updateProfile(name, username, bio) { }
+                        c.updateProfile(name, username, bio)
                     }
                 }
             }
