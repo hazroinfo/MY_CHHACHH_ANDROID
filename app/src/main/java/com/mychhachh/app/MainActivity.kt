@@ -17,11 +17,14 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : ComponentActivity() {
 
@@ -68,15 +71,36 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = Color.rgb(223, 247, 255)
         WebView.setWebContentsDebuggingEnabled(false)
 
+        val root = FrameLayout(this).apply {
+            setBackgroundColor(Color.rgb(223, 247, 255))
+        }
         webView = WebView(this).apply {
             setBackgroundColor(Color.rgb(223, 247, 255))
         }
-        setContentView(webView)
+        root.addView(
+            webView,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
+        setContentView(root)
 
+        var initialInsetsApplied = false
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            if (!initialInsetsApplied) {
+                val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+                view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+                initialInsetsApplied = true
+                ViewCompat.setOnApplyWindowInsetsListener(view, null)
+            }
+            insets
+        }
+        ViewCompat.requestApplyInsets(root)
 
         configureWebView()
 
@@ -133,13 +157,13 @@ class MainActivity : ComponentActivity() {
             override fun onPageCommitVisible(view: WebView, url: String) {
                 super.onPageCommitVisible(view, url)
                 Log.i(WEBVIEW_LOG_TAG, "PAGE_COMMIT_VISIBLE $url")
-                hideTopLoadingLine(view)
+                applyNativePageFixes(view)
             }
 
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
                 Log.i(WEBVIEW_LOG_TAG, "PAGE_FINISHED $url")
-                hideTopLoadingLine(view)
+                applyNativePageFixes(view)
             }
 
             override fun onReceivedError(
@@ -228,8 +252,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun hideTopLoadingLine(view: WebView) {
-        view.evaluateJavascript(HIDE_TOP_LOADING_LINE_JS, null)
+    private fun applyNativePageFixes(view: WebView) {
+        view.evaluateJavascript(NATIVE_PAGE_FIXES_JS, null)
     }
 
     private fun handleUri(uri: Uri): Boolean {
@@ -297,15 +321,31 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val HOME_URL = "https://chhachh.pages.dev/"
         private const val WEBVIEW_LOG_TAG = "MyChhachhWebView"
-        private const val HIDE_TOP_LOADING_LINE_JS = """
+        private const val NATIVE_PAGE_FIXES_JS = """
             (function(){
               try {
-                var id='__mc_hide_route_progress';
-                if(document.getElementById(id)) return;
-                var s=document.createElement('style');
-                s.id=id;
-                s.textContent='#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}';
-                (document.head||document.documentElement).appendChild(s);
+                var id='__mc_android_clean_fixes';
+                if(!document.getElementById(id)){
+                  var s=document.createElement('style');
+                  s.id=id;
+                  s.textContent=
+                    '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}' +
+                    'html body.mc-android-clean{scroll-behavior:auto!important;overscroll-behavior-y:none!important}' +
+                    'html body.mc-android-clean.weather-theme-ready,html body.mc-android-clean.tod-night{background-attachment:scroll!important}' +
+                    'html body.mc-android-clean .top,html body.mc-android-clean.weather-theme-ready .top,html body.mc-android-clean.tod-night .top,html body.mc-android-clean .card,html body.mc-android-clean.weather-theme-ready .card,html body.mc-android-clean.tod-night .card,html body.mc-android-clean .community-footer,html body.mc-android-clean .side-menu,html body.mc-android-clean .faux-search,html body.mc-android-clean .page-heading,html body.mc-android-clean .global-notice{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}' +
+                    'html body.mc-android-clean #chhachhWeatherBg{animation:none!important;transform:none!important;filter:none!important;background-attachment:scroll!important;will-change:auto!important}' +
+                    'html body.mc-android-clean #chhachhWeatherBg:before,html body.mc-android-clean #chhachhWeatherBg:after,html body.mc-android-clean #chhachhWeatherBg>*{display:none!important;animation:none!important;filter:none!important;transform:none!important;will-change:auto!important}' +
+                    'html body.mc-android-clean #mcLiveWeatherStage{transition:none!important;will-change:auto!important}' +
+                    'html body.mc-android-clean #mcLiveWeatherStage .mcwx-photo{inset:0!important;transform:none!important;transition:none!important;filter:none!important;will-change:auto!important}' +
+                    'html body.mc-android-clean.mcwx-night #mcLiveWeatherStage .mcwx-photo{filter:none!important}' +
+                    'html body.mc-android-clean #mcLiveWeatherStage .mcwx-tone{transition:none!important}' +
+                    'html body.mc-android-clean #mcLiveWeatherStage .mcwx-cloud,html body.mc-android-clean #mcLiveWeatherStage .mcwx-haze,html body.mc-android-clean #mcLiveWeatherStage .mcwx-sun,html body.mc-android-clean #mcLiveWeatherStage .mcwx-moon,html body.mc-android-clean #mcLiveWeatherStage .mcwx-stars,html body.mc-android-clean #mcLiveWeatherStage .mcwx-fog,html body.mc-android-clean #mcLiveWeatherStage .mcwx-rain,html body.mc-android-clean #mcLiveWeatherStage .mcwx-flash{display:none!important;opacity:0!important;animation:none!important;filter:none!important;transform:none!important;will-change:auto!important}' +
+                    'html body.mc-android-clean video{will-change:auto!important}';
+                  (document.head||document.documentElement).appendChild(s);
+                }
+                if(document.body){
+                  document.body.classList.add('mc-android-clean','theme-motion-off');
+                }
               } catch(e) {}
             })();
         """
