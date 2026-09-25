@@ -12,6 +12,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mychhachh.app.R
+import org.json.JSONObject
 
 val V95Ink = Color(0xFF2E315A)
 val V95Muted = Color(0xFF66738B)
@@ -36,6 +38,8 @@ val V95Blue = Color(0xFF678CFF)
 val V95Cyan = Color(0xFF55D8FF)
 val V95Danger = Color(0xFFB4253B)
 val V95Green = Color(0xFF48B982)
+
+val LocalV95Features = staticCompositionLocalOf { JSONObject() }
 
 private val V95Scheme = lightColorScheme(
     primary = V95Blue,
@@ -75,7 +79,10 @@ fun V95GlassCard(
     padding: Dp = 16.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val shape = RoundedCornerShape(radius)
+    val features = LocalV95Features.current
+    val actualRadius = features.optDouble("theme_card_radius", radius.value.toDouble()).toFloat().dp
+    val actualPadding = if (padding == 16.dp) features.optDouble("theme_card_padding", 16.0).toFloat().dp else padding
+    val shape = RoundedCornerShape(actualRadius)
     Column(
         modifier
             .fillMaxWidth()
@@ -83,7 +90,7 @@ fun V95GlassCard(
             .clip(shape)
             .background(v95GlassBrush())
             .border(2.dp, Color.White.copy(alpha = .94f), shape)
-            .padding(padding),
+            .padding(actualPadding),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         content = content
     )
@@ -94,7 +101,9 @@ fun V95InputShell(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val shape = RoundedCornerShape(20.dp)
+    val features = LocalV95Features.current
+    val radius = features.optDouble("theme_input_radius", 20.0).toFloat().dp
+    val shape = RoundedCornerShape(radius)
     Box(
         modifier
             .heightIn(min = 44.dp)
@@ -117,10 +126,13 @@ fun V95Button(
     icon: Int? = null,
     onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(18.dp)
+    val features = LocalV95Features.current
+    val radius = features.optDouble("theme_button_radius", 18.0).toFloat().dp
+    val buttonHeight = features.optDouble("theme_button_height", 44.0).toFloat().dp
+    val shape = RoundedCornerShape(radius)
     Row(
         modifier
-            .heightIn(min = 44.dp)
+            .heightIn(min = buttonHeight)
             .clip(shape)
             .then(
                 if (primary) Modifier.background(v95PrimaryBrush())
