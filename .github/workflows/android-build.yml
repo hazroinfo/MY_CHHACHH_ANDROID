@@ -2,7 +2,7 @@ name: Android Build
 
 on:
   push:
-    branches: [ main ]
+    branches: [ webview-polish ]
   workflow_dispatch:
 
 permissions:
