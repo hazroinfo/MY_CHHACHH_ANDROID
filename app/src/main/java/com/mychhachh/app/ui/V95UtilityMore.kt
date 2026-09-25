@@ -29,6 +29,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
@@ -259,33 +261,198 @@ internal fun V95Metric(label: String, value: String, modifier: Modifier) {
 @Composable
 internal fun V95Auth(c: V95Controller) {
     var register by remember { mutableStateOf(false) }
+    var forgot by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var identity by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
     var terms by remember { mutableStateOf(false) }
-    Box(Modifier.fillMaxSize().padding(12.dp), contentAlignment = Alignment.TopCenter) {
+
+    Box(
+        Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp),
+        contentAlignment = Alignment.TopCenter
+    ) {
         V95GlassCard(Modifier.widthIn(max = 420.dp), radius = 26.dp, padding = 22.dp) {
             RainbowBrand(fontSize = 30f)
-            Text(if (register) c.t("Create account", "اکاؤنٹ بنائیں") else c.t("Welcome back", "خوش آمدید"), color = V95Ink, fontWeight = FontWeight.Black, fontSize = 22.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-            if (register) {
-                V95Field(name, c.t("Full name", "پورا نام")) { name = it }
-                V95Field(username, c.t("Username", "یوزرنیم")) { username = it }
-                V95Field(email, c.t("Email", "ای میل")) { email = it }
-            } else V95Field(identity, c.t("Email or username", "ای میل یا یوزرنیم")) { identity = it }
-            V95Field(password, c.t("Password", "پاس ورڈ")) { password = it }
-            if (register) {
-                Row(Modifier.fillMaxWidth().clickable { terms = !terms }, verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(24.dp).clip(RoundedCornerShape(7.dp)).background(if (terms) v95PrimaryBrush() else v95InputBrush()).border(1.5.dp, Color.White, RoundedCornerShape(7.dp)), contentAlignment = Alignment.Center) { if (terms) Text("✓", color = Color.White, fontWeight = FontWeight.Black) }
-                    Spacer(Modifier.width(8.dp))
-                    Text(c.t("I accept Terms & Conditions", "میں شرائط و ضوابط قبول کرتا ہوں"), color = V95Ink, fontSize = 12.sp)
+
+            c.authInfo?.let {
+                Text(
+                    it,
+                    color = V95Green,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            when {
+                c.pendingVerifyUserId > 0L -> {
+                    Text(
+                        c.t("Verify your email", "اپنی ای میل ویریفائی کریں"),
+                        color = V95Ink,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 20.sp,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        c.t("Enter the 6-digit code sent to your email.", "ای میل پر بھیجا گیا 6 ہندسوں کا کوڈ درج کریں۔"),
+                        color = V95Muted,
+                        fontSize = 11.sp,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                    V95Field(code, c.t("Verification code", "ویریفکیشن کوڈ")) { code = it.filter(Char::isDigit).take(6) }
+                    V95Button(
+                        c.t("Verify email", "ای میل ویریفائی کریں"),
+                        Modifier.fillMaxWidth(),
+                        primary = true,
+                        enabled = code.length == 6
+                    ) { c.verifyPendingEmail(code) }
+                    V95Button(c.t("Resend code", "کوڈ دوبارہ بھیجیں"), Modifier.fillMaxWidth()) {
+                        c.resendPendingEmail()
+                    }
+                }
+
+                c.passwordResetKey.isNotBlank() -> {
+                    Text(
+                        c.t("Reset password", "پاس ورڈ ری سیٹ"),
+                        color = V95Ink,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 20.sp,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                    V95Field(code, c.t("Reset code", "ری سیٹ کوڈ")) { code = it.filter(Char::isDigit).take(6) }
+                    V95PasswordField(password, c.t("New password", "نیا پاس ورڈ")) { password = it }
+                    V95PasswordField(confirmPassword, c.t("Confirm password", "پاس ورڈ دوبارہ")) { confirmPassword = it }
+                    V95Button(
+                        c.t("Set new password", "نیا پاس ورڈ محفوظ کریں"),
+                        Modifier.fillMaxWidth(),
+                        primary = true,
+                        enabled = code.length == 6 && password.length >= 6 && password == confirmPassword
+                    ) {
+                        c.finishPasswordReset(code, password) {
+                            forgot = false
+                            code = ""
+                            password = ""
+                            confirmPassword = ""
+                        }
+                    }
+                }
+
+                forgot -> {
+                    Text(
+                        c.t("Forgot password", "پاس ورڈ بھول گئے"),
+                        color = V95Ink,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 20.sp,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                    V95Field(email, c.t("Email address", "ای میل ایڈریس")) { email = it }
+                    V95Button(
+                        c.t("Send reset code", "ری سیٹ کوڈ بھیجیں"),
+                        Modifier.fillMaxWidth(),
+                        primary = true,
+                        enabled = email.contains("@")
+                    ) { c.startPasswordReset(email) }
+                    V95Button(c.t("Back to login", "واپس لاگ اِن"), Modifier.fillMaxWidth()) { forgot = false }
+                }
+
+                else -> {
+                    Text(
+                        if (register) c.t("Create account", "اکاؤنٹ بنائیں") else c.t("Welcome back", "خوش آمدید"),
+                        color = V95Ink,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 20.sp,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+
+                    if (register) {
+                        V95Field(name, c.t("Full name", "پورا نام")) { name = it }
+                        V95Field(username, c.t("Username", "یوزرنیم")) { username = it.filter { ch -> ch.isLetterOrDigit() || ch == '_' }.take(30) }
+                        V95Field(email, c.t("Email", "ای میل")) { email = it.trim() }
+                    } else {
+                        V95Field(identity, c.t("Email, username or phone", "ای میل، یوزرنیم یا فون")) { identity = it }
+                    }
+
+                    V95PasswordField(password, c.t("Password", "پاس ورڈ")) { password = it }
+
+                    if (register) {
+                        Row(
+                            Modifier.fillMaxWidth().clickable { terms = !terms },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                Modifier.size(24.dp).clip(RoundedCornerShape(7.dp))
+                                    .background(if (terms) v95PrimaryBrush() else v95InputBrush())
+                                    .border(1.5.dp, Color.White, RoundedCornerShape(7.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (terms) Text("✓", color = Color.White, fontWeight = FontWeight.Black)
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(c.t("I accept Terms & Conditions", "میں شرائط و ضوابط قبول کرتا ہوں"), color = V95Ink, fontSize = 11.sp)
+                        }
+                    }
+
+                    V95Button(
+                        if (register) c.t("Register", "رجسٹر") else c.t("Login", "لاگ اِن"),
+                        Modifier.fillMaxWidth(),
+                        primary = true,
+                        enabled = password.length >= 6 &&
+                            if (register) name.length >= 2 && username.length >= 3 && email.contains("@") && terms
+                            else identity.isNotBlank()
+                    ) {
+                        if (register) c.register(name, username, email, password)
+                        else c.login(identity, password)
+                    }
+
+                    if (!register) {
+                        V95Button(c.t("Forgot password?", "پاس ورڈ بھول گئے؟"), Modifier.fillMaxWidth()) { forgot = true }
+                    }
+
+                    V95Button(
+                        if (register) c.t("Already have an account? Login", "اکاؤنٹ ہے؟ لاگ اِن کریں")
+                        else c.t("Create new account", "نیا اکاؤنٹ بنائیں"),
+                        Modifier.fillMaxWidth()
+                    ) { register = !register }
                 }
             }
-            V95Button(if (register) c.t("Register", "رجسٹر") else c.t("Login", "لاگ اِن"), Modifier.fillMaxWidth(), primary = true, enabled = password.isNotBlank() && (!register || terms)) {
-                if (register) c.register(name, username, email, password) else c.login(identity, password)
-            }
-            V95Button(if (register) c.t("Already have an account? Login", "اکاؤنٹ ہے؟ لاگ اِن کریں") else c.t("Create new account", "نیا اکاؤنٹ بنائیں"), Modifier.fillMaxWidth()) { register = !register }
+        }
+    }
+}
+
+@Composable
+private fun V95PasswordField(
+    value: String,
+    placeholder: String,
+    onValue: (String) -> Unit
+) {
+    var visible by remember { mutableStateOf(false) }
+    V95InputShell(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            BasicTextField(
+                value = value,
+                onValueChange = onValue,
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                textStyle = TextStyle(color = V95Ink, fontSize = 13.sp),
+                visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+                decorationBox = { inner ->
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (value.isBlank()) Text(placeholder, color = Color(0xFF858EB1), fontSize = 12.sp)
+                        inner()
+                    }
+                }
+            )
+            V95IconButton(V95Icons.Eye, 32.dp, 24.dp) { visible = !visible }
         }
     }
 }
