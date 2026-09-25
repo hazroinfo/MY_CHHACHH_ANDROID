@@ -274,8 +274,8 @@ internal fun V95PostCard(c: V95Controller, post: Post) {
 internal fun V95PostAction(
     text: String,
     icon: Int,
-    count: Int? = null,
     active: Boolean = false,
+    count: Int? = null,
     onClick: (() -> Unit)? = null
 ) {
     Row(
