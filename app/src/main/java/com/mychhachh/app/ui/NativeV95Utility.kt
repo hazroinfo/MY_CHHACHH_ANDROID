@@ -897,7 +897,7 @@ internal fun NativeThemeBuilder(c: V95Controller) {
     var guestRegister by remember(key) { mutableStateOf(c.features.optInt("theme_guest_register_button", 1) != 0) }
 
     val headerAllowed = listOf("home", "people", "shop", "map", "messages")
-    val menuAllowed = listOf("votes", "saved", "announcements", "notifications", "settings", "theme", "admin", "logout")
+    val menuAllowed = listOf("votes", "saved", "settings", "theme", "admin", "logout")
     fun parseOrder(raw: String, allowed: List<String>, fallback: List<String>): List<String> {
         val parsed = raw.split(",")
             .map { it.trim().lowercase() }
@@ -918,7 +918,7 @@ internal fun NativeThemeBuilder(c: V95Controller) {
     var menuOrder by remember(key) {
         mutableStateOf(
             parseOrder(
-                c.features.optString("theme_menu_items", "votes,saved,announcements,notifications,settings,theme,admin,logout"),
+                c.features.optString("theme_menu_items", "votes,saved,settings,theme,admin,logout"),
                 menuAllowed,
                 menuAllowed
             )
