@@ -35,7 +35,7 @@ jobs:
           set -euo pipefail
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER"             "platform-tools"             "platforms;android-35"             "build-tools;35.0.0"             "emulator"             "system-images;android-35;google_apis;x86_64"
+          "$SDKMANAGER"             "platform-tools"             "platforms;android-35"             "build-tools;35.0.0"             "emulator"             "system-images;android-35;default;x86_64"
 
       - name: Build fresh APK
         shell: bash
@@ -62,12 +62,12 @@ jobs:
           fi
 
           rm -rf "$ANDROID_AVD_HOME/MyChhachhQA.avd" "$ANDROID_AVD_HOME/MyChhachhQA.ini"
-          echo "no" | "$AVDMANAGER" create avd --force             --name MyChhachhQA             --package "system-images;android-35;google_apis;x86_64"             --device "pixel_6"
+          echo "no" | "$AVDMANAGER" create avd --force             --name MyChhachhQA             --package "system-images;android-35;default;x86_64"             --device "pixel_6"
 
           adb kill-server || true
           adb start-server
 
-          nohup emulator             -avd MyChhachhQA             -no-window             -noaudio             -no-boot-anim             -no-snapshot             -no-snapshot-save             -wipe-data             -gpu swiftshader_indirect             > "$ART/emulator.log" 2>&1 &
+          nohup emulator             -avd MyChhachhQA             -no-window             -noaudio             -no-boot-anim             -no-snapshot             -no-snapshot-save             -wipe-data             -gpu swiftshader_indirect             -cores 4             -memory 4096             > "$ART/emulator.log" 2>&1 &
           echo $! > "$ART/emulator.pid"
 
           deadline=$((SECONDS + 420))
@@ -165,8 +165,12 @@ jobs:
 
           adb logcat -d -v threadtime > "$ART/logcat.txt" || true
           adb shell dumpsys activity exit-info com.mychhachh.app > "$ART/exit-info.txt" || true
+          adb shell dumpsys gfxinfo com.mychhachh.app > "$ART/gfxinfo-after-scroll.txt" || true
 
           if grep -E "FATAL EXCEPTION|ANR in com\.mychhachh\.app|Process: com\.mychhachh\.app.*has died" "$ART/logcat.txt"; then
+            adb shell dumpsys activity lastanr > "$ART/lastanr.txt" 2>&1 || true
+            adb shell sh -c 'ls -lt /data/anr 2>/dev/null | head -20' > "$ART/anr-files.txt" 2>&1 || true
+            adb shell sh -c 'for f in /data/anr/anr_*; do echo "===== $f ====="; cat "$f"; done' > "$ART/anr-traces.txt" 2>&1 || true
             echo "::error::Crash or ANR evidence found in logcat"
             exit 1
           fi
