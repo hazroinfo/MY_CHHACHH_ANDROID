@@ -314,10 +314,7 @@ class MainActivity : ComponentActivity() {
                   '#chhachhWeatherBg{animation:none!important;transform:none!important;background-attachment:scroll!important;will-change:auto!important}' +
                   '#chhachhWeatherBg *{animation:none!important;will-change:auto!important}' +
                   '#chhachhWeatherBg .fog{filter:none!important}' +
-                  '.top,.card,.community-footer,.side-menu,body.menu-open:after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}' +
-                  '.top{background:rgba(255,255,255,.96)!important}' +
-                  '.card{background:rgba(255,255,255,.95)!important}' +
-                  '.community-footer{background:rgba(255,255,255,.94)!important}';
+                  '.top,.card,.community-footer,.side-menu,body.menu-open:after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}';
                 (document.head||document.documentElement).appendChild(s);
                 if(document.body) document.body.classList.add('theme-motion-off');
               } catch(e) {}
