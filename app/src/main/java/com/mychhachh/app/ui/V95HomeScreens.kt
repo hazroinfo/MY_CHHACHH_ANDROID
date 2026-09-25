@@ -378,28 +378,60 @@ internal fun V95Messages(c: V95Controller) {
 @Composable
 internal fun V95Chat(c: V95Controller) {
     if (c.user == null || c.selectedChatUser == null) { V95RequireLogin(c); return }
-    var text by remember { mutableStateOf("") }
-    Column(Modifier.fillMaxSize().padding(12.dp)) {
-        V95PageHeading(c.selectedChatUser!!.name, "@${c.selectedChatUser!!.username}")
-        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(vertical = 8.dp)) {
+
+    Column(Modifier.fillMaxSize().padding(horizontal = 7.dp, vertical = 6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            V95Button(c.t("Back", "واپس")) { c.route = V95Route.MESSAGES }
+            Spacer(Modifier.width(7.dp))
+            V95Avatar(c.selectedChatUser!!, 38.dp)
+            Spacer(Modifier.width(7.dp))
+            V95PageHeading(c.selectedChatUser!!.name, "@${c.selectedChatUser!!.username}")
+        }
+
+        LazyColumn(
+            Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            contentPadding = PaddingValues(vertical = 8.dp)
+        ) {
             items(c.chatMessages, key = { it.id }) { m ->
                 val mine = m.senderId == c.user?.id
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start) {
-                    Box(
-                        Modifier.fillMaxWidth(.78f).clip(RoundedCornerShape(18.dp)).background(
-                            if (mine) Brush.linearGradient(listOf(Color(0xFF6BD2FF).copy(.62f), Color(0xFF9F84FF).copy(.55f)))
-                            else v95GlassBrush()
-                        ).border(1.dp, Color.White.copy(.86f), RoundedCornerShape(18.dp)).padding(10.dp)
+                    Column(
+                        Modifier
+                            .fillMaxWidth(.78f)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(
+                                if (mine) Brush.linearGradient(listOf(Color(0xFF6BD2FF).copy(.62f), Color(0xFF9F84FF).copy(.55f)))
+                                else v95GlassBrush()
+                            )
+                            .border(1.dp, Color.White.copy(.86f), RoundedCornerShape(18.dp))
+                            .padding(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
-                        Text(m.text, color = V95Ink, fontSize = 14.sp)
+                        if (m.text.isNotBlank()) Text(m.text, color = V95Ink, fontSize = 12.5.sp, lineHeight = 18.sp)
+                        if (!m.photo.isNullOrBlank()) {
+                            AsyncImage(
+                                m.photo,
+                                null,
+                                Modifier.fillMaxWidth().heightIn(max = 280.dp).clip(RoundedCornerShape(15.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        if (!m.audio.isNullOrBlank()) V95NativeAudio(m.audio)
+                        if (m.locationLat != null && m.locationLng != null) {
+                            V95Button(c.t("Open location", "لوکیشن کھولیں"), icon = V95Icons.Map) {
+                                c.route = V95Route.MAP
+                            }
+                        }
+                        if (m.createdAt.isNotBlank()) {
+                            Text(m.createdAt.replace('T', ' ').take(16), color = V95Muted, fontSize = 8.sp)
+                        }
                     }
                 }
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            V95InputShell(Modifier.weight(1f)) { BasicTextField(text, { text = it }, textStyle = TextStyle(color = V95Ink, fontSize = 14.sp), modifier = Modifier.fillMaxWidth()) }
-            V95IconButton(V95Icons.Send, 48.dp, 35.dp) { if (text.isNotBlank()) c.sendMessage(text) { text = "" } }
-        }
+
+        V95MessageComposer(c)
     }
 }
 
