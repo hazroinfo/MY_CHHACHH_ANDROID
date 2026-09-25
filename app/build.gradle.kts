@@ -12,8 +12,8 @@ android {
         applicationId = "com.mychhachh.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "2.0.6"
+        versionCode = 13
+        versionName = "2.0.7"
     }
 
     buildFeatures { compose = true }
