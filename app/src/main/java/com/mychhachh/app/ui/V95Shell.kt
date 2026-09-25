@@ -95,6 +95,9 @@ fun V95App() {
                             V95Route.ADMIN -> V95Admin(c)
                             V95Route.AUTH -> V95Auth(c)
                             V95Route.POST_DETAIL -> V95PostDetail(c)
+                            V95Route.SAVED -> V95Saved(c)
+                            V95Route.RELATIONS -> V95Relations(c)
+                            V95Route.THEME -> V95ThemeBuilder(c)
                         }
                         if (c.busy) {
                             Box(Modifier.matchParentSize().background(Color.White.copy(alpha = .28f)), contentAlignment = Alignment.Center) {
@@ -299,11 +302,14 @@ internal fun V95SideMenu(c: V95Controller) {
             val entries = buildList {
                 add(Triple(c.t("Home", "ہوم"), V95Icons.Home, V95Route.HOME))
                 add(Triple(c.t("Voting", "ووٹنگ"), V95Icons.Vote, V95Route.VOTES))
-                add(Triple(c.t("Saved", "محفوظ"), V95Icons.Save, V95Route.SEARCH))
+                add(Triple(c.t("Saved", "محفوظ"), V95Icons.Save, V95Route.SAVED))
                 add(Triple(c.t("Announcements", "اعلانات"), V95Icons.Announcement, V95Route.ANNOUNCEMENTS))
                 add(Triple(c.t("Notifications", "اطلاعات"), V95Icons.Bell, V95Route.NOTIFICATIONS))
                 if (c.user != null) add(Triple(c.t("Profile", "پروفائل"), V95Icons.User, V95Route.PROFILE))
                 add(Triple(c.t("Settings", "ترتیبات"), V95Icons.Gear, V95Route.SETTINGS))
+                if (c.user?.isAdmin == true && c.features.optInt("theme_theme_icon_enabled", 1) != 0) {
+                    add(Triple(c.t("Theme Builder", "تھیم بلڈر"), V95Icons.Palette, V95Route.THEME))
+                }
                 if (c.user?.isAdmin == true) add(Triple(c.t("Admin Center", "ایڈمن سینٹر"), V95Icons.Shield, V95Route.ADMIN))
             }
             entries.forEach { (label, icon, route) ->
@@ -316,6 +322,7 @@ internal fun V95SideMenu(c: V95Controller) {
                         V95Route.ANNOUNCEMENTS -> c.loadAnnouncements()
                         V95Route.NOTIFICATIONS -> c.loadNotifications()
                         V95Route.PROFILE -> c.user?.let(c::openProfile)
+                        V95Route.SAVED -> c.loadSaved()
                         V95Route.ADMIN -> c.loadAdmin()
                         else -> Unit
                     }
