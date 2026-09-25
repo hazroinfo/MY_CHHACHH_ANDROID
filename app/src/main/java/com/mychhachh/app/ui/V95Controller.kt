@@ -97,6 +97,7 @@ internal class V95Controller(context: Context) {
     var searchText by mutableStateOf("")
     var selectedUser by mutableStateOf<User?>(null)
     var profileDetails by mutableStateOf<JSONObject?>(null)
+    var profilePosts by mutableStateOf<List<Post>>(emptyList())
     var relationUsers by mutableStateOf<List<User>>(emptyList())
     var relationTitle by mutableStateOf("")
     var selectedShop by mutableStateOf<Shop?>(null)
@@ -367,8 +368,16 @@ internal class V95Controller(context: Context) {
 
     fun openProfile(person: User) = work {
         selectedUser = person
-        profileDetails = withContext(Dispatchers.IO) { runCatching { api.user(person.id) }.getOrNull() }
+        val details = withContext(Dispatchers.IO) { runCatching { api.user(person.id) }.getOrNull() }
+        profileDetails = details
+        profilePosts = (details?.optJSONArray("posts") ?: JSONArray()).posts()
         route = V95Route.PROFILE
+    }
+
+    fun loadProfile(person: User, showBusy: Boolean = false) = work(showBusy) {
+        val details = withContext(Dispatchers.IO) { runCatching { api.user(person.id) }.getOrNull() }
+        profileDetails = details
+        profilePosts = (details?.optJSONArray("posts") ?: JSONArray()).posts()
     }
 
     fun openRelations(person: User, mode: String) = work {
