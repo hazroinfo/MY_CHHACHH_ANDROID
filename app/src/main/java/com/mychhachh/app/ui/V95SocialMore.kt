@@ -294,7 +294,7 @@ internal fun V95Profile(c: V95Controller) {
                         ) {
                             if (!(followersHidden && !mine)) c.openRelations(person, "following")
                         }
-                        V95ProfileCount(posts.size.toString(), c.t("Posts", "پوسٹس")) { }
+                        V95ProfileCount(posts.size.toString(), c.t("Posts", "پوسٹس"))
                     }
 
                     if (person.bio.isNotBlank()) {
@@ -377,12 +377,12 @@ internal fun V95Profile(c: V95Controller) {
 }
 
 @Composable
-private fun RowScope.V95ProfileCount(value: String, label: String, onClick: () -> Unit) {
+private fun RowScope.V95ProfileCount(value: String, label: String, onClick: (() -> Unit)? = null) {
     Column(
         Modifier
             .weight(1f)
             .heightIn(min = 46.dp)
-            .clickable(onClick = onClick),
+            .clickable(enabled = onClick != null) { onClick?.invoke() },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -446,9 +446,9 @@ internal fun V95ShopDetail(c: V95Controller) {
 
                 Column(Modifier.padding(horizontal = if (width <= 430) 12.dp else 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        V95ProfileCount(shop.products.toString(), c.t("Products", "پروڈکٹس")) { }
-                        V95ProfileCount(shop.followers.toString(), c.t("Followers", "فالوورز")) { }
-                        V95ProfileCount(d?.optInt("views", 0)?.toString() ?: "0", c.t("Views", "ویوز")) { }
+                        V95ProfileCount(shop.products.toString(), c.t("Products", "پروڈکٹس"))
+                        V95ProfileCount(shop.followers.toString(), c.t("Followers", "فالوورز")) { c.openShopFollowers(shop) }
+                        V95ProfileCount(d?.optInt("views", 0)?.toString() ?: "0", c.t("Views", "ویوز"))
                     }
 
                     val detailItems = listOf(
