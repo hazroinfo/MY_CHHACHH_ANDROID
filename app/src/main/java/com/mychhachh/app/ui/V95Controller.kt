@@ -256,9 +256,11 @@ internal class V95Controller(context: Context) {
         route = V95Route.CHAT
     }
 
-    fun sendMessage(text: String, done: () -> Unit) = work(false) {
+    fun sendMessage(text: String, done: () -> Unit) = sendRichMessage(text, "", "", done)
+
+    fun sendRichMessage(text: String, photo: String, audio: String, done: () -> Unit) = work(false) {
         val to = selectedChatUser ?: return@work
-        withContext(Dispatchers.IO) { api.sendMessage(to.id, text) }
+        withContext(Dispatchers.IO) { api.sendMessage(to.id, text, photo, audio) }
         val result = withContext(Dispatchers.IO) { api.chat(to.id) }
         chatMessages = result.second
         done()
