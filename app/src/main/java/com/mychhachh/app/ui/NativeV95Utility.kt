@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +46,7 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
+import kotlin.math.abs
 
 @Composable
 internal fun NativeSearch(c: V95Controller) {
@@ -878,14 +881,61 @@ internal fun NativeThemeBuilder(c: V95Controller) {
         NVEmpty(c.t("Admin access required", "ایڈمن رسائی درکار ہے"))
         return
     }
+
     val key = c.features.toString()
     var siteName by remember(key) { mutableStateOf(c.features.optString("site_name", "My Chhachh")) }
     var tagline by remember(key) { mutableStateOf(c.features.optString("site_tagline", "People • Places • Good Vibes")) }
     var logo by remember(key) { mutableStateOf(c.features.optString("site_icon", "")) }
+    var logoBlend by remember(key) { mutableStateOf(c.features.optInt("theme_logo_blend", 0) != 0) }
     var guestLogin by remember(key) { mutableStateOf(c.features.optInt("theme_guest_login_button", 1) != 0) }
     var guestRegister by remember(key) { mutableStateOf(c.features.optInt("theme_guest_register_button", 1) != 0) }
-    var headerItems by remember(key) { mutableStateOf(c.features.optString("theme_header_items", "home,people,shop,map,messages")) }
-    var menuItems by remember(key) { mutableStateOf(c.features.optString("theme_menu_items", "votes,saved,announcements,notifications,settings,theme,admin,logout")) }
+
+    val headerAllowed = listOf("home", "people", "shop", "map", "messages")
+    val menuAllowed = listOf("votes", "saved", "announcements", "notifications", "settings", "theme", "admin", "logout")
+    fun parseOrder(raw: String, allowed: List<String>, fallback: List<String>): List<String> {
+        val parsed = raw.split(",")
+            .map { it.trim().lowercase() }
+            .filter { it in allowed }
+            .distinct()
+        return if (parsed.isEmpty()) fallback else parsed
+    }
+
+    var headerOrder by remember(key) {
+        mutableStateOf(
+            parseOrder(
+                c.features.optString("theme_header_items", "home,people,shop,map,messages"),
+                headerAllowed,
+                headerAllowed
+            )
+        )
+    }
+    var menuOrder by remember(key) {
+        mutableStateOf(
+            parseOrder(
+                c.features.optString("theme_menu_items", "votes,saved,announcements,notifications,settings,theme,admin,logout"),
+                menuAllowed,
+                menuAllowed
+            )
+        )
+    }
+
+    val headerLabels = mapOf(
+        "home" to c.t("Home", "ہوم"),
+        "people" to c.t("People", "لوگ"),
+        "shop" to c.t("Shop", "دکانیں"),
+        "map" to c.t("Map", "نقشہ"),
+        "messages" to c.t("Messages", "پیغامات")
+    )
+    val menuLabels = mapOf(
+        "votes" to c.t("Voting", "ووٹنگ"),
+        "saved" to c.t("Saved", "محفوظ"),
+        "announcements" to c.t("Announcements", "اعلانات"),
+        "notifications" to c.t("Notifications", "اطلاعات"),
+        "settings" to c.t("Settings", "ترتیبات"),
+        "theme" to c.t("Theme Builder", "تھیم بلڈر"),
+        "admin" to c.t("Admin Center", "ایڈمن سینٹر"),
+        "logout" to c.t("Logout", "لاگ آؤٹ")
+    )
 
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = 8.dp),
@@ -893,32 +943,173 @@ internal fun NativeThemeBuilder(c: V95Controller) {
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         item { NVHeading(c.t("Theme Builder", "تھیم بلڈر"), c.t("Brand, menu and layout controls", "برانڈ، مینیو اور لے آؤٹ کنٹرول")) }
+
         item {
             NVCard {
                 NativeSettingsTitle(NVIcons.Palette, c.t("Brand", "برانڈ"))
                 NVInput(siteName, c.t("Website name", "ویب سائٹ نام")) { siteName = it }
                 NVInput(tagline, c.t("Tagline", "ٹیگ لائن")) { tagline = it }
                 NVInput(logo, c.t("Logo URL", "لوگو لنک")) { logo = it }
+                NativeToggleRow(c.t("Blend logo into header", "لوگو کو ہیڈر میں بلینڈ کریں"), logoBlend) { logoBlend = !logoBlend }
+                if (logo.isNotBlank()) {
+                    AsyncImage(
+                        model = logo,
+                        contentDescription = siteName,
+                        modifier = Modifier.fillMaxWidth().height(72.dp).clip(RoundedCornerShape(18.dp)),
+                        contentScale = ContentScale.Fit
+                    )
+                }
                 NVButton(c.t("Save brand", "برانڈ محفوظ کریں"), Modifier.fillMaxWidth(), primary = true) {
-                    c.saveBrandFields(JSONObject().put("site_name", siteName).put("site_tagline", tagline).put("site_icon", logo))
+                    c.saveBrandFields(
+                        JSONObject()
+                            .put("site_name", siteName)
+                            .put("site_tagline", tagline)
+                            .put("site_icon", logo)
+                            .put("theme_logo_blend", if (logoBlend) 1 else 0)
+                    )
                 }
             }
         }
+
         item {
             NVCard {
-                NativeSettingsTitle(NVIcons.Menu, c.t("Header & menu", "ہیڈر اور مینیو"))
+                NativeSettingsTitle(NVIcons.Menu, c.t("Guest header buttons", "گیسٹ ہیڈر بٹن"))
                 NativeToggleRow(c.t("Guest Login button", "گیسٹ لاگ اِن بٹن"), guestLogin) { guestLogin = !guestLogin }
                 NativeToggleRow(c.t("Guest Register button", "گیسٹ رجسٹر بٹن"), guestRegister) { guestRegister = !guestRegister }
-                NVInput(headerItems, c.t("Header order", "ہیڈر ترتیب")) { headerItems = it }
-                NVInput(menuItems, c.t("Menu order", "مینیو ترتیب")) { menuItems = it }
+            }
+        }
+
+        item {
+            NVCard {
+                NativeSettingsTitle(NVIcons.Home, c.t("Bottom navigation", "نیچے نیویگیشن"))
+                Text(
+                    c.t("Long-press and drag, or use arrows. Hide/show any item.", "لانگ پریس کر کے ڈریگ کریں، یا تیر استعمال کریں۔ ہر آئٹم hide/show ہو سکتا ہے۔"),
+                    color = NVMuted,
+                    fontSize = 10.sp
+                )
+                NativeThemeOrderEditor(
+                    active = headerOrder,
+                    allowed = headerAllowed,
+                    labels = headerLabels,
+                    c = c,
+                    onChange = { headerOrder = it }
+                )
+            }
+        }
+
+        item {
+            NVCard {
+                NativeSettingsTitle(NVIcons.Menu, c.t("Side menu", "سائیڈ مینیو"))
+                Text(
+                    c.t("Long-press and drag, or use arrows. Hidden items can be restored below.", "لانگ پریس کر کے ڈریگ کریں، یا تیر استعمال کریں۔ hidden آئٹمز نیچے سے واپس لائیں۔"),
+                    color = NVMuted,
+                    fontSize = 10.sp
+                )
+                NativeThemeOrderEditor(
+                    active = menuOrder,
+                    allowed = menuAllowed,
+                    labels = menuLabels,
+                    c = c,
+                    onChange = { menuOrder = it }
+                )
+            }
+        }
+
+        item {
+            NVCard {
                 NVButton(c.t("Save layout", "لے آؤٹ محفوظ کریں"), Modifier.fillMaxWidth(), primary = true) {
                     c.saveThemeFields(
                         JSONObject()
                             .put("theme_guest_login_button", if (guestLogin) 1 else 0)
                             .put("theme_guest_register_button", if (guestRegister) 1 else 0)
-                            .put("theme_header_items", headerItems)
-                            .put("theme_menu_items", menuItems)
+                            .put("theme_header_items", headerOrder.joinToString(","))
+                            .put("theme_menu_items", menuOrder.joinToString(","))
+                            .put("theme_logo_blend", if (logoBlend) 1 else 0)
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NativeThemeOrderEditor(
+    active: List<String>,
+    allowed: List<String>,
+    labels: Map<String, String>,
+    c: V95Controller,
+    onChange: (List<String>) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        active.forEachIndexed { index, item ->
+            var dragDistance by remember(item, active) { mutableFloatStateOf(0f) }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(nvInputBrush())
+                    .border(1.dp, Color.White, RoundedCornerShape(16.dp))
+                    .pointerInput(item, active) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { dragDistance = 0f },
+                            onDragEnd = { dragDistance = 0f },
+                            onDragCancel = { dragDistance = 0f },
+                            onDrag = { _, amount ->
+                                dragDistance += amount.y
+                                if (abs(dragDistance) > 34f) {
+                                    val target = if (dragDistance > 0f) index + 1 else index - 1
+                                    if (target in active.indices) {
+                                        val changed = active.toMutableList()
+                                        val moved = changed.removeAt(index)
+                                        changed.add(target, moved)
+                                        onChange(changed)
+                                    }
+                                    dragDistance = 0f
+                                }
+                            }
+                        )
+                    }
+                    .padding(7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Text("≡", color = NVPurple, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                Text(labels[item] ?: item, color = NVInk, fontSize = 11.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+                NVButton("↑", enabled = index > 0) {
+                    if (index > 0) {
+                        val changed = active.toMutableList()
+                        val moved = changed.removeAt(index)
+                        changed.add(index - 1, moved)
+                        onChange(changed)
+                    }
+                }
+                NVButton("↓", enabled = index < active.lastIndex) {
+                    if (index < active.lastIndex) {
+                        val changed = active.toMutableList()
+                        val moved = changed.removeAt(index)
+                        changed.add(index + 1, moved)
+                        onChange(changed)
+                    }
+                }
+                NVButton(c.t("Hide", "چھپائیں"), danger = true) {
+                    onChange(active.filterNot { it == item })
+                }
+            }
+        }
+
+        val hidden = allowed.filterNot { it in active }
+        if (hidden.isNotEmpty()) {
+            Text(c.t("Hidden", "چھپے ہوئے"), color = NVMuted, fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+            hidden.chunked(2).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    row.forEach { item ->
+                        NVButton(
+                            c.t("Show ", "دکھائیں ") + (labels[item] ?: item),
+                            Modifier.weight(1f),
+                            icon = NVIcons.Plus
+                        ) { onChange(active + item) }
+                    }
+                    if (row.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
         }
