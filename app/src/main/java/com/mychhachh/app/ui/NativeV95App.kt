@@ -142,6 +142,7 @@ private fun NativeHeader(c: V95Controller) {
     val width = LocalConfiguration.current.screenWidthDp
     val compact = width <= 390
     val user = c.user
+    val guest = user == null
     Column(
         Modifier
             .fillMaxWidth()
@@ -158,25 +159,48 @@ private fun NativeHeader(c: V95Controller) {
             .padding(start = 7.dp, end = 7.dp, top = 8.dp, bottom = 7.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Row(Modifier.fillMaxWidth().height(47.dp), verticalAlignment = Alignment.CenterVertically) {
-            NVIconButton(NVIcons.Menu, size = 43.dp, iconSize = 35.dp) { c.menuOpen = true }
+        Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (guest) {
+                Spacer(Modifier.width(43.dp))
+            } else {
+                NVIconButton(NVIcons.Menu, size = 43.dp, iconSize = 35.dp) { c.menuOpen = true }
+            }
+
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 val brandName = c.features.optString("site_name", "My Chhachh").ifBlank { "My Chhachh" }
                 val brandLogo = c.features.optString("site_icon", "").trim()
+                val showBrandLogo = c.features.optInt("site_icon_enabled", 1) != 0 && brandLogo.isNotBlank()
+                val tagline = c.features.optString("site_tagline", "").trim()
+                val showTagline = c.features.optInt("site_tagline_enabled", 1) != 0 && tagline.isNotBlank()
                 var logoFailed by remember(brandLogo) { mutableStateOf(false) }
-                if (brandLogo.isNotBlank() && !logoFailed) {
-                    AsyncImage(
-                        model = brandLogo,
-                        contentDescription = brandName,
-                        modifier = Modifier.fillMaxWidth().height(42.dp).padding(horizontal = 6.dp),
-                        contentScale = ContentScale.Fit,
-                        onError = { logoFailed = true }
-                    )
-                } else {
-                    NVBrand(if (compact) 20f else 22f, brandName)
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                        if (showBrandLogo && !logoFailed) {
+                            AsyncImage(
+                                model = brandLogo,
+                                contentDescription = brandName,
+                                modifier = Modifier.size(if (compact) 30.dp else 34.dp),
+                                contentScale = ContentScale.Fit,
+                                onError = { logoFailed = true }
+                            )
+                            Spacer(Modifier.width(5.dp))
+                        }
+                        NVBrand(if (compact) 25f else 28f, brandName)
+                    }
+                    if (showTagline) {
+                        Text(
+                            tagline,
+                            color = Color(0xFF655B92),
+                            fontSize = if (compact) 7.5.sp else 8.5.sp,
+                            fontWeight = FontWeight.Black,
+                            maxLines = 1
+                        )
+                    }
                 }
             }
-            if (user != null) {
+
+            if (!guest) {
                 Box(
                     Modifier.size(43.dp).clickable {
                         c.route = V95Route.NOTIFICATIONS
@@ -198,49 +222,52 @@ private fun NativeHeader(c: V95Controller) {
                     }
                 }
                 Spacer(Modifier.width(3.dp))
-                NVAvatar(user, 41.dp, Modifier.clickable { c.openProfile(user) })
+                NVAvatar(user!!, 41.dp, Modifier.clickable { c.openProfile(user) })
             } else {
-                val showLogin = c.features.optInt("theme_guest_login_button", 1) != 0
-                val showRegister = c.features.optInt("theme_guest_register_button", 1) != 0
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                val guestAuthVisible = c.features.optInt("theme_guest_auth_buttons", 1) != 0
+                val showLogin = guestAuthVisible && c.features.optInt("theme_guest_login_button", 1) != 0
+                val showRegister = guestAuthVisible && c.features.optInt("theme_guest_register_button", 1) != 0
+                Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (showLogin) NativeTopPill(c.t("Login", "لاگ اِن"), false, compact) { c.route = V95Route.AUTH }
-                    if (showRegister) NativeTopPill(c.t("Sign up", "رجسٹر"), true, compact) { c.route = V95Route.AUTH }
+                    if (showRegister) NativeTopPill(c.t("Sign up", "اکاؤنٹ"), true, compact) { c.route = V95Route.AUTH }
                 }
             }
         }
 
-        NativeSearchBar(c)
+        if (!guest) {
+            NativeSearchBar(c)
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            NativeQuickCard(c.t("Voting", "ووٹنگ"), NVIcons.Vote, compact, Modifier.weight(1f)) {
-                c.route = V95Route.VOTES
-                c.loadVotes()
-            }
-            NativeQuickCard(c.t("Weather", "موسم"), NVIcons.Weather, compact, Modifier.weight(1f)) {
-                c.route = V95Route.WEATHER
-                c.loadWeather()
-            }
-            Box(Modifier.weight(1f)) {
-                NativeQuickCard(c.t("Announcements", "اعلانات"), NVIcons.Announcement, compact, Modifier.fillMaxWidth()) {
-                    c.route = V95Route.ANNOUNCEMENTS
-                    c.loadAnnouncements()
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                NativeQuickCard(c.t("Voting", "ووٹنگ"), NVIcons.Vote, compact, Modifier.weight(1f)) {
+                    c.route = V95Route.VOTES
+                    c.loadVotes()
                 }
-                if (c.announcementUnread > 0) {
-                    Box(
-                        Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(3.dp)
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(NVPink)
-                            .padding(horizontal = 4.dp, vertical = 1.dp)
-                    ) {
-                        Text(c.announcementUnread.toString(), color = Color.White, fontSize = 7.sp, fontWeight = FontWeight.Black)
+                NativeQuickCard(c.t("Weather", "موسم"), NVIcons.Weather, compact, Modifier.weight(1f)) {
+                    c.route = V95Route.WEATHER
+                    c.loadWeather()
+                }
+                Box(Modifier.weight(1f)) {
+                    NativeQuickCard(c.t("Announcements", "اعلانات"), NVIcons.Announcement, compact, Modifier.fillMaxWidth()) {
+                        c.route = V95Route.ANNOUNCEMENTS
+                        c.loadAnnouncements()
+                    }
+                    if (c.announcementUnread > 0) {
+                        Box(
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(3.dp)
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(NVPink)
+                                .padding(horizontal = 4.dp, vertical = 1.dp)
+                        ) {
+                            Text(c.announcementUnread.toString(), color = Color.White, fontSize = 7.sp, fontWeight = FontWeight.Black)
+                        }
                     }
                 }
             }
-        }
 
-        NativeNav(c, compact)
+            NativeNav(c, compact)
+        }
     }
 }
 
@@ -311,7 +338,7 @@ private fun NativeQuickCard(text: String, icon: Int, compact: Boolean, modifier:
     val shape = RoundedCornerShape(21.dp)
     Column(
         modifier
-            .height(if (compact) 58.dp else 64.dp)
+            .height(if (compact) 76.dp else 82.dp)
             .clip(shape)
             .background(nvGlassBrush())
             .border(1.5.dp, Color.White, shape)
@@ -392,6 +419,7 @@ private fun RowScope.NativeNavItem(c: V95Controller, text: String, icon: Int, ta
 
 @Composable
 private fun NativeSideMenu(c: V95Controller) {
+    if (c.user == null) return
     Box(
         Modifier
             .fillMaxSize()
@@ -401,8 +429,8 @@ private fun NativeSideMenu(c: V95Controller) {
         Column(
             Modifier
                 .fillMaxHeight()
-                .fillMaxWidth(.86f)
-                .widthIn(max = 330.dp)
+                .fillMaxWidth(.88f)
+                .widthIn(max = 350.dp)
                 .background(
                     Brush.verticalGradient(
                         listOf(
@@ -433,7 +461,7 @@ private fun NativeSideMenu(c: V95Controller) {
             )
             val rawMenuOrder = c.features.optString(
                 "theme_menu_items",
-                "votes,saved,announcements,notifications,settings,theme,admin,logout"
+                "votes,saved,settings,theme,admin,logout"
             )
             val menuKeys = rawMenuOrder
                 .split(",")
@@ -443,8 +471,10 @@ private fun NativeSideMenu(c: V95Controller) {
             val showLogout = "logout" in menuKeys
             val menu = menuKeys.mapNotNull { menuDefinitions[it] }
             menu.forEach { (label, icon, route) ->
-                if (route != V95Route.ADMIN || c.user?.isAdmin == true) {
-                    if (route != V95Route.PROFILE || c.user != null) {
+                val themeAllowed = route != V95Route.THEME || (c.user?.isAdmin == true && c.features.optInt("theme_theme_icon_enabled", 1) != 0)
+                val adminAllowed = route != V95Route.ADMIN || c.user?.isAdmin == true
+                val votingAllowed = route != V95Route.VOTES || c.features.optInt("voting", 1) != 0
+                if (themeAllowed && adminAllowed && votingAllowed) {
                         Row(
                             Modifier
                                 .fillMaxWidth()
@@ -471,11 +501,10 @@ private fun NativeSideMenu(c: V95Controller) {
                             Spacer(Modifier.width(10.dp))
                             Text(label, color = NVInk, fontWeight = FontWeight.Black, fontSize = 13.sp)
                         }
-                    }
                 }
             }
             Spacer(Modifier.weight(1f))
-            if (c.user != null && showLogout) {
+            if (showLogout) {
                 Row(
                     Modifier
                         .fillMaxWidth()
@@ -491,11 +520,6 @@ private fun NativeSideMenu(c: V95Controller) {
                     Image(painterResource(NVIcons.Logout), null, Modifier.size(30.dp))
                     Spacer(Modifier.width(10.dp))
                     Text(c.t("Logout", "لاگ آؤٹ"), color = NVDanger, fontWeight = FontWeight.Black, fontSize = 13.sp)
-                }
-            } else {
-                NVButton(c.t("Login / Register", "لاگ اِن / رجسٹریشن"), Modifier.fillMaxWidth(), primary = true) {
-                    c.menuOpen = false
-                    c.route = V95Route.AUTH
                 }
             }
         }
