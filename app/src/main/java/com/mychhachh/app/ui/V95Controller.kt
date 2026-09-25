@@ -786,10 +786,22 @@ internal class V95Controller(context: Context) {
         }
     }
 
-    fun updateProfile(name: String, username: String, bio: String, done: () -> Unit = {}) = work {
-        val fields = JSONObject().put("name", name).put("username", username).put("bio", bio)
+    fun updateProfileFields(fields: JSONObject, done: () -> Unit = {}) = work {
         user = withContext(Dispatchers.IO) { api.updateProfile(fields) }
+        selectedUser = selectedUser?.let { selected ->
+            if (selected.id == user?.id) user else selected
+        }
         done()
+    }
+
+    fun updateProfile(name: String, username: String, bio: String, done: () -> Unit = {}) {
+        updateProfileFields(
+            JSONObject()
+                .put("name", name)
+                .put("username", username)
+                .put("bio", bio),
+            done
+        )
     }
 
     fun loadAdmin(showBusy: Boolean = true) = work(showBusy) {
