@@ -1340,6 +1340,6 @@ private fun NativeAdminRecord(c: V95Controller, section: String, item: JSONObjec
 }
 
 @Composable
-private fun NativeSectionLabel(text: String) {
+fun NativeSectionLabel(text: String) {
     Text(text, color = NVInk, fontWeight = FontWeight.Black, fontSize = 15.sp, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
 }
