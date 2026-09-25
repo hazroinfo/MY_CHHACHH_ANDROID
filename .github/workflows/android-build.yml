@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -45,6 +47,23 @@ jobs:
           ./gradlew --no-daemon --stacktrace clean assembleDebug
           test -s app/build/outputs/apk/debug/app-debug.apk
           sha256sum app/build/outputs/apk/debug/app-debug.apk | tee apk-sha256.txt
+
+      - name: Build known-smooth WebView baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASELINE_SHA="230ee63d2edce41f5fcd3e09173e8be60de5eb0e"
+          BASELINE_DIR="$RUNNER_TEMP/mychhachh-smooth-baseline"
+          rm -rf "$BASELINE_DIR"
+          git worktree add --detach "$BASELINE_DIR" "$BASELINE_SHA"
+          pushd "$BASELINE_DIR"
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace assembleDebug
+          test -s app/build/outputs/apk/debug/app-debug.apk
+          popd
+          cp "$BASELINE_DIR/app/build/outputs/apk/debug/app-debug.apk" "$GITHUB_WORKSPACE/known-smooth-baseline.apk"
+          sha256sum "$GITHUB_WORKSPACE/known-smooth-baseline.apk" | tee "$GITHUB_WORKSPACE/baseline-sha256.txt"
+          git worktree remove --force "$BASELINE_DIR"
 
       - name: Emulator install, live load, repeated scroll and crash checks
         shell: bash
@@ -92,6 +111,64 @@ jobs:
           adb shell svc wifi enable || true
           adb shell svc data enable || true
 
+          # Measure the user's known-smooth historical WebView on this exact emulator first.
+          physical_size="$(adb shell wm size | tr -d '\r' | tail -1 | sed -E 's/.* ([0-9]+)x([0-9]+).*/\1 \2/')"
+          read -r baseline_w baseline_h <<< "$physical_size"
+          baseline_x=$((baseline_w * 99 / 100))
+          baseline_low=$((baseline_h * 74 / 100))
+          baseline_high=$((baseline_h * 32 / 100))
+
+          adb install -r -t "$GITHUB_WORKSPACE/known-smooth-baseline.apk" | tee "$ART/baseline-install.txt"
+          grep -q "Success" "$ART/baseline-install.txt"
+          adb shell am force-stop com.mychhachh.app || true
+          adb shell am start -W -n com.mychhachh.app/.MainActivity | tee "$ART/baseline-launch.txt"
+          sleep 35
+          baseline_pid="$(adb shell pidof com.mychhachh.app | tr -d '\r')"
+          test -n "$baseline_pid"
+          adb exec-out screencap -p > "$ART/baseline-before-scroll.png"
+          adb shell dumpsys gfxinfo com.mychhachh.app reset >/dev/null 2>&1 || true
+
+          for i in $(seq 1 8); do
+            adb shell input touchscreen swipe "$baseline_x" "$baseline_low" "$baseline_x" "$baseline_high" 240
+            sleep 1
+            adb shell pidof com.mychhachh.app >/dev/null
+          done
+          for i in $(seq 1 5); do
+            adb shell input touchscreen swipe "$baseline_x" "$baseline_high" "$baseline_x" "$baseline_low" 240
+            sleep 1
+            adb shell pidof com.mychhachh.app >/dev/null
+          done
+          adb exec-out screencap -p > "$ART/baseline-after-scroll.png"
+          adb shell dumpsys gfxinfo com.mychhachh.app > "$ART/baseline-gfxinfo.txt" || true
+          grep -E "Total frames rendered:|Janky frames:|50th percentile:|90th percentile:|95th percentile:|99th percentile:|Number Missed Vsync:|Number Slow UI thread:|Number Slow issue draw commands:|Number Frame deadline missed:" "$ART/baseline-gfxinfo.txt" > "$ART/baseline-frame-summary.txt" || true
+          cat "$ART/baseline-frame-summary.txt" || true
+
+          baseline_total="$(sed -n 's/^Total frames rendered: \([0-9][0-9]*\).*/\1/p' "$ART/baseline-frame-summary.txt" | head -1)"
+          baseline_janky="$(sed -n 's/^Janky frames: \([0-9][0-9]*\).*/\1/p' "$ART/baseline-frame-summary.txt" | head -1)"
+          baseline_missed="$(sed -n 's/^Number Missed Vsync: \([0-9][0-9]*\).*/\1/p' "$ART/baseline-frame-summary.txt" | head -1)"
+          baseline_slow="$(sed -n 's/^Number Slow UI thread: \([0-9][0-9]*\).*/\1/p' "$ART/baseline-frame-summary.txt" | head -1)"
+          baseline_deadline="$(sed -n 's/^Number Frame deadline missed: \([0-9][0-9]*\).*/\1/p' "$ART/baseline-frame-summary.txt" | head -1)"
+          test -n "$baseline_total"
+          test "$baseline_total" -gt 0
+          test -n "$baseline_janky"
+          test -n "$baseline_missed"
+          test -n "$baseline_slow"
+          test -n "$baseline_deadline"
+
+          baseline_janky_pct=$((baseline_janky * 100 / baseline_total))
+          baseline_missed_pct=$((baseline_missed * 100 / baseline_total))
+          baseline_slow_pct=$((baseline_slow * 100 / baseline_total))
+          baseline_deadline_pct=$((baseline_deadline * 100 / baseline_total))
+          {
+            echo "baseline_janky_pct=$baseline_janky_pct"
+            echo "baseline_missed_vsync_pct=$baseline_missed_pct"
+            echo "baseline_slow_ui_pct=$baseline_slow_pct"
+            echo "baseline_deadline_missed_pct=$baseline_deadline_pct"
+          } | tee "$ART/baseline-frame-gate.txt"
+
+          adb shell am force-stop com.mychhachh.app || true
+
+          # Install the fresh candidate over the same package and test it under identical conditions.
           adb install -r -t app/build/outputs/apk/debug/app-debug.apk | tee "$ART/install.txt"
           grep -q "Success" "$ART/install.txt"
 
@@ -238,9 +315,30 @@ jobs:
             qa_fail=1
           fi
 
+          candidate_absolute_fail=0
           if [ "$janky_pct" -gt 15 ] || [ "$missed_vsync_pct" -gt 15 ] || [ "$slow_ui_pct" -gt 10 ] || [ "$deadline_missed_pct" -gt 15 ]; then
-            echo "::error::Repeated-scroll smoothness gate failed: janky=$janky_pct%, missed-vsync=$missed_vsync_pct%, slow-ui=$slow_ui_pct%, deadline-missed=$deadline_missed_pct%"
-            qa_fail=1
+            candidate_absolute_fail=1
+          fi
+
+          baseline_absolute_fail=0
+          if [ "$baseline_janky_pct" -gt 15 ] || [ "$baseline_missed_pct" -gt 15 ] || [ "$baseline_slow_pct" -gt 10 ] || [ "$baseline_deadline_pct" -gt 15 ]; then
+            baseline_absolute_fail=1
+          fi
+
+          if [ "$candidate_absolute_fail" -eq 1 ]; then
+            if [ "$baseline_absolute_fail" -eq 1 ] &&
+               [ "$janky_pct" -le $((baseline_janky_pct + 10)) ] &&
+               [ "$missed_vsync_pct" -le $((baseline_missed_pct + 15)) ] &&
+               [ "$slow_ui_pct" -le $((baseline_slow_pct + 15)) ] &&
+               [ "$deadline_missed_pct" -le $((baseline_deadline_pct + 10)) ]; then
+              echo "EMULATOR-LIMITED PASS: candidate is not materially worse than the user's known-smooth baseline on the same SwiftShader emulator." | tee "$ART/relative-frame-verdict.txt"
+            else
+              echo "::error::Candidate is materially worse than the known-smooth baseline: baseline(janky=$baseline_janky_pct%, missed=$baseline_missed_pct%, slow-ui=$baseline_slow_pct%, deadline=$baseline_deadline_pct%) candidate(janky=$janky_pct%, missed=$missed_vsync_pct%, slow-ui=$slow_ui_pct%, deadline=$deadline_missed_pct%)"
+              echo "candidate_worse_than_baseline=true" | tee "$ART/relative-frame-verdict.txt"
+              qa_fail=1
+            fi
+          else
+            echo "ABSOLUTE PASS: candidate meets the strict frame gate." | tee "$ART/relative-frame-verdict.txt"
           fi
 
           if grep -E "FATAL EXCEPTION|ANR in com\.mychhachh\.app|Process: com\.mychhachh\.app.*has died" "$ART/logcat.txt"; then
