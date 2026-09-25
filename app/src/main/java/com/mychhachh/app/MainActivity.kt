@@ -69,6 +69,10 @@ class MainActivity : ComponentActivity() {
         WebView.setWebContentsDebuggingEnabled(false)
 
         webView = WebView(this)
+        val topInset = (4f * resources.displayMetrics.density).toInt()
+        webView.setPadding(0, topInset, 0, 0)
+        webView.clipToPadding = false
+        webView.overScrollMode = android.view.View.OVER_SCROLL_NEVER
         setContentView(webView)
 
         configureWebView()
@@ -222,41 +226,103 @@ class MainActivity : ComponentActivity() {
                   (document.head || document.documentElement).appendChild(style);
                 }
                 style.textContent = [
-                  'header.top{top:4px!important;margin-top:4px!important;}',
-                  '#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;}'
+                  '[data-mc-hide-top-line="1"]{display:none!important;opacity:0!important;visibility:hidden!important;}',
+                  '[data-mc-hide-top-before="1"]::before,[data-mc-hide-top-after="1"]::after{display:none!important;opacity:0!important;visibility:hidden!important;content:none!important;}',
+                  'body.mc-android-scrolling .card,body.mc-android-scrolling .top,body.mc-android-scrolling .header-search,body.mc-android-scrolling .side-menu{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}',
+                  'body.mc-android-scrolling #chhachhWeatherBg,body.mc-android-scrolling #chhachhWeatherBg *{animation-play-state:paused!important;}',
+                  '#chhachhWeatherBg{background-attachment:scroll!important;}'
                 ].join('');
 
-                function hideThinTopLoader(root) {
-                  var nodes = (root || document).querySelectorAll ? (root || document).querySelectorAll('*') : [];
-                  for (var i = 0; i < nodes.length; i++) {
-                    var el = nodes[i];
-                    if (!el || el.tagName === 'HEADER') continue;
-                    var name = ((el.id || '') + ' ' + (typeof el.className === 'string' ? el.className : '')).toLowerCase();
-                    var named = /(loader|loading|progress|pace|nprogress)/.test(name);
-                    if (!named) continue;
-                    var cs = getComputedStyle(el);
-                    var r = el.getBoundingClientRect();
-                    var positioned = cs.position === 'fixed' || cs.position === 'absolute';
-                    var thinTop = positioned && r.top <= 10 && r.height > 0 && r.height <= 8 && r.width >= innerWidth * 0.35;
-                    if (thinTop) {
-                      el.style.setProperty('display', 'none', 'important');
-                      el.style.setProperty('opacity', '0', 'important');
-                      el.style.setProperty('visibility', 'hidden', 'important');
-                    }
+                function forceHeader() {
+                  var h = document.querySelector('header.top,.top');
+                  if (h) {
+                    h.style.setProperty('top', '0px', 'important');
+                    h.style.setProperty('margin-top', '0px', 'important');
                   }
                 }
 
-                hideThinTopLoader(document);
-                if (!window.__mcAndroidPolishObserver) {
-                  window.__mcAndroidPolishObserver = new MutationObserver(function(mutations) {
-                    for (var i = 0; i < mutations.length; i++) {
-                      for (var j = 0; j < mutations[i].addedNodes.length; j++) {
-                        var node = mutations[i].addedNodes[j];
-                        if (node && node.nodeType === 1) hideThinTopLoader(node.parentNode || document);
+                function isThinTop(cs, rect) {
+                  if (!cs || !rect) return false;
+                  var positioned = cs.position === 'fixed' || cs.position === 'absolute' || cs.position === 'sticky';
+                  var top = parseFloat(cs.top || '9999');
+                  var height = rect.height || parseFloat(cs.height || '0');
+                  var width = rect.width || parseFloat(cs.width || '0');
+                  return positioned && (rect.top <= 12 || top <= 12) &&
+                         height > 0 && height <= 9 &&
+                         width >= Math.max(120, innerWidth * 0.35);
+                }
+
+                function sweepTopLines() {
+                  var nodes = document.querySelectorAll('body *');
+                  for (var i = 0; i < nodes.length; i++) {
+                    var el = nodes[i];
+                    if (!el || el.matches('header.top,.top,.menu-toggle,.brand,.top-actions')) continue;
+                    try {
+                      var rect = el.getBoundingClientRect();
+                      var cs = getComputedStyle(el);
+                      var name = ((el.id || '') + ' ' + (typeof el.className === 'string' ? el.className : '')).toLowerCase();
+                      if (isThinTop(cs, rect) && /(load|progress|pace|bar|line|route|nav)/.test(name)) {
+                        el.setAttribute('data-mc-hide-top-line','1');
                       }
-                    }
+
+                      var before = getComputedStyle(el,'::before');
+                      if (before && before.content !== 'none') {
+                        var bh = parseFloat(before.height || '0');
+                        var bt = parseFloat(before.top || '9999');
+                        var bp = before.position;
+                        if ((bp === 'fixed' || bp === 'absolute' || bp === 'sticky') &&
+                            bt <= 12 && bh > 0 && bh <= 9) {
+                          el.setAttribute('data-mc-hide-top-before','1');
+                        }
+                      }
+
+                      var after = getComputedStyle(el,'::after');
+                      if (after && after.content !== 'none') {
+                        var ah = parseFloat(after.height || '0');
+                        var at = parseFloat(after.top || '9999');
+                        var ap = after.position;
+                        if ((ap === 'fixed' || ap === 'absolute' || ap === 'sticky') &&
+                            at <= 12 && ah > 0 && ah <= 9) {
+                          el.setAttribute('data-mc-hide-top-after','1');
+                        }
+                      }
+                    } catch (_) {}
+                  }
+                }
+
+                forceHeader();
+                sweepTopLines();
+
+                if (!window.__mcAndroidPolishTimer) {
+                  window.__mcAndroidPolishTimer = setInterval(function(){
+                    forceHeader();
+                    sweepTopLines();
+                  }, 250);
+                }
+
+                if (!window.__mcAndroidScrollFix) {
+                  window.__mcAndroidScrollFix = true;
+                  var t = 0;
+                  addEventListener('scroll', function(){
+                    document.body && document.body.classList.add('mc-android-scrolling');
+                    clearTimeout(t);
+                    t = setTimeout(function(){
+                      document.body && document.body.classList.remove('mc-android-scrolling');
+                    }, 180);
+                  }, {passive:true});
+                }
+
+                if (!window.__mcAndroidPolishObserver) {
+                  window.__mcAndroidPolishObserver = new MutationObserver(function(){
+                    forceHeader();
+                    sweepTopLines();
                   });
-                  window.__mcAndroidPolishObserver.observe(document.documentElement, {childList:true, subtree:true});
+                  window.__mcAndroidPolishObserver.observe(document.documentElement, {
+                    childList:true,
+                    subtree:true,
+                    attributes:true,
+                    attributeFilter:['class','style']
+                  });
                 }
               } catch (e) {}
             })();
