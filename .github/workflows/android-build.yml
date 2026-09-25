@@ -2,7 +2,7 @@ name: Android Build
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, webview-loader-fix ]
   workflow_dispatch:
 
 permissions:
