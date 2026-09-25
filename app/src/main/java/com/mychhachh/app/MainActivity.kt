@@ -23,6 +23,8 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 
 class MainActivity : ComponentActivity() {
 
@@ -120,6 +122,8 @@ class MainActivity : ComponentActivity() {
 
         webView.isVerticalScrollBarEnabled = false
         webView.isHorizontalScrollBarEnabled = false
+
+        installDocumentStartPerformanceGuard()
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -227,6 +231,19 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun installDocumentStartPerformanceGuard() {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            Log.w(WEBVIEW_LOG_TAG, "DOCUMENT_START_SCRIPT unavailable")
+            return
+        }
+
+        WebViewCompat.addDocumentStartJavaScript(
+            webView,
+            DOCUMENT_START_PERF_JS,
+            setOf("https://chhachh.pages.dev", "https://*.chhachh.pages.dev")
+        )
     }
 
     private fun applyNativePageFixes(view: WebView) {
