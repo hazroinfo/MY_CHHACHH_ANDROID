@@ -91,6 +91,7 @@ fun NativeV95App() {
                             V95Route.PROFILE -> NativeProfile(c)
                             V95Route.SHOP_DETAIL -> NativeShopDetail(c)
                             V95Route.CHAT -> NativeChat(c)
+                            V95Route.GROUP_CHAT -> NativeGroupChat(c)
                             V95Route.SEARCH -> NativeSearch(c)
                             V95Route.WEATHER -> NativeWeather(c)
                             V95Route.SETTINGS -> NativeSettings(c)
