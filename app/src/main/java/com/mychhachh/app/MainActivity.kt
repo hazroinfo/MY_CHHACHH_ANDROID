@@ -349,6 +349,10 @@ class MainActivity : ComponentActivity() {
         private const val LOADER_GUARD_JS = """
             (function(){
               try {
+                if(document.body){
+                  document.body.classList.add('theme-motion-off','mc-android-webview-perf');
+                }
+
                 if(!window.__mcAndroidDragClickGuard){
                   window.__mcAndroidDragClickGuard=1;
 
@@ -403,7 +407,12 @@ class MainActivity : ComponentActivity() {
                 var s=document.createElement('style');
                 s.id=STYLE_ID;
                 s.textContent=
-                  '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}';
+                  '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}' +
+                  'html,body{scroll-behavior:auto!important;overscroll-behavior-y:none!important}' +
+                  'body.mc-android-webview-perf .top,body.mc-android-webview-perf .card,body.mc-android-webview-perf .community-footer,body.mc-android-webview-perf .side-menu,body.mc-android-webview-perf .faux-search,body.mc-android-webview-perf .page-heading,body.mc-android-webview-perf .global-notice{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}' +
+                  'body.mc-android-webview-perf #chhachhWeatherBg{background-attachment:scroll!important;animation:none!important;transform:none!important;will-change:auto!important}' +
+                  'body.mc-android-webview-perf #chhachhWeatherBg *,body.mc-android-webview-perf #chhachhWeatherBg:before,body.mc-android-webview-perf #chhachhWeatherBg:after{animation:none!important;will-change:auto!important}' +
+                  'body.mc-android-webview-perf #mcLiveWeatherStage,body.mc-android-webview-perf #mcLiveWeatherStage *{animation:none!important;transition:none!important;will-change:auto!important}';
                 (document.head||document.documentElement).appendChild(s);
               } catch (_) {}
             })();
