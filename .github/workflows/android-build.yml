@@ -177,7 +177,8 @@ jobs:
           baseline_low=$((baseline_h * 74 / 100))
           baseline_high=$((baseline_h * 32 / 100))
 
-          adb install -r -t "$GITHUB_WORKSPACE/known-smooth-baseline.apk" | tee "$ART/baseline-install.txt"
+          adb uninstall com.mychhachh.app >/dev/null 2>&1 || true
+          adb install -t "$GITHUB_WORKSPACE/known-smooth-baseline.apk" | tee "$ART/baseline-install.txt"
           grep -q "Success" "$ART/baseline-install.txt"
 
           baseline_live_ok=0
@@ -254,8 +255,9 @@ jobs:
 
           adb shell am force-stop com.mychhachh.app || true
 
-          # Install the fresh candidate over the same package and test it under identical conditions.
-          adb install -r -t app/build/outputs/apk/debug/app-debug.apk | tee "$ART/install.txt"
+          # Install the fresh candidate cleanly and test it under identical conditions.
+          adb uninstall com.mychhachh.app >/dev/null 2>&1 || true
+          adb install -t app/build/outputs/apk/debug/app-debug.apk | tee "$ART/install.txt"
           grep -q "Success" "$ART/install.txt"
 
           # Retry clean launches because a freshly booted emulator can expose WebView before its network is ready.
