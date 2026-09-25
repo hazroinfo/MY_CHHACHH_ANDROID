@@ -18,6 +18,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -197,30 +199,113 @@ internal fun V95PostCard(c: V95Controller, post: Post) {
                 }
                 Text("@${post.user.username} · ${v95FormatTime(post.createdAt)} · ${if (post.privacy == "followers") c.t("Followers", "فالوورز") else c.t("Everyone", "سب")}", color = V95Muted, fontSize = 10.sp)
             }
-            Image(painterResource(V95Icons.More), null, Modifier.size(28.dp))
+            var moreOpen by remember(post.id) { mutableStateOf(false) }
+            Box {
+                Image(
+                    painterResource(V95Icons.More),
+                    null,
+                    Modifier.size(28.dp).clickable { moreOpen = true }
+                )
+                DropdownMenu(expanded = moreOpen, onDismissRequest = { moreOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text(if (post.saved) c.t("Remove from Saved", "محفوظ سے ہٹائیں") else c.t("Save post", "پوسٹ محفوظ کریں")) },
+                        leadingIcon = { Image(painterResource(V95Icons.Save), null, Modifier.size(24.dp)) },
+                        onClick = {
+                            moreOpen = false
+                            if (c.user == null) c.route = V95Route.AUTH else c.savePost(post)
+                        }
+                    )
+                    if (c.user != null && (c.user?.id == post.user.id || c.user?.isAdmin == true)) {
+                        DropdownMenuItem(
+                            text = { Text(c.t("Delete post", "پوسٹ حذف کریں"), color = V95Danger) },
+                            onClick = { moreOpen = false; c.deletePost(post) }
+                        )
+                    } else if (c.user != null) {
+                        DropdownMenuItem(
+                            text = { Text(c.t("Report post", "پوسٹ رپورٹ کریں")) },
+                            leadingIcon = { Image(painterResource(V95Icons.Shield), null, Modifier.size(24.dp)) },
+                            onClick = { moreOpen = false; c.reportPost(post) }
+                        )
+                    }
+                }
+            }
         }
         if (post.text.isNotBlank()) Text(post.text, color = V95Ink, fontSize = 13.sp, lineHeight = 19.5.sp)
-        if (!post.photo.isNullOrBlank()) AsyncImage(post.photo, null, Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 440.dp).clip(RoundedCornerShape(22.dp)), contentScale = ContentScale.Crop)
+        if (!post.photo.isNullOrBlank()) {
+            AsyncImage(
+                post.photo,
+                null,
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 160.dp, max = 440.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .clickable { c.openPost(post) },
+                contentScale = ContentScale.Crop
+            )
+        }
         if (!post.video.isNullOrBlank()) {
-            V95Button(c.t("Play video", "ویڈیو چلائیں"), primary = true, icon = V95Icons.Video) { c.error = c.t("Native video player opens from the media card in the full build.", "نیٹو ویڈیو پلیئر مکمل بلڈ میں میڈیا کارڈ سے کھلتا ہے۔") }
+            V95NativeVideo(post.video)
         }
         if (!post.feeling.isNullOrBlank() || !post.checkin.isNullOrBlank()) {
             Text(listOfNotNull(post.feeling, post.checkin).joinToString(" · "), color = V95Muted, fontSize = 12.sp)
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-            V95PostAction(if (post.liked) c.t("Liked", "لائکڈ") else c.t("Like", "لائک"), V95Icons.Heart, post.liked) { if (c.user == null) c.route = V95Route.AUTH else c.likePost(post) }
-            V95PostAction(c.t("Comment", "کمنٹ"), V95Icons.Comment) { if (c.user == null) c.route = V95Route.AUTH else c.error = c.t("Comment panel is attached to the native post detail.", "کمنٹ پینل نیٹو پوسٹ ڈیٹیل کے ساتھ منسلک ہے۔") }
-            V95PostAction(c.t("Share", "شیئر"), V95Icons.Share) { if (c.user == null) c.route = V95Route.AUTH else c.sharePost(post) }
-            V95PostAction(if (post.saved) c.t("Saved", "محفوظ") else c.t("Save", "سیو"), V95Icons.Save, post.saved) { if (c.user == null) c.route = V95Route.AUTH else c.savePost(post) }
+        Row(
+            Modifier.fillMaxWidth().border(0.5.dp, Color.White.copy(alpha = .55f), RoundedCornerShape(1.dp)).padding(top = 7.dp),
+            horizontalArrangement = Arrangement.SpaceAround
+        ) {
+            V95PostAction(
+                if (post.liked) c.t("Liked", "لائکڈ") else c.t("Like", "لائک"),
+                V95Icons.Heart,
+                count = post.reactionTotal,
+                active = post.liked
+            ) { if (c.user == null) c.route = V95Route.AUTH else c.likePost(post) }
+            V95PostAction(c.t("Comment", "کمنٹ"), V95Icons.Comment, count = post.comments) {
+                if (c.user == null) c.route = V95Route.AUTH else c.openPost(post)
+            }
+            V95PostAction(c.t("Views", "ویوز"), V95Icons.Eye, count = post.views)
+            V95PostAction(c.t("Share", "شیئر"), V95Icons.Share, count = post.shares) {
+                if (c.user == null) c.route = V95Route.AUTH else c.sharePost(post)
+            }
         }
     }
 }
 
 @Composable
-internal fun V95PostAction(text: String, icon: Int, active: Boolean = false, onClick: () -> Unit) {
-    Column(Modifier.widthIn(min = 58.dp).height(44.dp).clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+internal fun V95PostAction(
+    text: String,
+    icon: Int,
+    count: Int? = null,
+    active: Boolean = false,
+    onClick: (() -> Unit)? = null
+) {
+    Row(
+        Modifier
+            .widthIn(min = 64.dp)
+            .height(44.dp)
+            .clickable(enabled = onClick != null) { onClick?.invoke() },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
         Image(painterResource(icon), null, Modifier.size(25.dp))
-        Text(text, color = if (active) V95Pink else V95Purple, fontWeight = FontWeight.Black, fontSize = 8.75.sp, maxLines = 1)
+        Spacer(Modifier.width(3.dp))
+        Column(horizontalAlignment = Alignment.Start) {
+            Text(
+                text,
+                color = if (active) V95Pink else V95Purple,
+                fontWeight = FontWeight.Black,
+                fontSize = 8.5.sp,
+                maxLines = 1
+            )
+            if (count != null) {
+                Text(
+                    count.toString(),
+                    color = V95Muted,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 8.sp,
+                    maxLines = 1
+                )
+            }
+        }
     }
 }
 
