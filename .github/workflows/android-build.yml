@@ -4,7 +4,7 @@ name: WebView Final Stable QA
 
 on:
   push:
-    branches: [ webview-final-stable ]
+    branches: [ scroll-baseline-measure ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -141,8 +141,9 @@ jobs:
           adb exec-out screencap -p > "$ART/before-scroll.png"
           test -s "$ART/before-scroll.png"
 
-          # From here on, crash/ANR evidence belongs to the repeated-scroll stress test.
+          # Measure only the repeated-scroll interval.
           adb logcat -c || true
+          adb shell dumpsys gfxinfo com.mychhachh.app reset >/dev/null 2>&1 || true
 
           for i in $(seq 1 8); do
             adb shell input swipe 540 1850 540 450 320
@@ -166,6 +167,8 @@ jobs:
           adb logcat -d -v threadtime > "$ART/logcat.txt" || true
           adb shell dumpsys activity exit-info com.mychhachh.app > "$ART/exit-info.txt" || true
           adb shell dumpsys gfxinfo com.mychhachh.app > "$ART/gfxinfo-after-scroll.txt" || true
+          grep -E "Total frames rendered:|Janky frames:|50th percentile:|90th percentile:|95th percentile:|99th percentile:|Number Missed Vsync:|Number Slow UI thread:|Number Slow issue draw commands:|Number Frame deadline missed:" "$ART/gfxinfo-after-scroll.txt" > "$ART/scroll-frame-summary.txt" || true
+          cat "$ART/scroll-frame-summary.txt" || true
 
           if grep -E "FATAL EXCEPTION|ANR in com\.mychhachh\.app|Process: com\.mychhachh\.app.*has died" "$ART/logcat.txt"; then
             adb shell dumpsys activity lastanr > "$ART/lastanr.txt" 2>&1 || true
