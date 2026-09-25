@@ -175,17 +175,17 @@ internal fun NVInput(
 }
 
 @Composable
-internal fun NVBrand(fontSize: Float = 24f) {
+internal fun NVBrand(fontSize: Float = 24f, name: String = "My Chhachh") {
     val colors = listOf(
         Color(0xFFFF47B3), Color(0xFFFFB642), Color(0xFF62DC9D),
         Color(0xFF56C9FF), Color(0xFF8B75F5), Color(0xFFF456C3)
     )
-    val name = "My Chhachh"
+    val displayName = name.ifBlank { "My Chhachh" }
     Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-        name.forEachIndexed { index, ch ->
+        displayName.forEachIndexed { index, ch ->
             Text(
                 ch.toString(),
-                color = colors[(index * colors.size / name.length.coerceAtLeast(1)).coerceIn(0, colors.lastIndex)],
+                color = colors[(index * colors.size / displayName.length.coerceAtLeast(1)).coerceIn(0, colors.lastIndex)],
                 fontWeight = FontWeight.Black,
                 fontSize = fontSize.sp,
                 letterSpacing = (-1.1).sp
