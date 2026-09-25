@@ -963,8 +963,14 @@ internal fun NativeShopDetail(c: V95Controller) {
                     Text(shop.category, color = NVMuted, fontSize = 11.sp)
                     if (shop.description.isNotBlank()) Text(shop.description, color = NVInk, fontSize = 12.sp, lineHeight = 18.sp, textAlign = TextAlign.Center)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        NVButton(if (shop.followed) c.t("Following", "فالوونگ") else c.t("Follow", "فالو"), Modifier.weight(1f), primary = !shop.followed, icon = NVIcons.Follow) {
-                            if (c.user == null) c.route = V95Route.AUTH else c.toggleShop(shop)
+                        if (c.user?.id == shop.userId || c.user?.isAdmin == true) {
+                            NVButton(c.t("Manage", "مینیج"), Modifier.weight(1f), primary = true, icon = NVIcons.Edit) {
+                                c.route = V95Route.SHOPS
+                            }
+                        } else {
+                            NVButton(if (shop.followed) c.t("Following", "فالوونگ") else c.t("Follow", "فالو"), Modifier.weight(1f), primary = !shop.followed, icon = NVIcons.Follow) {
+                                if (c.user == null) c.route = V95Route.AUTH else c.toggleShop(shop)
+                            }
                         }
                         NVButton(c.t("Navigate", "راستہ"), Modifier.weight(1f), icon = NVIcons.Map) { c.navigateToShop(shop) }
                     }
@@ -1002,6 +1008,9 @@ internal fun NativeShopDetail(c: V95Controller) {
                 NVButton(c.t("Followers", "فالوورز"), Modifier.fillMaxWidth()) { c.openShopFollowers(shop) }
             }
         }
+        if (c.user?.id == shop.userId || c.user?.isAdmin == true) {
+            item { NativeShopPostComposer(c, shop) }
+        }
         item {
             NVHeading(c.t("Shop posts", "دکان کی پوسٹس"), c.t("Latest posts from this shop", "اس دکان کی تازہ پوسٹس"))
         }
@@ -1010,6 +1019,79 @@ internal fun NativeShopDetail(c: V95Controller) {
         }
         items(c.selectedShopPosts, key = { "shop-" + it.id }) { post ->
             NativePostCard(c, post)
+        }
+    }
+}
+
+@Composable
+private fun NativeShopPostComposer(c: V95Controller, shop: Shop) {
+    var text by remember(shop.id) { mutableStateOf("") }
+    var photo by remember(shop.id) { mutableStateOf("") }
+    var video by remember(shop.id) { mutableStateOf("") }
+    var privacy by remember(shop.id) { mutableStateOf("public") }
+
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) c.upload(uri, "shop_post_photo") { photo = it }
+    }
+    val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) c.upload(uri, "shop_post_video") { video = it }
+    }
+
+    NVCard(radius = 24.dp, padding = 12.dp) {
+        NativeSettingsTitle(NVIcons.Plus, c.t("Create shop post", "دکان کی پوسٹ بنائیں"))
+        NVInput(text, c.t("Write for your shop…", "اپنی دکان کے لیے لکھیں…"), Modifier.fillMaxWidth(), singleLine = false) { text = it }
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            NVButton(
+                if (photo.isBlank()) c.t("Photo", "فوٹو") else c.t("Photo ✓", "فوٹو ✓"),
+                Modifier.weight(1f),
+                icon = NVIcons.Photo
+            ) { photoPicker.launch("image/*") }
+            NVButton(
+                if (video.isBlank()) c.t("Video", "ویڈیو") else c.t("Video ✓", "ویڈیو ✓"),
+                Modifier.weight(1f),
+                icon = NVIcons.Video
+            ) { videoPicker.launch("video/*") }
+            NVButton(
+                when (privacy) {
+                    "followers" -> c.t("Followers", "فالوورز")
+                    "private" -> c.t("Only me", "صرف میں")
+                    else -> c.t("Public", "پبلک")
+                },
+                Modifier.weight(1f)
+            ) {
+                privacy = when (privacy) {
+                    "public" -> "followers"
+                    "followers" -> "private"
+                    else -> "public"
+                }
+            }
+        }
+
+        if (photo.isNotBlank()) {
+            AsyncImage(
+                photo,
+                null,
+                Modifier.fillMaxWidth().heightIn(max = 240.dp).clip(RoundedCornerShape(18.dp)),
+                contentScale = ContentScale.Crop
+            )
+        }
+        if (video.isNotBlank()) {
+            Text(c.t("Video ready", "ویڈیو تیار ہے"), color = NVGreen, fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+        }
+
+        NVButton(
+            c.t("Publish shop post", "دکان پوسٹ شائع کریں"),
+            Modifier.fillMaxWidth(),
+            primary = true,
+            enabled = text.isNotBlank() || photo.isNotBlank() || video.isNotBlank()
+        ) {
+            c.createShopPost(shop, text, privacy, photo, video) {
+                text = ""
+                photo = ""
+                video = ""
+                privacy = "public"
+            }
         }
     }
 }
