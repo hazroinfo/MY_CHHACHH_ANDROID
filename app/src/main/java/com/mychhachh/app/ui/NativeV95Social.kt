@@ -182,6 +182,7 @@ private fun NativeShopEditor(c: V95Controller, shop: Shop?, onClose: () -> Unit)
     var phone by remember(key) { mutableStateOf(shop?.phone.orEmpty()) }
     var whatsapp by remember(key) { mutableStateOf(shop?.whatsapp.orEmpty()) }
     var mapUrl by remember(key) { mutableStateOf(shop?.locationUrl.orEmpty()) }
+    var mapPickerOpen by remember(key) { mutableStateOf(false) }
     var deleteConfirm by remember(key) { mutableStateOf(false) }
 
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -256,6 +257,23 @@ private fun NativeShopEditor(c: V95Controller, shop: Shop?, onClose: () -> Unit)
         NVInput(phone, c.t("Phone", "فون")) { phone = it }
         NVInput(whatsapp, "WhatsApp") { whatsapp = it }
         NVInput(mapUrl, c.t("Google Maps link", "Google Maps لنک")) { mapUrl = it }
+        NVButton(
+            if (mapPickerOpen) c.t("Close map picker", "نقشہ بند کریں") else c.t("Pick location on map", "نقشے سے لوکیشن منتخب کریں"),
+            Modifier.fillMaxWidth(),
+            icon = NVIcons.Map
+        ) { mapPickerOpen = !mapPickerOpen }
+
+        if (mapPickerOpen) {
+            NativeLocationPicker(
+                c = c,
+                modifier = Modifier.fillMaxWidth().height(360.dp),
+                initialQuery = address.ifBlank { listOf(village, city).filter { it.isNotBlank() }.joinToString(", ") }
+            ) { place ->
+                address = place.name
+                mapUrl = "https://www.google.com/maps/search/?api=1&query=" +
+                    String.format(java.util.Locale.US, "%.6f,%.6f", place.lat, place.lng)
+            }
+        }
 
         NVButton(
             if (shop == null) c.t("Create shop", "دکان بنائیں") else c.t("Save shop", "دکان محفوظ کریں"),
