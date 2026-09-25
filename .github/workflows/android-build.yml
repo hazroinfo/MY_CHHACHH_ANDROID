@@ -145,15 +145,26 @@ jobs:
           adb logcat -c || true
           adb shell dumpsys gfxinfo com.mychhachh.app reset >/dev/null 2>&1 || true
 
+          # Keep swipe coordinates safely inside the WebView content area.
+          # The old fixed y=1850 coordinate landed inside Android's navigation bar.
+          physical_size="$(adb shell wm size | tr -d '\r' | tail -1 | sed -E 's/.* ([0-9]+)x([0-9]+).*/\1 \2/')"
+          read -r screen_w screen_h <<< "$physical_size"
+          test -n "$screen_w"
+          test -n "$screen_h"
+          swipe_x=$((screen_w / 2))
+          swipe_low=$((screen_h * 76 / 100))
+          swipe_high=$((screen_h * 30 / 100))
+          echo "screen=${screen_w}x${screen_h} swipe_x=${swipe_x} low=${swipe_low} high=${swipe_high}" | tee "$ART/scroll-coordinates.txt"
+
           for i in $(seq 1 8); do
-            adb shell input swipe 540 1850 540 450 320
+            adb shell input touchscreen swipe "$swipe_x" "$swipe_low" "$swipe_x" "$swipe_high" 320
             sleep 1
             adb shell pidof com.mychhachh.app >/dev/null
           done
           adb exec-out screencap -p > "$ART/after-scroll-down.png"
 
           for i in $(seq 1 5); do
-            adb shell input swipe 540 500 540 1750 320
+            adb shell input touchscreen swipe "$swipe_x" "$swipe_high" "$swipe_x" "$swipe_low" 320
             sleep 1
             adb shell pidof com.mychhachh.app >/dev/null
           done
@@ -165,6 +176,12 @@ jobs:
           adb shell dumpsys window windows | grep -E "mCurrentFocus|mFocusedApp" | tee "$ART/focus-after.txt" || true
 
           adb logcat -d -v threadtime > "$ART/logcat.txt" || true
+          adb logcat -d -v brief -s MyChhachhWebView:I > "$ART/webview-during-scroll.txt" || true
+          if grep -q "PAGE_FINISHED" "$ART/webview-during-scroll.txt"; then
+            echo "::error::Unexpected WebView navigation/reload occurred during repeated-scroll QA"
+            cat "$ART/webview-during-scroll.txt" || true
+            exit 1
+          fi
           adb shell dumpsys activity exit-info com.mychhachh.app > "$ART/exit-info.txt" || true
           adb shell dumpsys gfxinfo com.mychhachh.app > "$ART/gfxinfo-after-scroll.txt" || true
           grep -E "Total frames rendered:|Janky frames:|50th percentile:|90th percentile:|95th percentile:|99th percentile:|Number Missed Vsync:|Number Slow UI thread:|Number Slow issue draw commands:|Number Frame deadline missed:" "$ART/gfxinfo-after-scroll.txt" > "$ART/scroll-frame-summary.txt" || true
