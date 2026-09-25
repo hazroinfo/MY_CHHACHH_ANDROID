@@ -1,6 +1,7 @@
 package com.mychhachh.app.ui
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -138,44 +139,180 @@ internal fun V95Notifications(c: V95Controller) {
 
 @Composable
 internal fun V95Profile(c: V95Controller) {
-    val person = c.selectedUser ?: c.user
-    if (person == null) { V95RequireLogin(c); return }
+    val original = c.selectedUser ?: c.user
+    if (original == null) { V95RequireLogin(c); return }
+
+    val d = c.profileDetails
+    val person = d?.optJSONObject("user")?.toUser() ?: original
     val mine = person.id == c.user?.id
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp), contentPadding = PaddingValues(top = 10.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val followersHidden = d?.optBoolean("followers_hidden", person.hideFollowers) ?: person.hideFollowers
+    val followers = d?.optInt("followers", 0) ?: 0
+    val following = d?.optInt("following_count", 0) ?: 0
+    val posts = d?.optJSONArray("posts")?.posts() ?: emptyList()
+    val profileShop = d?.optJSONObject("shop")?.toShop()
+
+    val width = LocalConfiguration.current.screenWidthDp
+    val coverHeight = c.features.optDouble("theme_profile_cover_height", 165.0).toFloat().dp
+    val configuredAvatar = c.features.optDouble("theme_profile_avatar_size", 96.0).toFloat()
+    val avatarSize = (if (width <= 430) configuredAvatar.coerceAtMost(90f) else configuredAvatar).dp
+    val overlap = c.features.optDouble("theme_profile_overlap", 44.0).toFloat().dp
+
+    LazyColumn(
+        Modifier.fillMaxSize().padding(horizontal = 7.dp),
+        contentPadding = PaddingValues(top = 6.dp, bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp)
+    ) {
         item {
             V95GlassCard(padding = 0.dp) {
-                Box(Modifier.fillMaxWidth().height(165.dp).clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp, bottomStart = 18.dp, bottomEnd = 18.dp)).background(Brush.linearGradient(listOf(Color(0x596BD3FF), Color(0x4DA580FF), Color(0x45FF78C2))))) {
-                    if (!person.cover.isNullOrBlank()) AsyncImage(person.cover, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                }
-                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                    V95Avatar(person, 90.dp, Modifier.offset(y = (-44).dp))
-                    Spacer(Modifier.width(9.dp))
-                    Column(Modifier.weight(1f).padding(top = 9.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(person.name, color = V95Ink, fontWeight = FontWeight.Black, fontSize = 22.sp)
-                            if (person.verified) { Spacer(Modifier.width(4.dp)); Image(painterResource(V95Icons.Check), null, Modifier.size(20.dp)) }
-                        }
-                        Text("@${person.username}", color = V95Muted, fontSize = 12.sp)
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(coverHeight)
+                        .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp, bottomStart = 18.dp, bottomEnd = 18.dp))
+                        .background(Brush.linearGradient(listOf(Color(0x596BD3FF), Color(0x4DA580FF), Color(0x45FF78C2))))
+                ) {
+                    if (!person.cover.isNullOrBlank()) {
+                        AsyncImage(person.cover, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     }
                 }
-                Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (person.bio.isNotBlank()) Text(person.bio, color = V95Ink, fontSize = 14.sp, lineHeight = 21.sp)
-                    val details = listOf(
+
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = if (width <= 430) 12.dp else 16.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    V95Avatar(person, avatarSize, Modifier.offset(y = -overlap))
+                    Spacer(Modifier.width(if (width <= 430) 9.dp else 12.dp))
+                    Column(Modifier.weight(1f).padding(top = 9.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                person.name,
+                                color = V95Ink,
+                                fontWeight = FontWeight.Black,
+                                fontSize = if (width <= 430) 21.sp else 24.sp
+                            )
+                            if (person.verified) {
+                                Spacer(Modifier.width(3.dp))
+                                Image(painterResource(V95Icons.Check), null, Modifier.size(17.dp))
+                            }
+                        }
+                        Text("@${person.username}", color = V95Muted, fontSize = 11.sp)
+                    }
+                }
+
+                Column(
+                    Modifier.padding(horizontal = if (width <= 430) 12.dp else 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        V95ProfileCount(
+                            if (followersHidden && !mine) "—" else followers.toString(),
+                            c.t("Followers", "فالوورز")
+                        ) {
+                            if (!(followersHidden && !mine)) c.openRelations(person, "followers")
+                        }
+                        V95ProfileCount(
+                            if (followersHidden && !mine) "—" else following.toString(),
+                            c.t("Following", "فالوونگ")
+                        ) {
+                            if (!(followersHidden && !mine)) c.openRelations(person, "following")
+                        }
+                        V95ProfileCount(posts.size.toString(), c.t("Posts", "پوسٹس")) { }
+                    }
+
+                    if (person.bio.isNotBlank()) {
+                        Text(person.bio, color = V95Ink, fontSize = 13.sp, lineHeight = 19.sp)
+                    }
+
+                    val detailItems = listOf(
                         V95Icons.Pin to listOf(person.area, person.village, person.city).filter { it.isNotBlank() }.joinToString(", "),
                         V95Icons.Feeling to person.hometown,
                         V95Icons.User to person.gender,
                         V95Icons.People to person.relationshipStatus,
                         V95Icons.Shop to person.work,
-                        V95Icons.Crown to person.school
+                        V95Icons.Crown to person.school,
+                        V95Icons.Mail to if (person.showEmail || mine) person.email else "",
+                        V95Icons.Phone to if (person.showPhone || mine) person.phone else ""
                     ).filter { it.second.isNotBlank() }
-                    details.chunked(2).forEach { pair -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) { pair.forEach { d -> V95InfoChip(d.first, d.second, Modifier.weight(1f)) }; if (pair.size == 1) Spacer(Modifier.weight(1f)) } }
-                    if (mine) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        V95Button(c.t("Edit profile", "پروفائل ایڈٹ"), Modifier.weight(1f), primary = true, icon = V95Icons.User) { c.route = V95Route.SETTINGS }
-                        V95Button(c.t("Settings", "ترتیبات"), Modifier.weight(1f), icon = V95Icons.Gear) { c.route = V95Route.SETTINGS }
-                    } else V95Button(if (person.followed) c.t("Following", "فالوونگ") else c.t("Follow", "فالو"), primary = !person.followed, icon = V95Icons.Follow) { if (c.user == null) c.route = V95Route.AUTH else c.follow(person) }
+
+                    detailItems.chunked(2).forEach { pair ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            pair.forEach { item -> V95InfoChip(item.first, item.second, Modifier.weight(1f)) }
+                            if (pair.size == 1) Spacer(Modifier.weight(1f))
+                        }
+                    }
+
+                    if (mine) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            V95Button(c.t("Edit profile", "پروفائل ایڈٹ"), Modifier.weight(1f), primary = true, icon = V95Icons.User) {
+                                c.route = V95Route.SETTINGS
+                            }
+                            V95Button(c.t("Settings", "ترتیبات"), Modifier.weight(1f), icon = V95Icons.Gear) {
+                                c.route = V95Route.SETTINGS
+                            }
+                        }
+                    } else {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            V95Button(
+                                if (person.followed) c.t("Following", "فالوونگ") else c.t("Follow", "فالو"),
+                                Modifier.weight(1f),
+                                primary = !person.followed,
+                                icon = V95Icons.Follow
+                            ) {
+                                if (c.user == null) c.route = V95Route.AUTH else c.follow(person)
+                            }
+                            V95Button(c.t("Message", "پیغام"), Modifier.weight(1f), icon = V95Icons.Message) {
+                                if (c.user == null) c.route = V95Route.AUTH else c.openChat(person)
+                            }
+                            V95Button(c.t("Block", "بلاک"), Modifier.weight(1f), danger = true) {
+                                if (c.user == null) c.route = V95Route.AUTH else c.toggleBlock(person)
+                            }
+                        }
+                    }
                 }
             }
         }
+
+        if (profileShop != null) {
+            item {
+                V95GlassCard(radius = 20.dp, padding = 10.dp) {
+                    Row(
+                        Modifier.fillMaxWidth().clickable { c.openShop(profileShop) },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        V95ShopAvatar(profileShop, 52.dp)
+                        Spacer(Modifier.width(9.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(profileShop.name, color = V95Ink, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                            Text(profileShop.category, color = V95Muted, fontSize = 10.sp)
+                        }
+                        Image(painterResource(V95Icons.Shop), null, Modifier.size(28.dp))
+                    }
+                }
+            }
+        }
+
+        if (posts.isNotEmpty()) {
+            item { Text(c.t("Posts", "پوسٹس"), color = V95Ink, fontWeight = FontWeight.Black, fontSize = 16.sp, modifier = Modifier.padding(horizontal = 3.dp)) }
+            items(posts, key = { it.id }) { V95PostCard(c, it) }
+        }
+    }
+}
+
+@Composable
+private fun RowScope.V95ProfileCount(value: String, label: String, onClick: () -> Unit) {
+    Column(
+        Modifier
+            .weight(1f)
+            .heightIn(min = 46.dp)
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(value, color = V95Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
+        Text(label, color = V95Muted, fontSize = 10.sp)
     }
 }
 
@@ -188,34 +325,110 @@ internal fun V95InfoChip(icon: Int, text: String, modifier: Modifier) {
 
 @Composable
 internal fun V95ShopDetail(c: V95Controller) {
-    val shop = c.selectedShop ?: return
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp), contentPadding = PaddingValues(top = 10.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val fallback = c.selectedShop ?: return
+    val d = c.shopDetails
+    val shop = d?.optJSONObject("shop")?.toShop() ?: fallback
+    val owner = d?.optJSONObject("owner")?.toUser()
+    val posts = d?.optJSONArray("posts")?.posts() ?: emptyList()
+    val context = LocalContext.current
+    val width = LocalConfiguration.current.screenWidthDp
+    val coverHeight = c.features.optDouble("theme_shop_cover_height", 185.0).toFloat().dp
+    val configuredAvatar = c.features.optDouble("theme_shop_avatar_size", 96.0).toFloat()
+    val avatarSize = (if (width <= 430) configuredAvatar.coerceAtMost(90f) else configuredAvatar).dp
+    val overlap = c.features.optDouble("theme_shop_overlap", 50.0).toFloat().dp
+    val mine = shop.userId == c.user?.id
+
+    LazyColumn(
+        Modifier.fillMaxSize().padding(horizontal = 7.dp),
+        contentPadding = PaddingValues(top = 6.dp, bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp)
+    ) {
         item {
             V95GlassCard(padding = 0.dp) {
-                Box(Modifier.fillMaxWidth().height(185.dp).clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp, bottomStart = 18.dp, bottomEnd = 18.dp)).background(Brush.linearGradient(listOf(Color(0x596BD3FF), Color(0x4DA580FF), Color(0x45FF78C2))))) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(coverHeight)
+                        .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp, bottomStart = 18.dp, bottomEnd = 18.dp))
+                        .background(Brush.linearGradient(listOf(Color(0x596BD3FF), Color(0x4DA580FF), Color(0x45FF78C2))))
+                ) {
                     if (!shop.cover.isNullOrBlank()) AsyncImage(shop.cover, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 }
-                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                    V95ShopAvatar(shop, 90.dp, Modifier.offset(y = (-50).dp))
-                    Spacer(Modifier.width(9.dp))
+
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = if (width <= 430) 12.dp else 16.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    V95ShopAvatar(shop, avatarSize, Modifier.offset(y = -overlap))
+                    Spacer(Modifier.width(if (width <= 430) 9.dp else 12.dp))
                     Column(Modifier.weight(1f).padding(top = 9.dp)) {
-                        Text(shop.name, color = V95Ink, fontWeight = FontWeight.Black, fontSize = 22.sp)
-                        Text(shop.category, color = V95Muted, fontSize = 12.sp)
+                        Text(shop.name, color = V95Ink, fontWeight = FontWeight.Black, fontSize = if (width <= 430) 21.sp else 24.sp)
+                        if (shop.username.isNotBlank()) Text("@${shop.username}", color = V95Muted, fontSize = 10.sp)
+                        Text(shop.category, color = V95Muted, fontSize = 11.sp)
+                        Text(listOf(shop.village, shop.city).filter { it.isNotBlank() }.joinToString(" · "), color = V95Muted, fontSize = 10.sp)
                     }
                 }
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    if (shop.description.isNotBlank()) Text(shop.description, color = V95Ink, fontSize = 14.sp, lineHeight = 21.sp)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        V95InfoChip(V95Icons.Pin, listOf(shop.area, shop.village, shop.city).filter { it.isNotBlank() }.joinToString(", "), Modifier.weight(1f))
-                        V95InfoChip(V95Icons.People, "${shop.followers} ${c.t("followers", "فالوورز")}", Modifier.weight(1f))
+
+                Column(Modifier.padding(horizontal = if (width <= 430) 12.dp else 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        V95ProfileCount(shop.products.toString(), c.t("Products", "پروڈکٹس")) { }
+                        V95ProfileCount(shop.followers.toString(), c.t("Followers", "فالوورز")) { }
+                        V95ProfileCount(d?.optInt("views", 0)?.toString() ?: "0", c.t("Views", "ویوز")) { }
                     }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        V95Button(c.t("Follow", "فالو"), Modifier.weight(1f), primary = !shop.followed, icon = V95Icons.Follow) { if (c.user == null) c.route = V95Route.AUTH else c.toggleShop(shop) }
+
+                    val detailItems = listOf(
+                        V95Icons.Pin to listOf(shop.area, shop.village, shop.city).filter { it.isNotBlank() }.joinToString(", "),
+                        V95Icons.Phone to shop.phone,
+                        V95Icons.Whatsapp to shop.whatsapp,
+                        V95Icons.Map to shop.location,
+                        V95Icons.User to (owner?.name ?: "")
+                    ).filter { it.second.isNotBlank() }
+
+                    detailItems.chunked(2).forEach { pair ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            pair.forEach { item -> V95InfoChip(item.first, item.second, Modifier.weight(1f)) }
+                            if (pair.size == 1) Spacer(Modifier.weight(1f))
+                        }
+                    }
+
+                    if (shop.description.isNotBlank()) {
+                        Text(shop.description, color = V95Ink, fontSize = 13.sp, lineHeight = 19.sp)
+                    }
+
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (!mine) {
+                            V95Button(
+                                if (shop.followed) c.t("Following", "فالوونگ") else c.t("Follow", "فالو"),
+                                Modifier.weight(1f),
+                                primary = !shop.followed,
+                                icon = V95Icons.Follow
+                            ) {
+                                if (c.user == null) c.route = V95Route.AUTH else c.toggleShop(shop)
+                            }
+                        }
                         V95Button(c.t("Map", "نقشہ"), Modifier.weight(1f), icon = V95Icons.Map) { c.route = V95Route.MAP }
+                        if (shop.phone.isNotBlank()) {
+                            V95Button(c.t("Call", "کال"), Modifier.weight(1f), icon = V95Icons.Phone) {
+                                runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${shop.phone}"))) }
+                            }
+                        }
+                    }
+
+                    if (shop.whatsapp.isNotBlank()) {
+                        V95Button(c.t("WhatsApp", "واٹس ایپ"), Modifier.fillMaxWidth(), icon = V95Icons.Whatsapp) {
+                            val number = shop.whatsapp.filter { it.isDigit() || it == '+' }
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/${number.replace("+", "")}"))) }
+                        }
                     }
                 }
             }
         }
+
+        if (posts.isNotEmpty()) {
+            item { Text(c.t("Shop Posts", "دکان پوسٹس"), color = V95Ink, fontWeight = FontWeight.Black, fontSize = 16.sp, modifier = Modifier.padding(horizontal = 3.dp)) }
+            items(posts, key = { it.id }) { V95PostCard(c, it) }
+        } else {
+            item { V95Empty(c.t("No shop posts yet", "ابھی کوئی شاپ پوسٹ نہیں")) }
+        }
     }
 }
-
