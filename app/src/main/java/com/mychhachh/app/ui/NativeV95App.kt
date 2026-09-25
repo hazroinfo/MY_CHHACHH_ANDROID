@@ -161,14 +161,16 @@ private fun NativeHeader(c: V95Controller) {
         Row(Modifier.fillMaxWidth().height(47.dp), verticalAlignment = Alignment.CenterVertically) {
             NVIconButton(NVIcons.Menu, size = 43.dp, iconSize = 35.dp) { c.menuOpen = true }
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                val brandName = c.features.optString("site_name", "My Chhachh")
+                val brandName = c.features.optString("site_name", "My Chhachh").ifBlank { "My Chhachh" }
                 val brandLogo = c.features.optString("site_icon", "").trim()
-                if (brandLogo.isNotBlank()) {
+                var logoFailed by remember(brandLogo) { mutableStateOf(false) }
+                if (brandLogo.isNotBlank() && !logoFailed) {
                     AsyncImage(
                         model = brandLogo,
                         contentDescription = brandName,
                         modifier = Modifier.fillMaxWidth().height(42.dp).padding(horizontal = 6.dp),
-                        contentScale = ContentScale.Fit
+                        contentScale = ContentScale.Fit,
+                        onError = { logoFailed = true }
                     )
                 } else {
                     NVBrand(if (compact) 20f else 22f, brandName)
@@ -393,7 +395,7 @@ private fun NativeSideMenu(c: V95Controller) {
     Box(
         Modifier
             .fillMaxSize()
-            .background(Color(0x3D0A203A))
+            .background(Color(0xA60A203A))
             .clickable { c.menuOpen = false }
     ) {
         Column(
@@ -401,8 +403,18 @@ private fun NativeSideMenu(c: V95Controller) {
                 .fillMaxHeight()
                 .fillMaxWidth(.86f)
                 .widthIn(max = 330.dp)
-                .background(nvGlassBrush())
-                .padding(top = 14.dp, start = 12.dp, end = 12.dp, bottom = 22.dp)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xFFF2FBFF),
+                            Color(0xFFF7F7FF),
+                            Color(0xFFFFF5FB)
+                        )
+                    )
+                )
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(top = 10.dp, start = 12.dp, end = 12.dp, bottom = 12.dp)
                 .clickable(enabled = false) {},
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
