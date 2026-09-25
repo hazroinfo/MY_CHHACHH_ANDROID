@@ -4,6 +4,7 @@
         <item name="android:statusBarColor">#DFF5FF</item>
         <item name="android:navigationBarColor">#F6F3FF</item>
         <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
         <item name="android:windowActionModeOverlay">true</item>
     </style>
 </resources>
