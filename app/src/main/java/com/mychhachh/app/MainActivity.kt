@@ -18,14 +18,11 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : ComponentActivity() {
 
@@ -72,45 +69,16 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowCompat.setDecorFitsSystemWindows(window, true)
         window.statusBarColor = Color.rgb(223, 247, 255)
         WebView.setWebContentsDebuggingEnabled(false)
 
-        val root = FrameLayout(this).apply {
-            setBackgroundColor(Color.rgb(223, 247, 255))
-        }
         webView = WebView(this).apply {
             setBackgroundColor(Color.rgb(223, 247, 255))
-            setLayerType(View.LAYER_TYPE_HARDWARE, null)
             overScrollMode = View.OVER_SCROLL_NEVER
-            setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
         }
-        root.addView(
-            webView,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            )
-        )
-        setContentView(root)
+        setContentView(webView)
 
-        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            val params = webView.layoutParams as FrameLayout.LayoutParams
-            if (params.topMargin != bars.top ||
-                params.bottomMargin != bars.bottom ||
-                params.leftMargin != bars.left ||
-                params.rightMargin != bars.right
-            ) {
-                params.topMargin = bars.top
-                params.bottomMargin = bars.bottom
-                params.leftMargin = bars.left
-                params.rightMargin = bars.right
-                webView.layoutParams = params
-            }
-            insets
-        }
-        ViewCompat.requestApplyInsets(root)
         configureWebView()
 
         if (savedInstanceState != null) {
@@ -146,7 +114,6 @@ class MainActivity : ComponentActivity() {
             useWideViewPort = false
             textZoom = 100
             cacheMode = WebSettings.LOAD_DEFAULT
-            offscreenPreRaster = true
             mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
             userAgentString = userAgentString + " MyChhachhAndroid/2.0"
         }
@@ -167,13 +134,13 @@ class MainActivity : ComponentActivity() {
             override fun onPageCommitVisible(view: WebView, url: String) {
                 super.onPageCommitVisible(view, url)
                 Log.i(WEBVIEW_LOG_TAG, "PAGE_COMMIT_VISIBLE $url")
-                hideTopLoadingLine(view)
+                applyNativePageFixes(view)
             }
 
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
                 Log.i(WEBVIEW_LOG_TAG, "PAGE_FINISHED $url")
-                hideTopLoadingLine(view)
+                applyNativePageFixes(view)
             }
 
             override fun onReceivedError(
@@ -262,8 +229,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun hideTopLoadingLine(view: WebView) {
-        view.evaluateJavascript(HIDE_TOP_LOADING_LINE_JS, null)
+    private fun applyNativePageFixes(view: WebView) {
+        view.evaluateJavascript(NATIVE_PAGE_FIXES_JS, null)
     }
 
     private fun handleUri(uri: Uri): Boolean {
@@ -331,15 +298,28 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val HOME_URL = "https://chhachh.pages.dev/"
         private const val WEBVIEW_LOG_TAG = "MyChhachhWebView"
-        private const val HIDE_TOP_LOADING_LINE_JS = """
+        private const val NATIVE_PAGE_FIXES_JS = """
             (function(){
               try {
-                var id='__mc_hide_route_progress';
-                if(document.getElementById(id)) return;
+                var id='__mc_android_native_fixes';
+                if(document.getElementById(id)){
+                  if(document.body) document.body.classList.add('theme-motion-off');
+                  return;
+                }
                 var s=document.createElement('style');
                 s.id=id;
-                s.textContent='#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}';
+                s.textContent=
+                  '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}' +
+                  'html,body{scroll-behavior:auto!important;overscroll-behavior-y:none!important}' +
+                  '#chhachhWeatherBg{animation:none!important;transform:none!important;background-attachment:scroll!important;will-change:auto!important}' +
+                  '#chhachhWeatherBg *{animation:none!important;will-change:auto!important}' +
+                  '#chhachhWeatherBg .fog{filter:none!important}' +
+                  '.top,.card,.community-footer,.side-menu,body.menu-open:after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}' +
+                  '.top{background:rgba(255,255,255,.96)!important}' +
+                  '.card{background:rgba(255,255,255,.95)!important}' +
+                  '.community-footer{background:rgba(255,255,255,.94)!important}';
                 (document.head||document.documentElement).appendChild(s);
+                if(document.body) document.body.classList.add('theme-motion-off');
               } catch(e) {}
             })();
         """
