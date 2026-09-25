@@ -3,6 +3,8 @@ name: Android Build
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -60,7 +62,13 @@ jobs:
           set -euo pipefail
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER"             "platform-tools"             "platforms;android-36"             "build-tools;36.0.0"             "emulator"             "system-images;android-35;google_apis;x86_64"
+          "$SDKMANAGER"             "platform-tools" \
+            "platforms;android-35" \
+            "platforms;android-36" \
+            "build-tools;35.0.0" \
+            "build-tools;36.0.0" \
+            "emulator" \
+            "system-images;android-35;google_apis;x86_64"
 
       - name: Build APK and Play Store bundle
         shell: bash
@@ -163,12 +171,35 @@ jobs:
 
           adb shell dumpsys window windows             | grep -E "mCurrentFocus|mFocusedApp"             > "$ARTIFACT_DIR/window-focus.txt" || true
 
-          adb shell uiautomator dump /sdcard/mychhachh-window.xml || true
-          adb pull /sdcard/mychhachh-window.xml "$ARTIFACT_DIR/window.xml" || true
-
           adb exec-out screencap -p > "$ARTIFACT_DIR/home-screen.png"
 
+          for i in $(seq 1 8); do
+            adb shell input swipe 540 1850 540 450 320
+            sleep 1
+            adb shell pidof com.mychhachh.app >/dev/null
+          done
+          adb exec-out screencap -p > "$ARTIFACT_DIR/after-scroll-down.png"
+
+          for i in $(seq 1 5); do
+            adb shell input swipe 540 500 540 1750 320
+            sleep 1
+            adb shell pidof com.mychhachh.app >/dev/null
+          done
+          adb exec-out screencap -p > "$ARTIFACT_DIR/after-scroll-up.png"
+
           adb logcat -d -v threadtime             > "$ARTIFACT_DIR/logcat.txt" || true
+
+          adb shell dumpsys activity exit-info com.mychhachh.app > "$ARTIFACT_DIR/exit-info.txt" || true
+
+          if grep -E "FATAL EXCEPTION|ANR in com\\.mychhachh\\.app|Process: com\\.mychhachh\\.app.*has died" "$ARTIFACT_DIR/logcat.txt"; then
+            echo "::error::Crash or ANR evidence found in logcat"
+            exit 1
+          fi
+
+          if grep -E "REASON_CRASH|REASON_ANR" "$ARTIFACT_DIR/exit-info.txt"; then
+            echo "::error::Crash/ANR exit reason found"
+            exit 1
+          fi
 
           if ! adb shell pidof com.mychhachh.app > "$ARTIFACT_DIR/app-pid.txt"; then
             echo "::error::My Chhachh is not running after launch. Check logcat and screenshot artifacts."
