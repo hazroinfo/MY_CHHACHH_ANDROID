@@ -108,6 +108,8 @@ internal class V95Controller(context: Context) {
     var adminSection by mutableStateOf("overview")
     var adminSectionData by mutableStateOf<JSONObject?>(null)
     var blockedUsersList by mutableStateOf<List<User>>(emptyList())
+    var verificationState by mutableStateOf<JSONObject?>(null)
+    var supportTickets by mutableStateOf<List<JSONObject>>(emptyList())
 
     fun dispose() { scope.cancel() }
 
@@ -536,6 +538,37 @@ internal class V95Controller(context: Context) {
     fun toggleBlock(person: User) = work(false) {
         withContext(Dispatchers.IO) { api.toggleBlockUser(person.id) }
         blockedUsersList = blockedUsersList.filterNot { it.id == person.id }
+    }
+
+    fun loadAccountTools(showBusy: Boolean = false) = work(showBusy) {
+        verificationState = withContext(Dispatchers.IO) { runCatching { api.verificationStatus() }.getOrNull() }
+        supportTickets = withContext(Dispatchers.IO) { runCatching { api.supportTickets() }.getOrDefault(emptyList()) }
+    }
+
+    fun submitVerification(
+        phone: String,
+        documentType: String,
+        front: String,
+        back: String,
+        selfie: String,
+        done: () -> Unit = {}
+    ) = work {
+        verificationState = withContext(Dispatchers.IO) {
+            api.submitVerification(phone, documentType, front, back, selfie)
+        }
+        done()
+        loadAccountTools(false)
+    }
+
+    fun submitSupport(
+        category: String,
+        subject: String,
+        message: String,
+        done: () -> Unit = {}
+    ) = work {
+        withContext(Dispatchers.IO) { api.submitSupport(category, subject, message) }
+        done()
+        supportTickets = withContext(Dispatchers.IO) { api.supportTickets() }
     }
 
     fun openAdminSection(section: String) = work {
