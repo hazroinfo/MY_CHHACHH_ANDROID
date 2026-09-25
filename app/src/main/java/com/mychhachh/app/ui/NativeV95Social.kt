@@ -211,6 +211,37 @@ private fun NativeShopEditor(c: V95Controller, shop: Shop?, onClose: () -> Unit)
             ) { coverPicker.launch("image/*") }
         }
 
+        if (cover.isNotBlank() || photo.isNotBlank()) {
+            Box(
+                Modifier.fillMaxWidth()
+                    .height(128.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Color(0x11000000))
+            ) {
+                if (cover.isNotBlank()) {
+                    AsyncImage(
+                        model = cover,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                if (photo.isNotBlank()) {
+                    AsyncImage(
+                        model = photo,
+                        contentDescription = null,
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                            .offset(y = 10.dp)
+                            .size(70.dp)
+                            .clip(CircleShape)
+                            .border(3.dp, Color.White, CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+
         NVInput(name, c.t("Shop name", "دکان کا نام")) { name = it }
         NVInput(username, c.t("Shop username", "دکان یوزرنیم")) { username = it }
         NVInput(category, c.t("Category", "کیٹیگری")) { category = it }
@@ -230,22 +261,34 @@ private fun NativeShopEditor(c: V95Controller, shop: Shop?, onClose: () -> Unit)
             if (shop == null) c.t("Create shop", "دکان بنائیں") else c.t("Save shop", "دکان محفوظ کریں"),
             Modifier.fillMaxWidth(),
             primary = true,
-            enabled = name.isNotBlank() && username.isNotBlank()
+            enabled = name.isNotBlank() && username.isNotBlank() && !c.busy
         ) {
+            val cleanMapUrl = mapUrl.trim().let { raw ->
+                when {
+                    raw.isBlank() -> ""
+                    raw.startsWith("http://", ignoreCase = true) ||
+                        raw.startsWith("https://", ignoreCase = true) ||
+                        raw.startsWith("geo:", ignoreCase = true) ||
+                        raw.startsWith("google.navigation:", ignoreCase = true) -> raw
+                    raw.contains("google.", ignoreCase = true) ||
+                        raw.contains("maps.", ignoreCase = true) -> "https://$raw"
+                    else -> raw
+                }
+            }
             val fields = org.json.JSONObject()
                 .put("name", name.trim())
-                .put("username", username.trim())
+                .put("username", username.trim().removePrefix("@"))
                 .put("category", category.trim())
                 .put("description", description.trim())
-                .put("photo", photo)
-                .put("cover_photo", cover)
+                .put("photo", photo.trim())
+                .put("cover_photo", cover.trim())
                 .put("city", city.trim())
                 .put("village", village.trim())
                 .put("area", area.trim())
                 .put("location", address.trim())
                 .put("phone", phone.trim())
                 .put("whatsapp", whatsapp.trim())
-                .put("location_url", mapUrl.trim())
+                .put("location_url", cleanMapUrl)
             c.saveShop(shop, fields) { onClose() }
         }
 
