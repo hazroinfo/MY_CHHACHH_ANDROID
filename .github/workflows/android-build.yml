@@ -170,6 +170,33 @@ jobs:
           grep -E "Total frames rendered:|Janky frames:|50th percentile:|90th percentile:|95th percentile:|99th percentile:|Number Missed Vsync:|Number Slow UI thread:|Number Slow issue draw commands:|Number Frame deadline missed:" "$ART/gfxinfo-after-scroll.txt" > "$ART/scroll-frame-summary.txt" || true
           cat "$ART/scroll-frame-summary.txt" || true
 
+          total_frames="$(sed -n 's/^Total frames rendered: \([0-9][0-9]*\).*/\1/p' "$ART/scroll-frame-summary.txt" | head -1)"
+          janky_frames="$(sed -n 's/^Janky frames: \([0-9][0-9]*\).*/\1/p' "$ART/scroll-frame-summary.txt" | head -1)"
+          missed_vsync="$(sed -n 's/^Number Missed Vsync: \([0-9][0-9]*\).*/\1/p' "$ART/scroll-frame-summary.txt" | head -1)"
+          slow_ui="$(sed -n 's/^Number Slow UI thread: \([0-9][0-9]*\).*/\1/p' "$ART/scroll-frame-summary.txt" | head -1)"
+          deadline_missed="$(sed -n 's/^Number Frame deadline missed: \([0-9][0-9]*\).*/\1/p' "$ART/scroll-frame-summary.txt" | head -1)"
+
+          if [ -z "$total_frames" ] || [ "$total_frames" -le 0 ] || [ -z "$janky_frames" ] || [ -z "$missed_vsync" ] || [ -z "$slow_ui" ] || [ -z "$deadline_missed" ]; then
+            echo "::error::Scroll frame counters are missing or invalid"
+            exit 1
+          fi
+
+          janky_pct=$((janky_frames * 100 / total_frames))
+          missed_vsync_pct=$((missed_vsync * 100 / total_frames))
+          slow_ui_pct=$((slow_ui * 100 / total_frames))
+          deadline_missed_pct=$((deadline_missed * 100 / total_frames))
+          {
+            echo "janky_pct=$janky_pct"
+            echo "missed_vsync_pct=$missed_vsync_pct"
+            echo "slow_ui_pct=$slow_ui_pct"
+            echo "deadline_missed_pct=$deadline_missed_pct"
+          } | tee "$ART/scroll-frame-gate.txt"
+
+          if [ "$janky_pct" -gt 15 ] || [ "$missed_vsync_pct" -gt 15 ] || [ "$slow_ui_pct" -gt 10 ] || [ "$deadline_missed_pct" -gt 15 ]; then
+            echo "::error::Repeated-scroll smoothness gate failed: janky=$janky_pct%, missed-vsync=$missed_vsync_pct%, slow-ui=$slow_ui_pct%, deadline-missed=$deadline_missed_pct%"
+            exit 1
+          fi
+
           if grep -E "FATAL EXCEPTION|ANR in com\.mychhachh\.app|Process: com\.mychhachh\.app.*has died" "$ART/logcat.txt"; then
             adb shell dumpsys activity lastanr > "$ART/lastanr.txt" 2>&1 || true
             adb shell sh -c 'ls -lt /data/anr 2>/dev/null | head -20' > "$ART/anr-files.txt" 2>&1 || true
