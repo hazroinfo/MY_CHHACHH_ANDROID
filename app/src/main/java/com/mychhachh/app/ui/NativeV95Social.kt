@@ -155,15 +155,77 @@ internal fun NativeChat(c: V95Controller) {
         NativeRequireLogin(c)
         return
     }
+    val context = LocalContext.current
     var text by remember { mutableStateOf("") }
     var photo by remember { mutableStateOf("") }
     var audio by remember { mutableStateOf("") }
+    var recording by remember { mutableStateOf(false) }
+    var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
+    var recordingFile by remember { mutableStateOf<File?>(null) }
 
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) c.upload(uri, "message_photo") { photo = it }
     }
-    val audioPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) c.upload(uri, "message_audio") { audio = it }
+
+    fun startVoiceMessage() {
+        val file = File(context.cacheDir, "message_${System.currentTimeMillis()}.m4a")
+        val nextRecorder = MediaRecorder().apply {
+            setAudioSource(MediaRecorder.AudioSource.MIC)
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            setAudioEncodingBitRate(128000)
+            setAudioSamplingRate(44100)
+            setOutputFile(file.absolutePath)
+        }
+        runCatching {
+            nextRecorder.prepare()
+            nextRecorder.start()
+        }.onSuccess {
+            recorder = nextRecorder
+            recordingFile = file
+            recording = true
+        }.onFailure {
+            runCatching { nextRecorder.release() }
+            c.error = c.t("Voice message could not start.", "وائس پیغام ریکارڈ نہیں ہو سکا۔")
+        }
+    }
+
+    fun stopVoiceMessage() {
+        val active = recorder
+        val file = recordingFile
+        recorder = null
+        recordingFile = null
+        recording = false
+        if (active != null) {
+            val stopped = runCatching { active.stop() }.isSuccess
+            runCatching { active.release() }
+            if (stopped && file != null && file.exists() && file.length() > 0L) {
+                c.uploadFile(file, "audio/mp4", "message_audio") { url ->
+                    audio = url
+                    runCatching { file.delete() }
+                }
+            } else {
+                runCatching { file?.delete() }
+                c.error = c.t("Voice message recording failed.", "وائس پیغام کی ریکارڈنگ ناکام ہو گئی۔")
+            }
+        }
+    }
+
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) startVoiceMessage()
+        else c.error = c.t("Microphone permission is required.", "مائیکروفون کی اجازت ضروری ہے۔")
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            val active = recorder
+            recorder = null
+            recording = false
+            if (active != null) {
+                runCatching { active.stop() }
+                runCatching { active.release() }
+            }
+        }
     }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
@@ -186,26 +248,49 @@ internal fun NativeChat(c: V95Controller) {
                     ) {
                         if (msg.text.isNotBlank()) Text(msg.text, color = if (mine) Color.White else NVInk, fontSize = 12.sp)
                         if (!msg.photo.isNullOrBlank()) AsyncImage(msg.photo, null, Modifier.fillMaxWidth().heightIn(max = 240.dp).clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.Crop)
-                        if (!msg.audio.isNullOrBlank()) Text(c.t("Voice message", "وائس پیغام"), color = if (mine) Color.White else NVPurple, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        if (!msg.audio.isNullOrBlank()) NativeAnnouncementAudioPlayer(msg.audio!!)
+                        if (msg.locationLat != null && msg.locationLng != null) {
+                            NVButton(c.t("Open location", "لوکیشن کھولیں"), Modifier.fillMaxWidth(), icon = NVIcons.Pin) {
+                                c.openCoordinates(msg.locationLat, msg.locationLng)
+                            }
+                        }
                         Text(msg.createdAt, color = if (mine) Color.White.copy(.82f) else NVMuted, fontSize = 8.sp)
                     }
                 }
             }
         }
 
-        if (photo.isNotBlank() || audio.isNotBlank()) {
+        if (recording || photo.isNotBlank() || audio.isNotBlank()) {
             Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    if (photo.isNotBlank()) c.t("Photo attached", "فوٹو منسلک ہے") else c.t("Voice attached", "وائس منسلک ہے"),
-                    color = NVGreen, fontSize = 10.sp, modifier = Modifier.weight(1f)
+                    when {
+                        recording -> "● " + c.t("Recording voice…", "وائس ریکارڈ ہو رہی ہے…")
+                        photo.isNotBlank() -> c.t("Photo attached", "فوٹو منسلک ہے")
+                        else -> c.t("Voice attached", "وائس منسلک ہے")
+                    },
+                    color = if (recording) NVDanger else NVGreen,
+                    fontSize = 10.sp,
+                    modifier = Modifier.weight(1f),
+                    fontWeight = FontWeight.Bold
                 )
-                Text(c.t("Remove", "ہٹائیں"), color = NVPink, fontSize = 10.sp, modifier = Modifier.clickable { photo = ""; audio = "" })
+                if (!recording) {
+                    Text(c.t("Remove", "ہٹائیں"), color = NVPink, fontSize = 10.sp, modifier = Modifier.clickable { photo = ""; audio = "" })
+                }
             }
         }
 
         Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
             NVIconButton(NVIcons.Photo, size = 40.dp, iconSize = 28.dp) { photoPicker.launch("image/*") }
-            NVIconButton(NVIcons.Message, size = 40.dp, iconSize = 28.dp) { audioPicker.launch("audio/*") }
+            NVIconButton(NVIcons.Pin, size = 40.dp, iconSize = 28.dp) { c.startMessageLocation() }
+            NVIconButton(NVIcons.Message, size = 40.dp, iconSize = 28.dp) {
+                if (recording) {
+                    stopVoiceMessage()
+                } else if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    startVoiceMessage()
+                } else {
+                    micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                }
+            }
             NVInput(text, c.t("Message…", "پیغام…"), Modifier.weight(1f)) { text = it }
             NVIconButton(NVIcons.Send, size = 44.dp, iconSize = 32.dp) {
                 if (text.isNotBlank() || photo.isNotBlank() || audio.isNotBlank()) {
