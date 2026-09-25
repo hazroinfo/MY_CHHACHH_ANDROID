@@ -1031,6 +1031,7 @@ internal fun NativeProfile(c: V95Controller) {
         NativeRequireLogin(c)
         return
     }
+    LaunchedEffect(person.id) { c.loadProfile(person, false) }
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = 8.dp),
         contentPadding = PaddingValues(top = 8.dp, bottom = 28.dp),
@@ -1146,6 +1147,15 @@ internal fun NativeProfile(c: V95Controller) {
                 NVButton(c.t("Followers", "فالوورز"), Modifier.weight(1f)) { c.openRelations(person, "followers") }
                 NVButton(c.t("Following", "فالوونگ"), Modifier.weight(1f)) { c.openRelations(person, "following") }
             }
+        }
+        item {
+            NVHeading(c.t("Posts", "پوسٹس"), c.t("Latest profile posts", "تازہ پروفائل پوسٹس"))
+        }
+        if (c.profilePosts.isEmpty() && !c.busy) {
+            item { NVEmpty(c.t("No posts yet", "ابھی کوئی پوسٹ نہیں")) }
+        }
+        items(c.profilePosts, key = { "profile-" + it.id }) { post ->
+            NativePostCard(c, post)
         }
     }
 }
