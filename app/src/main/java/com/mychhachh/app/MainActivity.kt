@@ -3,9 +3,13 @@ package com.mychhachh.app
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.view.Gravity
+import android.view.View
+import android.widget.FrameLayout
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
@@ -68,8 +72,49 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, true)
         WebView.setWebContentsDebuggingEnabled(false)
 
-        webView = WebView(this)
-        setContentView(webView)
+        val chromeBlue = Color.rgb(223, 247, 255)
+        window.statusBarColor = chromeBlue
+        window.navigationBarColor = Color.rgb(246, 243, 255)
+
+        val density = resources.displayMetrics.density
+        val headerGap = (4f * density).toInt()
+        val topLineMaskHeight = maxOf(2, (3f * density).toInt())
+
+        webView = WebView(this).apply {
+            setBackgroundColor(chromeBlue)
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+
+        val root = FrameLayout(this).apply {
+            setBackgroundColor(chromeBlue)
+
+            addView(
+                webView,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT
+                ).apply {
+                    topMargin = headerGap
+                }
+            )
+
+            addView(
+                View(this@MainActivity).apply {
+                    setBackgroundColor(chromeBlue)
+                    isClickable = false
+                    isFocusable = false
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                },
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    topLineMaskHeight,
+                    Gravity.TOP
+                ).apply {
+                    topMargin = headerGap
+                }
+            )
+        }
+        setContentView(root)
 
         configureWebView()
 
