@@ -1,5 +1,8 @@
 package com.mychhachh.app.ui
 
+import android.Manifest
+import android.media.MediaRecorder
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -19,14 +22,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.mychhachh.app.data.*
 import kotlinx.coroutines.delay
+import java.io.File
 import java.time.Duration
 import java.time.Instant
 
@@ -238,6 +248,24 @@ private fun NativeVoteCard(c: V95Controller, vote: Vote, detail: Boolean = false
             Text(vote.status.uppercase(), color = NVMuted, fontSize = 9.sp, fontWeight = FontWeight.Black)
             Text(vote.title.ifBlank { (vote.user1?.name ?: "") + " VS " + (vote.user2?.name ?: "") }, color = NVInk, fontSize = 16.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center)
             Text(timer, color = NVPurple, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            if (vote.resultRevealed && vote.winnerUserId > 0L) {
+                val winnerName = when (vote.winnerUserId) {
+                    vote.leftUserId -> vote.user1?.name
+                    vote.rightUserId -> vote.user2?.name
+                    else -> null
+                }.orEmpty()
+                if (winnerName.isNotBlank()) {
+                    Spacer(Modifier.height(4.dp))
+                    Box(
+                        Modifier.clip(RoundedCornerShape(18.dp))
+                            .background(Brush.linearGradient(listOf(Color(0xFFFFF0C7), Color(0xFFFFE3F3))))
+                            .border(1.5.dp, Color.White, RoundedCornerShape(18.dp))
+                            .padding(horizontal = 12.dp, vertical = 7.dp)
+                    ) {
+                        Text("🎉 🏆 " + c.t("Winner: ", "فاتح: ") + winnerName + " 🎈", color = NVPurple, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                    }
+                }
+            }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             NativeVoteSide(c, vote.user1, vote.leftText, vote.votes1, vote.leftUserId, vote, Modifier.weight(1f))
@@ -248,7 +276,7 @@ private fun NativeVoteCard(c: V95Controller, vote: Vote, detail: Boolean = false
         }
         if (detail) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                NVButton(c.t("Comments", "کمنٹس"), Modifier.weight(1f), icon = NVIcons.Comment) { }
+                NVButton(c.t("Comments", "کمنٹس"), Modifier.weight(1f), icon = NVIcons.Comment) { c.openVote(vote) }
                 NVButton(c.t("Share", "شیئر"), Modifier.weight(1f), primary = true, icon = NVIcons.Share) {
                     if (c.user == null) c.route = V95Route.AUTH else c.shareVote(vote)
                 }
@@ -313,22 +341,107 @@ internal fun NativeAnnouncements(c: V95Controller) {
 
 @Composable
 private fun NativeAnnouncementComposer(c: V95Controller) {
+    val context = LocalContext.current
     var text by remember { mutableStateOf("") }
     var photo by remember { mutableStateOf("") }
     var audio by remember { mutableStateOf("") }
+    var recording by remember { mutableStateOf(false) }
+    var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
+    var recordingFile by remember { mutableStateOf<File?>(null) }
+
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) c.upload(uri, "announcement_photo") { photo = it }
     }
-    val audioPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) c.upload(uri, "announcement_audio") { audio = it }
+
+    fun startRecording() {
+        val file = File(context.cacheDir, "announcement_${System.currentTimeMillis()}.m4a")
+        val nextRecorder = MediaRecorder().apply {
+            setAudioSource(MediaRecorder.AudioSource.MIC)
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            setAudioEncodingBitRate(128000)
+            setAudioSamplingRate(44100)
+            setOutputFile(file.absolutePath)
+        }
+        runCatching {
+            nextRecorder.prepare()
+            nextRecorder.start()
+        }.onSuccess {
+            recorder = nextRecorder
+            recordingFile = file
+            recording = true
+        }.onFailure {
+            runCatching { nextRecorder.release() }
+            c.error = c.t("Voice recording could not start.", "وائس ریکارڈنگ شروع نہیں ہو سکی۔")
+        }
     }
+
+    fun stopRecordingAndUpload() {
+        val active = recorder
+        val file = recordingFile
+        recorder = null
+        recordingFile = null
+        recording = false
+        if (active != null) {
+            val stopped = runCatching { active.stop() }.isSuccess
+            runCatching { active.release() }
+            if (stopped && file != null && file.exists() && file.length() > 0L) {
+                c.uploadFile(file, "audio/mp4", "announcement_audio") { url ->
+                    audio = url
+                    runCatching { file.delete() }
+                }
+            } else {
+                runCatching { file?.delete() }
+                c.error = c.t("Voice recording failed.", "وائس ریکارڈنگ ناکام ہو گئی۔")
+            }
+        }
+    }
+
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) startRecording()
+        else c.error = c.t("Microphone permission is required.", "مائیکروفون کی اجازت ضروری ہے۔")
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            val active = recorder
+            recorder = null
+            recording = false
+            if (active != null) {
+                runCatching { active.stop() }
+                runCatching { active.release() }
+            }
+        }
+    }
+
     NVCard(radius = 28.dp, padding = 12.dp) {
         Text(c.t("New announcement", "نیا اعلان"), color = NVInk, fontWeight = FontWeight.Black, fontSize = 13.sp)
         NVInput(text, c.t("Write an announcement…", "اعلان لکھیں…"), Modifier.fillMaxWidth(), singleLine = false) { text = it }
+
+        if (recording) {
+            Text("● " + c.t("Recording… tap Stop when finished", "ریکارڈنگ جاری ہے… مکمل ہونے پر اسٹاپ دبائیں"), color = NVDanger, fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+        } else if (audio.isNotBlank()) {
+            Text(c.t("Voice ready to post", "وائس پوسٹ کے لیے تیار ہے"), color = NVGreen, fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+        }
+
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             NVButton(c.t("Photo", "فوٹو"), Modifier.weight(1f), icon = NVIcons.Photo) { photoPicker.launch("image/*") }
-            NVButton(c.t("Voice", "وائس"), Modifier.weight(1f), icon = NVIcons.Message) { audioPicker.launch("audio/*") }
-            NVButton(c.t("Post", "پوسٹ"), Modifier.weight(1f), primary = true) {
+            NVButton(
+                if (recording) c.t("Stop", "اسٹاپ") else c.t("Record", "ریکارڈ"),
+                Modifier.weight(1f),
+                primary = recording,
+                danger = recording,
+                icon = NVIcons.Message
+            ) {
+                if (recording) {
+                    stopRecordingAndUpload()
+                } else if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    startRecording()
+                } else {
+                    micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                }
+            }
+            NVButton(c.t("Post", "پوسٹ"), Modifier.weight(1f), primary = true, enabled = !recording) {
                 if (text.isNotBlank() || photo.isNotBlank() || audio.isNotBlank()) {
                     c.createAnnouncement(text, photo, audio) { text = ""; photo = ""; audio = "" }
                 }
@@ -353,11 +466,7 @@ private fun NativeAnnouncementCard(c: V95Controller, item: Announcement) {
         if (item.text.isNotBlank()) Text(item.text, color = NVInk, fontSize = 12.sp, lineHeight = 18.sp)
         if (!item.photo.isNullOrBlank()) AsyncImage(item.photo, null, Modifier.fillMaxWidth().heightIn(max = 260.dp).clip(RoundedCornerShape(18.dp)), contentScale = ContentScale.Crop)
         if (!item.audio.isNullOrBlank()) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(painterResource(NVIcons.Message), null, Modifier.size(28.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(c.t("Voice announcement", "وائس اعلان"), color = NVPurple, fontWeight = FontWeight.Black, fontSize = 10.sp)
-            }
+            NativeAnnouncementAudioPlayer(item.audio!!)
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
             NativeSmallAction((if (item.liked) c.t("Liked", "لائکڈ") else c.t("Like", "لائک")) + " " + item.likes, NVIcons.Heart) {
@@ -369,6 +478,32 @@ private fun NativeAnnouncementCard(c: V95Controller, item: Announcement) {
             }
         }
     }
+}
+
+@Composable
+private fun NativeAnnouncementAudioPlayer(url: String) {
+    val context = LocalContext.current
+    val player = remember(url) {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(url))
+            prepare()
+            playWhenReady = false
+        }
+    }
+    DisposableEffect(player) { onDispose { player.release() } }
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                useController = true
+                this.player = player
+            }
+        },
+        update = { it.player = player },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .clip(RoundedCornerShape(18.dp))
+    )
 }
 
 @Composable
@@ -555,7 +690,7 @@ internal fun NativeShopDetail(c: V95Controller) {
                         NVButton(if (shop.followed) c.t("Following", "فالوونگ") else c.t("Follow", "فالو"), Modifier.weight(1f), primary = !shop.followed, icon = NVIcons.Follow) {
                             if (c.user == null) c.route = V95Route.AUTH else c.toggleShop(shop)
                         }
-                        NVButton(c.t("Map", "نقشہ"), Modifier.weight(1f), icon = NVIcons.Map) { c.route = V95Route.MAP }
+                        NVButton(c.t("Navigate", "راستہ"), Modifier.weight(1f), icon = NVIcons.Map) { c.navigateToShop(shop) }
                     }
                 }
             }
