@@ -419,9 +419,18 @@ internal class V95Controller(context: Context) {
     }
 
     fun deleteMyShop(shop: Shop, done: () -> Unit = {}) = work {
-        if (shop.userId != user?.id && user?.isAdmin != true) return@work
+        val me = user ?: run {
+            error = t("Please sign in to manage a shop.", "دکان مینیج کرنے کے لیے لاگ اِن کریں۔")
+            return@work
+        }
+        if (shop.userId != me.id && !me.isAdmin) {
+            error = t("You cannot delete this shop.", "آپ اس دکان کو حذف نہیں کر سکتے۔")
+            return@work
+        }
+
         withContext(Dispatchers.IO) { api.deleteShop(shop.id) }
-        shops = shops.filterNot { it.id == shop.id }
+        shops = withContext(Dispatchers.IO) { api.shops() }
+
         if (selectedShop?.id == shop.id) {
             selectedShop = null
             selectedShopPosts = emptyList()
