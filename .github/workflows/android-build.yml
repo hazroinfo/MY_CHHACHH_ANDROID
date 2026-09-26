@@ -43,14 +43,36 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER"             "platform-tools"             "platforms;android-35"             "build-tools;35.0.0"             "emulator"             "system-images;android-35;default;x86_64"
 
-      - name: Build fresh APK
+      - name: Build QA-instrumented APK
         shell: bash
         run: |
           set -euo pipefail
           chmod +x gradlew
+          cp app/src/main/java/com/mychhachh/app/MainActivity.kt "$RUNNER_TEMP/MainActivity.clean.kt"
+          python3 - app/src/main/java/com/mychhachh/app/MainActivity.kt <<'PY'
+          import pathlib, sys
+          p = pathlib.Path(sys.argv[1])
+          s = p.read_text()
+          anchor = "        webView.isVerticalScrollBarEnabled = false\n        webView.isHorizontalScrollBarEnabled = false\n"
+          addition = anchor + """
+          
+                  var qaLastScrollY = Int.MIN_VALUE
+                  webView.setOnScrollChangeListener { _, _, scrollY, _, _ ->
+                      if (qaLastScrollY == Int.MIN_VALUE || kotlin.math.abs(scrollY - qaLastScrollY) >= 120) {
+                          Log.i("MyChhachhScroll", "SCROLL_Y=$scrollY")
+                          qaLastScrollY = scrollY
+                      }
+                  }
+          """
+          if anchor not in s:
+              raise SystemExit("candidate scroll instrumentation anchor not found")
+          s = s.replace(anchor, addition, 1)
+          p.write_text(s)
+          PY
           ./gradlew --no-daemon --stacktrace clean assembleDebug
           test -s app/build/outputs/apk/debug/app-debug.apk
-          sha256sum app/build/outputs/apk/debug/app-debug.apk | tee apk-sha256.txt
+          sha256sum app/build/outputs/apk/debug/app-debug.apk | tee qa-apk-sha256.txt
+          cp "$RUNNER_TEMP/MainActivity.clean.kt" app/src/main/java/com/mychhachh/app/MainActivity.kt
 
       - name: Build known-smooth WebView baseline
         shell: bash
@@ -522,6 +544,20 @@ jobs:
           fi
 
           echo "PASS: live My Chhachh load + center-screen real WebView scrollY proof + process-alive + frame gate + screenshots + crash/ANR checks completed."
+
+      - name: Build clean final APK
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp "$RUNNER_TEMP/MainActivity.clean.kt" app/src/main/java/com/mychhachh/app/MainActivity.kt
+          ./gradlew --no-daemon --stacktrace clean assembleDebug
+          test -s app/build/outputs/apk/debug/app-debug.apk
+          if grep -q "MyChhachhScroll" app/src/main/java/com/mychhachh/app/MainActivity.kt; then
+            echo "::error::QA scroll instrumentation leaked into final source"
+            exit 1
+          fi
+          sha256sum app/build/outputs/apk/debug/app-debug.apk | tee apk-sha256.txt
 
       - name: Upload fresh APK
         if: always()
