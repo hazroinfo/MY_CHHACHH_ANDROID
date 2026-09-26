@@ -1,5 +1,5 @@
-# public runner retrigger 2.0.16
-name: My Chhachh Clean WebView Build
+# clean single-pass WebView 2.0.17
+name: My Chhachh Smooth WebView Build
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: my-chhachh-clean-webview-build
+  group: my-chhachh-smooth-webview-build
   cancel-in-progress: true
 
 jobs:
@@ -28,7 +28,7 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      - name: Verify single code path
+      - name: Verify single smooth WebView code path
         shell: bash
         run: |
           set -euo pipefail
@@ -37,9 +37,14 @@ jobs:
           ! grep -q "org.jetbrains.kotlin.plugin.compose" app/build.gradle.kts
           ! grep -q "androidx.compose" app/build.gradle.kts
           ! grep -q "ANDROID_WEBVIEW_STABILITY_JS" app/src/main/java/com/mychhachh/app/MainActivity.kt
-          ! grep -q "createElement('style')" app/src/main/java/com/mychhachh/app/MainActivity.kt
-          grep -q 'versionName = "2.0.16"' app/build.gradle.kts
+          grep -q 'versionName = "2.0.17"' app/build.gradle.kts
           grep -q 'android.permission.RECORD_AUDIO' app/src/main/AndroidManifest.xml
+          ! grep -q "setLayerType" app/src/main/java/com/mychhachh/app/MainActivity.kt
+          ! grep -q "offscreenPreRaster" app/src/main/java/com/mychhachh/app/MainActivity.kt
+          ! grep -q "setRendererPriorityPolicy" app/src/main/java/com/mychhachh/app/MainActivity.kt
+          ! grep -q "querySelectorAll" app/src/main/java/com/mychhachh/app/MainActivity.kt
+          ! grep -q "setTimeout" app/src/main/java/com/mychhachh/app/MainActivity.kt
+          grep -q "LOADER_STYLE_JS" app/src/main/java/com/mychhachh/app/MainActivity.kt
 
       - name: Build clean APK
         shell: bash
@@ -53,7 +58,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MY_CHHACHH_2.0.16_CLEAN_WEBVIEW
+          name: MY_CHHACHH_2.0.17_SMOOTH_WEBVIEW
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             apk-sha256.txt
