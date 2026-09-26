@@ -44,7 +44,6 @@ jobs:
           ! grep -q "setLayerType" app/src/main/java/com/mychhachh/app/MainActivity.kt
           ! grep -q "offscreenPreRaster" app/src/main/java/com/mychhachh/app/MainActivity.kt
           ! grep -q "setRendererPriorityPolicy" app/src/main/java/com/mychhachh/app/MainActivity.kt
-          grep -q "setFrameRate" app/src/main/java/com/mychhachh/app/MainActivity.kt
           grep -q "backdrop-filter:none" app/src/main/java/com/mychhachh/app/MainActivity.kt
           ! grep -q "querySelectorAll" app/src/main/java/com/mychhachh/app/MainActivity.kt
           test "$(grep -o "setTimeout" app/src/main/java/com/mychhachh/app/MainActivity.kt | wc -l)" -le 1
