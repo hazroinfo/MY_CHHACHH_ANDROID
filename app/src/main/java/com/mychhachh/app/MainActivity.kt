@@ -3,13 +3,10 @@ package com.mychhachh.app
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
 import android.util.Log
-import android.view.View
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
@@ -36,6 +33,7 @@ class MainActivity : ComponentActivity() {
     private var pendingMediaRequest: PermissionRequest? = null
     private var pendingGeoOrigin: String? = null
     private var pendingGeoCallback: GeolocationPermissions.Callback? = null
+    private var documentStartLoaderStyleInstalled = false
 
     private val filePicker =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -118,11 +116,8 @@ class MainActivity : ComponentActivity() {
 
         webView = WebView(this).apply {
             setBackgroundColor(Color.rgb(223, 247, 255))
-            setLayerType(View.LAYER_TYPE_HARDWARE, null)
-            overScrollMode = View.OVER_SCROLL_NEVER
             isVerticalScrollBarEnabled = false
             isHorizontalScrollBarEnabled = false
-            setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_BOUND, true)
         }
         setContentView(webView)
 
@@ -169,11 +164,10 @@ class MainActivity : ComponentActivity() {
             textZoom = 100
             cacheMode = WebSettings.LOAD_DEFAULT
             mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-            offscreenPreRaster = true
             userAgentString = userAgentString + " MyChhachhAndroid/2.0"
         }
 
-        installLoaderCleanupAtDocumentStart()
+        installSingleLoaderStyleAtDocumentStart()
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(
@@ -185,22 +179,11 @@ class MainActivity : ComponentActivity() {
             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean =
                 handleUri(Uri.parse(url))
 
-            override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
-                super.onPageStarted(view, url, favicon)
-                Log.i(WEBVIEW_LOG_TAG, "PAGE_STARTED $url")
-                removeTopLoaders(view)
-            }
-
             override fun onPageCommitVisible(view: WebView, url: String) {
                 super.onPageCommitVisible(view, url)
-                Log.i(WEBVIEW_LOG_TAG, "PAGE_COMMIT_VISIBLE $url")
-                removeTopLoaders(view)
-            }
-
-            override fun onPageFinished(view: WebView, url: String) {
-                super.onPageFinished(view, url)
-                Log.i(WEBVIEW_LOG_TAG, "PAGE_FINISHED $url")
-                removeTopLoaders(view)
+                if (!documentStartLoaderStyleInstalled) {
+                    view.evaluateJavascript(LOADER_STYLE_JS, null)
+                }
             }
 
             override fun onReceivedError(
@@ -304,18 +287,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun installLoaderCleanupAtDocumentStart() {
+    private fun installSingleLoaderStyleAtDocumentStart() {
         if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
             WebViewCompat.addDocumentStartJavaScript(
                 webView,
-                LOADER_REMOVAL_JS,
+                LOADER_STYLE_JS,
                 setOf("https://chhachh.pages.dev")
             )
+            documentStartLoaderStyleInstalled = true
         }
-    }
-
-    private fun removeTopLoaders(view: WebView) {
-        view.evaluateJavascript(LOADER_REMOVAL_JS, null)
     }
 
     private fun grantAllowedWebResources(request: PermissionRequest) {
@@ -342,15 +322,6 @@ class MainActivity : ComponentActivity() {
         val host = origin.host?.lowercase().orEmpty()
         return scheme == "https" &&
             (host == "chhachh.pages.dev" || host.endsWith(".chhachh.pages.dev"))
-    }
-
-    private fun openAppSettings() {
-        startActivity(
-            Intent(
-                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                Uri.parse("package:$packageName")
-            )
-        )
     }
 
     private fun handleUri(uri: Uri): Boolean {
@@ -422,47 +393,19 @@ class MainActivity : ComponentActivity() {
         private const val HOME_URL = "https://chhachh.pages.dev/"
         private const val WEBVIEW_LOG_TAG = "MyChhachhWebView"
 
-        private const val LOADER_REMOVAL_JS = """
+        private const val LOADER_STYLE_JS = """
             (function () {
-              var selectors = [
-                '#mcSmoothRouteBar',
-                '#mcSmoothV3Bar',
-                '#nprogress',
-                '.nprogress',
-                '.pace',
-                '.pace-progress',
-                '#loadingBar',
-                '.loading-bar',
-                '#loading-bar',
-                '.top-loading-bar',
-                '.top-progress',
-                '.page-progress',
-                '.route-progress',
-                '.spa-progress',
-                '.progress-line',
-                '.loader-line',
-                '[data-loader="top"]',
-                '[data-progress="top"]'
-              ];
+              if (document.getElementById('mc-native-loader-style')) return;
 
-              function removeLoaders() {
-                for (var i = 0; i < selectors.length; i++) {
-                  var nodes = document.querySelectorAll(selectors[i]);
-                  for (var j = 0; j < nodes.length; j++) {
-                    nodes[j].remove();
-                  }
-                }
-              }
+              var style = document.createElement('style');
+              style.id = 'mc-native-loader-style';
+              style.textContent =
+                '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,' +
+                '#loadingBar,#loading-bar,.loading-bar,.top-loading-bar,.top-progress,' +
+                '.page-progress,.route-progress,.spa-progress,[data-loader="top"],[data-progress="top"]' +
+                '{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;}';
 
-              removeLoaders();
-
-              if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', removeLoaders, { once: true });
-              }
-
-              [50, 150, 350, 700, 1200, 2000, 3500].forEach(function (ms) {
-                setTimeout(removeLoaders, ms);
-              });
+              (document.head || document.documentElement).appendChild(style);
             })();
         """
     }
