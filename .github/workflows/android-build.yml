@@ -335,6 +335,17 @@ jobs:
           swipe_low=$((screen_h * 74 / 100))
           swipe_high=$((screen_h * 32 / 100))
           echo "screen=${screen_w}x${screen_h} swipe_x=${swipe_x} low=${swipe_low} high=${swipe_high}" | tee "$ART/scroll-coordinates.txt"
+          adb logcat -c || true
+          adb shell input touchscreen swipe "$swipe_x" "$swipe_low" "$swipe_x" "$swipe_high" 450
+          sleep 2
+          adb logcat -d -v brief -s MyChhachhScroll:I > "$ART/real-scroll-proof.txt" || true
+          max_scroll_y="$(grep -oE "SCROLL_Y=[0-9]+" "$ART/real-scroll-proof.txt" | cut -d= -f2 | sort -n | tail -1)"
+          if [ -z "$max_scroll_y" ] || [ "$max_scroll_y" -lt 250 ]; then
+            echo "::error::Center-screen swipe did not produce real WebView scrolling; max_scroll_y=${max_scroll_y:-missing}"
+            cat "$ART/real-scroll-proof.txt" || true
+            exit 1
+          fi
+          echo "REAL_SCROLL_PASS max_scroll_y=$max_scroll_y" | tee "$ART/real-scroll-verdict.txt"
 
           for i in $(seq 1 8); do
             adb shell input touchscreen swipe "$swipe_x" "$swipe_low" "$swipe_x" "$swipe_high" 240
