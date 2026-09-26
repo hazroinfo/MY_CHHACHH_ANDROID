@@ -7,7 +7,9 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
+import android.view.View
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
@@ -18,6 +20,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -34,45 +37,80 @@ class MainActivity : ComponentActivity() {
     private var pendingGeoOrigin: String? = null
     private var pendingGeoCallback: GeolocationPermissions.Callback? = null
 
-    private val filePicker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        val callback = fileCallback ?: return@registerForActivityResult
-        fileCallback = null
-        callback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data))
-    }
-
-    private val mediaPermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-        val request = pendingMediaRequest ?: return@registerForActivityResult
-        pendingMediaRequest = null
-        val allowed = request.resources.filter { resource ->
-            when (resource) {
-                PermissionRequest.RESOURCE_AUDIO_CAPTURE ->
-                    ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-                PermissionRequest.RESOURCE_VIDEO_CAPTURE ->
-                    ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-                else -> false
-            }
-        }.toTypedArray()
-        if (allowed.isNotEmpty()) request.grant(allowed) else request.deny()
-    }
-
-    private val locationPermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-        val origin = pendingGeoOrigin
-        val callback = pendingGeoCallback
-        pendingGeoOrigin = null
-        pendingGeoCallback = null
-        if (origin != null && callback != null) {
-            val granted =
-                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-            callback.invoke(origin, granted, false)
+    private val filePicker =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val callback = fileCallback ?: return@registerForActivityResult
+            fileCallback = null
+            callback.onReceiveValue(
+                WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data)
+            )
         }
-    }
+
+    private val startupMicPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (!granted &&
+                !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)
+            ) {
+                Toast.makeText(
+                    this,
+                    "Microphone permission is required for voice recording",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+
+    private val mediaPermissions =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            val request = pendingMediaRequest ?: return@registerForActivityResult
+            pendingMediaRequest = null
+
+            val allowed = request.resources.filter { resource ->
+                when (resource) {
+                    PermissionRequest.RESOURCE_AUDIO_CAPTURE ->
+                        hasPermission(Manifest.permission.RECORD_AUDIO)
+
+                    PermissionRequest.RESOURCE_VIDEO_CAPTURE ->
+                        hasPermission(Manifest.permission.CAMERA)
+
+                    else -> false
+                }
+            }.toTypedArray()
+
+            if (allowed.isNotEmpty()) {
+                request.grant(allowed)
+            } else {
+                request.deny()
+                if (request.resources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE) &&
+                    !hasPermission(Manifest.permission.RECORD_AUDIO) &&
+                    !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)
+                ) {
+                    Toast.makeText(
+                        this,
+                        "Enable Microphone permission in App settings for voice recording",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+
+    private val locationPermissions =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            val origin = pendingGeoOrigin
+            val callback = pendingGeoCallback
+            pendingGeoOrigin = null
+            pendingGeoCallback = null
+
+            if (origin != null && callback != null) {
+                val granted =
+                    hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) ||
+                        hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+                callback.invoke(origin, granted, false)
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Keep the WebView itself as the root view and let the window keep it
-        // below the system bars. The Android 15 edge-to-edge opt-out lives in the theme.
         WindowCompat.setDecorFitsSystemWindows(window, true)
         window.statusBarColor = Color.rgb(223, 247, 255)
         window.navigationBarColor = Color.rgb(246, 243, 255)
@@ -80,10 +118,19 @@ class MainActivity : ComponentActivity() {
 
         webView = WebView(this).apply {
             setBackgroundColor(Color.rgb(223, 247, 255))
+            setLayerType(View.LAYER_TYPE_HARDWARE, null)
+            overScrollMode = View.OVER_SCROLL_NEVER
+            isVerticalScrollBarEnabled = false
+            isHorizontalScrollBarEnabled = false
+            setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_BOUND, true)
         }
         setContentView(webView)
 
         configureWebView()
+
+        if (!hasPermission(Manifest.permission.RECORD_AUDIO)) {
+            startupMicPermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
 
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState)
@@ -114,44 +161,46 @@ class MainActivity : ComponentActivity() {
             mediaPlaybackRequiresUserGesture = false
             javaScriptCanOpenWindowsAutomatically = true
             setSupportMultipleWindows(false)
+            setSupportZoom(false)
+            builtInZoomControls = false
+            displayZoomControls = false
             loadWithOverviewMode = false
             useWideViewPort = false
             textZoom = 100
             cacheMode = WebSettings.LOAD_DEFAULT
             mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+            offscreenPreRaster = true
             userAgentString = userAgentString + " MyChhachhAndroid/2.0"
         }
 
-        webView.isVerticalScrollBarEnabled = false
-        webView.isHorizontalScrollBarEnabled = false
-
-        installAndroidWebViewStabilityStyle()
+        installLoaderCleanupAtDocumentStart()
 
         webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                return handleUri(request.url)
-            }
+            override fun shouldOverrideUrlLoading(
+                view: WebView,
+                request: WebResourceRequest
+            ): Boolean = handleUri(request.url)
 
             @Deprecated("Deprecated in Java")
-            override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-                return handleUri(Uri.parse(url))
-            }
+            override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean =
+                handleUri(Uri.parse(url))
 
             override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 Log.i(WEBVIEW_LOG_TAG, "PAGE_STARTED $url")
+                removeTopLoaders(view)
             }
 
             override fun onPageCommitVisible(view: WebView, url: String) {
                 super.onPageCommitVisible(view, url)
                 Log.i(WEBVIEW_LOG_TAG, "PAGE_COMMIT_VISIBLE $url")
-                applyAndroidWebViewStabilityStyle(view)
+                removeTopLoaders(view)
             }
 
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
                 Log.i(WEBVIEW_LOG_TAG, "PAGE_FINISHED $url")
-                applyAndroidWebViewStabilityStyle(view)
+                removeTopLoaders(view)
             }
 
             override fun onReceivedError(
@@ -177,6 +226,7 @@ class MainActivity : ComponentActivity() {
             ): Boolean {
                 fileCallback?.onReceiveValue(null)
                 fileCallback = callback
+
                 return try {
                     val intent = fileChooserParams?.createIntent()
                         ?: Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
@@ -194,29 +244,27 @@ class MainActivity : ComponentActivity() {
 
             override fun onPermissionRequest(request: PermissionRequest) {
                 runOnUiThread {
+                    if (!isTrustedOrigin(request.origin)) {
+                        request.deny()
+                        return@runOnUiThread
+                    }
+
                     val needed = mutableListOf<String>()
+
                     if (request.resources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE) &&
-                        ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED
+                        !hasPermission(Manifest.permission.RECORD_AUDIO)
                     ) {
                         needed += Manifest.permission.RECORD_AUDIO
                     }
+
                     if (request.resources.contains(PermissionRequest.RESOURCE_VIDEO_CAPTURE) &&
-                        ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+                        !hasPermission(Manifest.permission.CAMERA)
                     ) {
                         needed += Manifest.permission.CAMERA
                     }
 
                     if (needed.isEmpty()) {
-                        val allowed = request.resources.filter { resource ->
-                            when (resource) {
-                                PermissionRequest.RESOURCE_AUDIO_CAPTURE ->
-                                    ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-                                PermissionRequest.RESOURCE_VIDEO_CAPTURE ->
-                                    ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-                                else -> false
-                            }
-                        }.toTypedArray()
-                        if (allowed.isNotEmpty()) request.grant(allowed) else request.deny()
+                        grantAllowedWebResources(request)
                     } else {
                         pendingMediaRequest?.deny()
                         pendingMediaRequest = request
@@ -237,8 +285,8 @@ class MainActivity : ComponentActivity() {
                 callback: GeolocationPermissions.Callback
             ) {
                 val alreadyGranted =
-                    ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-                    ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                    hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) ||
+                        hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
 
                 if (alreadyGranted) {
                     callback.invoke(origin, true, false)
@@ -256,18 +304,53 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun installAndroidWebViewStabilityStyle() {
+    private fun installLoaderCleanupAtDocumentStart() {
         if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
             WebViewCompat.addDocumentStartJavaScript(
                 webView,
-                ANDROID_WEBVIEW_STABILITY_JS,
+                LOADER_REMOVAL_JS,
                 setOf("https://chhachh.pages.dev")
             )
         }
     }
 
-    private fun applyAndroidWebViewStabilityStyle(view: WebView) {
-        view.evaluateJavascript(ANDROID_WEBVIEW_STABILITY_JS, null)
+    private fun removeTopLoaders(view: WebView) {
+        view.evaluateJavascript(LOADER_REMOVAL_JS, null)
+    }
+
+    private fun grantAllowedWebResources(request: PermissionRequest) {
+        val allowed = request.resources.filter { resource ->
+            when (resource) {
+                PermissionRequest.RESOURCE_AUDIO_CAPTURE ->
+                    hasPermission(Manifest.permission.RECORD_AUDIO)
+
+                PermissionRequest.RESOURCE_VIDEO_CAPTURE ->
+                    hasPermission(Manifest.permission.CAMERA)
+
+                else -> false
+            }
+        }.toTypedArray()
+
+        if (allowed.isNotEmpty()) request.grant(allowed) else request.deny()
+    }
+
+    private fun hasPermission(permission: String): Boolean =
+        ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+
+    private fun isTrustedOrigin(origin: Uri): Boolean {
+        val scheme = origin.scheme?.lowercase().orEmpty()
+        val host = origin.host?.lowercase().orEmpty()
+        return scheme == "https" &&
+            (host == "chhachh.pages.dev" || host.endsWith(".chhachh.pages.dev"))
+    }
+
+    private fun openAppSettings() {
+        startActivity(
+            Intent(
+                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.parse("package:$packageName")
+            )
+        )
     }
 
     private fun handleUri(uri: Uri): Boolean {
@@ -291,6 +374,7 @@ class MainActivity : ComponentActivity() {
                     startActivity(intent)
                     true
                 }
+
                 else -> {
                     startActivity(Intent(Intent.ACTION_VIEW, uri))
                     true
@@ -323,35 +407,63 @@ class MainActivity : ComponentActivity() {
         fileCallback = null
         pendingMediaRequest?.deny()
         pendingMediaRequest = null
+
         webView.apply {
             stopLoading()
             webChromeClient = null
             webViewClient = WebViewClient()
             destroy()
         }
+
         super.onDestroy()
     }
 
     companion object {
         private const val HOME_URL = "https://chhachh.pages.dev/"
         private const val WEBVIEW_LOG_TAG = "MyChhachhWebView"
-        private const val ANDROID_WEBVIEW_STABILITY_JS = """
-            (function(){
-              try {
-                var id='__mc_android_webview_stability';
-                if(document.getElementById(id)) return;
-                var s=document.createElement('style');
-                s.id=id;
-                s.textContent=
-                  '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}' +
-                  'html body.weather-theme-ready{background-attachment:scroll!important}' +
-                  'html body.weather-theme-ready .top,html body.weather-theme-ready .card,html body.weather-theme-ready .page-heading,html body.weather-theme-ready .community-footer{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}' +
-                  'html #chhachhWeatherBg{transform:none!important;will-change:auto!important}' +
-                  'html #chhachhWeatherBg .aurora,html #chhachhWeatherBg .clouds,html #chhachhWeatherBg .fog,html #chhachhWeatherBg .rain,html #chhachhWeatherBg .stars,html #chhachhWeatherBg .sunGlow,html #chhachhWeatherBg .moonGlow,html #chhachhWeatherBg .stormflash{animation:none!important;transition:none!important;filter:none!important;transform:none!important;will-change:auto!important}';
-                (document.head||document.documentElement).appendChild(s);
-              } catch (_) {}
+
+        private const val LOADER_REMOVAL_JS = """
+            (function () {
+              var selectors = [
+                '#mcSmoothRouteBar',
+                '#mcSmoothV3Bar',
+                '#nprogress',
+                '.nprogress',
+                '.pace',
+                '.pace-progress',
+                '#loadingBar',
+                '.loading-bar',
+                '#loading-bar',
+                '.top-loading-bar',
+                '.top-progress',
+                '.page-progress',
+                '.route-progress',
+                '.spa-progress',
+                '.progress-line',
+                '.loader-line',
+                '[data-loader="top"]',
+                '[data-progress="top"]'
+              ];
+
+              function removeLoaders() {
+                for (var i = 0; i < selectors.length; i++) {
+                  var nodes = document.querySelectorAll(selectors[i]);
+                  for (var j = 0; j < nodes.length; j++) {
+                    nodes[j].remove();
+                  }
+                }
+              }
+
+              removeLoaders();
+
+              if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', removeLoaders, { once: true });
+              }
+
+              [50, 150, 350, 700, 1200, 2000, 3500].forEach(function (ms) {
+                setTimeout(removeLoaders, ms);
+              });
             })();
         """
-
     }
 }
