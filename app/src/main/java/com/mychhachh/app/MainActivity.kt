@@ -8,6 +8,7 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.view.Gravity
 import android.view.View
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
@@ -19,13 +20,12 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
-import androidx.webkit.WebViewCompat
-import androidx.webkit.WebViewFeature
 
 class MainActivity : ComponentActivity() {
 
@@ -79,11 +79,31 @@ class MainActivity : ComponentActivity() {
         window.navigationBarColor = Color.rgb(246, 243, 255)
         WebView.setWebContentsDebuggingEnabled(false)
 
-        webView = WebView(this).apply {
+        webView = WebView(this)
+
+        val root = FrameLayout(this).apply {
             setBackgroundColor(Color.rgb(223, 247, 255))
-            overScrollMode = View.OVER_SCROLL_NEVER
+            addView(
+                webView,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT
+                )
+            )
+            addView(
+                View(this@MainActivity).apply {
+                    setBackgroundColor(Color.rgb(223, 247, 255))
+                    isClickable = false
+                    isFocusable = false
+                },
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    (3 * resources.displayMetrics.density).toInt().coerceAtLeast(1),
+                    Gravity.TOP
+                )
+            )
         }
-        setContentView(webView)
+        setContentView(root)
 
         configureWebView()
 
@@ -127,17 +147,6 @@ class MainActivity : ComponentActivity() {
         webView.isVerticalScrollBarEnabled = false
         webView.isHorizontalScrollBarEnabled = false
 
-        if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
-            var lastLoggedScrollY = Int.MIN_VALUE
-            webView.setOnScrollChangeListener { _, _, scrollY, _, _ ->
-                if (lastLoggedScrollY == Int.MIN_VALUE || kotlin.math.abs(scrollY - lastLoggedScrollY) >= 120) {
-                    Log.i(SCROLL_LOG_TAG, "SCROLL_Y=$scrollY")
-                    lastLoggedScrollY = scrollY
-                }
-            }
-        }
-
-        installDocumentStartLoaderGuard()
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -157,13 +166,11 @@ class MainActivity : ComponentActivity() {
             override fun onPageCommitVisible(view: WebView, url: String) {
                 super.onPageCommitVisible(view, url)
                 Log.i(WEBVIEW_LOG_TAG, "PAGE_COMMIT_VISIBLE $url")
-                applyNativePageFixes(view)
             }
 
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
                 Log.i(WEBVIEW_LOG_TAG, "PAGE_FINISHED $url")
-                applyNativePageFixes(view)
             }
 
             override fun onReceivedError(
@@ -252,23 +259,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun installDocumentStartLoaderGuard() {
-        if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
-            Log.w(WEBVIEW_LOG_TAG, "DOCUMENT_START_SCRIPT unavailable; using page-commit fallback")
-            return
-        }
-
-        WebViewCompat.addDocumentStartJavaScript(
-            webView,
-            LOADER_GUARD_JS,
-            setOf("https://chhachh.pages.dev")
-        )
-    }
-
-    private fun applyNativePageFixes(view: WebView) {
-        view.evaluateJavascript(LOADER_GUARD_JS, null)
-    }
-
     private fun handleUri(uri: Uri): Boolean {
         val scheme = uri.scheme?.lowercase().orEmpty()
         val host = uri.host?.lowercase().orEmpty()
@@ -334,21 +324,6 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val HOME_URL = "https://chhachh.pages.dev/"
         private const val WEBVIEW_LOG_TAG = "MyChhachhWebView"
-        private const val SCROLL_LOG_TAG = "MyChhachhScroll"
-        private const val LOADER_GUARD_JS = """
-            (function(){
-              try {
-                var STYLE_ID='__mc_android_loader_guard';
-                if(document.getElementById(STYLE_ID)) return;
-                var s=document.createElement('style');
-                s.id=STYLE_ID;
-                s.textContent=
-                  '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}' +
-                  'body.weather-theme-ready .top,body.weather-theme-ready .card{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}';
-                (document.head||document.documentElement).appendChild(s);
-              } catch (_) {}
-            })();
-        """
 
     }
 }
