@@ -2,7 +2,7 @@ name: WebView Final Exact Build
 
 on:
   push:
-    branches: [webview-final-exact-native-mask-20260925]
+    branches: [webview-2.0.23-smooth-baseline-mic]
   workflow_dispatch:
 
 permissions:
@@ -43,7 +43,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MY_CHHACHH_WEBVIEW_FINAL_EXACT_NATIVE_MASK
+          name: MY_CHHACHH_2.0.23_SMOOTH_BASELINE_MIC
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
