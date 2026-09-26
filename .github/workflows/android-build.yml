@@ -389,10 +389,11 @@ jobs:
           read -r screen_w screen_h <<< "$physical_size"
           test -n "$screen_w"
           test -n "$screen_h"
-          # Use the left page margin so rapid QA swipes cannot activate cards, posts, tabs or buttons.
-          swipe_x=$((screen_w * 1 / 100))
-          swipe_low=$((screen_h * 82 / 100))
-          swipe_high=$((screen_h * 42 / 100))
+          # Use the center of the feed content, matching a real user fast-scroll gesture.
+          # Start/end below the top navigation controls so the gesture cannot switch tabs.
+          swipe_x=$((screen_w * 50 / 100))
+          swipe_low=$((screen_h * 88 / 100))
+          swipe_high=$((screen_h * 62 / 100))
           echo "screen=${screen_w}x${screen_h} swipe_x=${swipe_x} low=${swipe_low} high=${swipe_high}" | tee "$ART/scroll-coordinates.txt"
           adb logcat -c || true
           adb shell rm -f /sdcard/mychhachh-rapid-scroll.mp4 || true
