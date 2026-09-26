@@ -158,6 +158,7 @@ class MainActivity : ComponentActivity() {
             useWideViewPort = false
             textZoom = 100
             cacheMode = WebSettings.LOAD_DEFAULT
+            offscreenPreRaster = true
             mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
             userAgentString = userAgentString + " MyChhachhAndroid/2.0"
         }
