@@ -259,15 +259,16 @@ jobs:
           adb logcat -c || true
 
           for i in $(seq 1 12); do
-            adb shell input touchscreen swipe "$baseline_x" "$baseline_low" "$baseline_x" "$baseline_high" 120
-            sleep 0.25
+            adb shell input touchscreen swipe "$baseline_x" "$baseline_low" "$baseline_x" "$baseline_high" 100
+            adb exec-out screencap -p > "$ART/baseline-fast-scroll-down-${i}.png"
+            sleep 0.10
             adb shell pidof com.mychhachh.app >/dev/null
           done
           adb exec-out screencap -p > "$ART/baseline-after-scroll-down.png"
           adb logcat -d -v brief -s BaselineScroll:I > "$ART/baseline-scroll-down.txt" || true
           cat "$ART/baseline-scroll-down.txt" || true
           baseline_max_scroll_y="$(grep -oE 'SCROLL_Y=[0-9]+' "$ART/baseline-scroll-down.txt" | cut -d= -f2 | sort -n | tail -1 || true)"
-          if [ -z "$baseline_max_scroll_y" ] || [ "$baseline_max_scroll_y" -lt 50 ]; then
+          if [ -z "$baseline_max_scroll_y" ] || [ "$baseline_max_scroll_y" -lt 300 ]; then
             echo "::error::Baseline produced no meaningful WebView scroll signal"
             exit 1
           fi
@@ -285,8 +286,9 @@ jobs:
           echo "baseline_downward_reset_count=$baseline_reset_count" | tee -a "$ART/baseline-scroll-verdict.txt"
 
           for i in $(seq 1 8); do
-            adb shell input touchscreen swipe "$baseline_x" "$baseline_high" "$baseline_x" "$baseline_low" 120
-            sleep 0.25
+            adb shell input touchscreen swipe "$baseline_x" "$baseline_high" "$baseline_x" "$baseline_low" 100
+            adb exec-out screencap -p > "$ART/baseline-fast-scroll-up-${i}.png"
+            sleep 0.10
             adb shell pidof com.mychhachh.app >/dev/null
           done
           adb exec-out screencap -p > "$ART/baseline-after-scroll.png"
@@ -394,7 +396,7 @@ jobs:
           # Start/end below the top navigation controls so the gesture cannot switch tabs.
           swipe_x=$((screen_w * 50 / 100))
           swipe_low=$((screen_h * 88 / 100))
-          swipe_high=$((screen_h * 62 / 100))
+          swipe_high=$((screen_h * 45 / 100))
           echo "screen=${screen_w}x${screen_h} swipe_x=${swipe_x} low=${swipe_low} high=${swipe_high}" | tee "$ART/scroll-coordinates.txt"
           adb logcat -c || true
           adb shell rm -f /sdcard/mychhachh-rapid-scroll.mp4 || true
@@ -414,7 +416,7 @@ jobs:
           adb logcat -d -v brief -s MyChhachhScroll:I > "$ART/scroll-down.txt" || true
           cat "$ART/scroll-down.txt" || true
           max_scroll_y="$(grep -oE 'SCROLL_Y=[0-9]+' "$ART/scroll-down.txt" | cut -d= -f2 | sort -n | tail -1 || true)"
-          if [ -z "$max_scroll_y" ] || [ "$max_scroll_y" -lt 50 ]; then
+          if [ -z "$max_scroll_y" ] || [ "$max_scroll_y" -lt 300 ]; then
             echo "::error::Fast swipes produced no meaningful WebView scroll signal"
             exit 1
           fi
