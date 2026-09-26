@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: my-chhachh-fullscreen-twa
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -28,12 +32,13 @@ jobs:
         run: |
           set -euo pipefail
           ! grep -R "android.webkit.WebView" -n app/src/main/java
-          ! grep -R "CustomTabsIntent" -n app/src/main/java
           ! grep -R "evaluateJavascript" -n app/src/main/java
+          ! grep -R "createElement('style')" -n app/src/main/java
           grep -R "TrustedWebActivityIntentBuilder" -n app/src/main/java
-          grep -q 'versionName = "2.2.0"' app/build.gradle.kts
+          grep -R "CustomTabsClient" -n app/src/main/java
+          grep -q 'versionName = "2.2.1"' app/build.gradle.kts
 
-      - name: Build TWA APK
+      - name: Build TWA APK and Digital Asset Links file
         shell: bash
         run: |
           set -euo pipefail
@@ -42,13 +47,16 @@ jobs:
           APK=app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
           sha256sum "$APK" | tee apk-sha256.txt
+
           APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           if [ ! -x "$APKSIGNER" ]; then
             APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort | tail -1)"
           fi
+
           "$APKSIGNER" verify --print-certs "$APK" | tee apk-cert.txt
           CERT_SHA256="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' apk-cert.txt | head -1 | tr '[:lower:]' '[:upper:]' | sed 's/../&:/g;s/:$//')"
           test -n "$CERT_SHA256"
+
           cat > assetlinks.json <<EOF
           [
             {
@@ -61,12 +69,13 @@ jobs:
             }
           ]
           EOF
+
           cat assetlinks.json
 
       - name: Upload TWA package
         uses: actions/upload-artifact@v4
         with:
-          name: MY_CHHACHH_2.2.0_FULLSCREEN_TWA
+          name: MY_CHHACHH_2.2.1_FULLSCREEN_TWA
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             apk-sha256.txt
