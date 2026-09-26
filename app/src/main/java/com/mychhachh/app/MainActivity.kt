@@ -82,11 +82,6 @@ class MainActivity : ComponentActivity() {
         webView = WebView(this).apply {
             setBackgroundColor(Color.rgb(223, 247, 255))
             overScrollMode = View.OVER_SCROLL_NEVER
-            // Keep the visible WebView in one stable GPU-backed layer. This targets
-            // Samsung/Chromium checkerboarding where page layers briefly disappear
-            // during fast vertical scrolling.
-            setLayerType(View.LAYER_TYPE_HARDWARE, null)
-            setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
         }
         setContentView(webView)
 
