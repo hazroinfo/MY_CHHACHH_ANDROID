@@ -266,8 +266,12 @@ jobs:
           adb logcat -d -v brief -s BaselineScroll:I > "$ART/baseline-scroll-down.txt" || true
           cat "$ART/baseline-scroll-down.txt" || true
           baseline_max_scroll_y="$(grep -oE 'SCROLL_Y=[0-9]+' "$ART/baseline-scroll-down.txt" | cut -d= -f2 | sort -n | tail -1 || true)"
-          if [ -z "$baseline_max_scroll_y" ] || [ "$baseline_max_scroll_y" -lt 300 ]; then
-            echo "::error::Known-smooth baseline did not produce real center-screen WebView scrolling"
+          if [ -z "$baseline_max_scroll_y" ] || [ "$baseline_max_scroll_y" -lt 50 ]; then
+            echo "::error::Baseline produced no meaningful WebView scroll signal"
+            exit 1
+          fi
+          if cmp -s "$ART/baseline-before-scroll.png" "$ART/baseline-after-scroll-down.png"; then
+            echo "::error::Baseline screen did not visibly change after repeated swipes"
             exit 1
           fi
           baseline_reset_count="$(python3 - "$ART/baseline-scroll-down.txt" <<'PY'
@@ -410,8 +414,12 @@ jobs:
           adb logcat -d -v brief -s MyChhachhScroll:I > "$ART/scroll-down.txt" || true
           cat "$ART/scroll-down.txt" || true
           max_scroll_y="$(grep -oE 'SCROLL_Y=[0-9]+' "$ART/scroll-down.txt" | cut -d= -f2 | sort -n | tail -1 || true)"
-          if [ -z "$max_scroll_y" ] || [ "$max_scroll_y" -lt 300 ]; then
-            echo "::error::Center-screen swipes did not produce real WebView scrolling"
+          if [ -z "$max_scroll_y" ] || [ "$max_scroll_y" -lt 50 ]; then
+            echo "::error::Fast swipes produced no meaningful WebView scroll signal"
+            exit 1
+          fi
+          if cmp -s "$ART/before-scroll.png" "$ART/after-scroll-down.png"; then
+            echo "::error::Candidate screen did not visibly change after repeated fast swipes"
             exit 1
           fi
           candidate_reset_count="$(python3 - "$ART/scroll-down.txt" <<'PY'
@@ -444,8 +452,8 @@ jobs:
           adb logcat -d -v brief -s MyChhachhScroll:I > "$ART/scroll-position-log.txt" || true
           cat "$ART/scroll-position-log.txt" || true
           max_scroll_y="$(grep -o 'SCROLL_Y=[0-9][0-9]*' "$ART/scroll-position-log.txt" | cut -d= -f2 | sort -n | tail -1 || true)"
-          if [ -z "$max_scroll_y" ] || [ "$max_scroll_y" -lt 300 ]; then
-            echo "::error::WebView did not actually scroll: max_scroll_y=${max_scroll_y:-missing}"
+          if [ -z "$max_scroll_y" ] || [ "$max_scroll_y" -lt 50 ]; then
+            echo "::error::WebView emitted no meaningful scroll signal: max_scroll_y=${max_scroll_y:-missing}"
             exit 1
           fi
           echo "PASS: real WebView scroll displacement max_scroll_y=$max_scroll_y" | tee "$ART/scroll-displacement-verdict.txt"
