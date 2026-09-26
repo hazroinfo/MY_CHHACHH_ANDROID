@@ -133,6 +133,41 @@ jobs:
           done
           adb exec-out screencap -p > "$ART/after-scroll-up.png"
 
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          from PIL import Image, ImageChops, ImageStat
+          from pathlib import Path
+
+          art = Path("emulator-artifacts")
+          before = Image.open(art / "before-scroll.png").convert("RGB")
+          down = Image.open(art / "after-scroll-down.png").convert("RGB")
+          up = Image.open(art / "after-scroll-up.png").convert("RGB")
+
+          # Ignore status/navigation bars; require real page-content movement.
+          w, h = before.size
+          box = (0, int(h * 0.08), w, int(h * 0.92))
+          before = before.crop(box)
+          down = down.crop(box)
+          up = up.crop(box)
+
+          def changed_ratio(a, b, threshold=20):
+              diff = ImageChops.difference(a, b).convert("L")
+              hist = diff.histogram()
+              changed = sum(hist[threshold + 1:])
+              total = a.width * a.height
+              return changed / total
+
+          down_ratio = changed_ratio(before, down)
+          up_ratio = changed_ratio(down, up)
+          print(f"SCROLL_VISUAL_CHANGE_DOWN={down_ratio:.4f}")
+          print(f"SCROLL_VISUAL_CHANGE_UP={up_ratio:.4f}")
+
+          if down_ratio < 0.08:
+              raise SystemExit("FAIL: downward swipes did not visibly move page content")
+          if up_ratio < 0.05:
+              raise SystemExit("FAIL: upward swipes did not visibly move page content")
+          PY
+
           pid_after="$(adb shell pidof com.mychhachh.app | tr -d '\r')"
           test -n "$pid_after"
           echo "$pid_after" > "$ART/app-pid-after-scroll.txt"
@@ -151,7 +186,7 @@ jobs:
             exit 1
           fi
 
-          echo "PASS: compile + install + live launch + repeated scroll + screenshots + crash/ANR checks."
+          echo "PASS: compile + install + live launch + verified visual scroll movement + screenshots + crash/ANR checks."
 
       - name: Upload APK
         if: always()
