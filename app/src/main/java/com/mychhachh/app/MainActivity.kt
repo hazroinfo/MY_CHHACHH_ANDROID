@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.widget.FrameLayout
@@ -408,43 +407,6 @@ class MainActivity : ComponentActivity() {
                 };
               }
 
-              var doc = document;
-              var root = doc.documentElement;
-              var scrollClass = 'mc-android-scroll-active';
-              var clearTimer = 0;
-
-              function installScrollStyle() {
-                if (doc.getElementById('mc-android-scroll-style')) return;
-                var style = doc.createElement('style');
-                style.id = 'mc-android-scroll-style';
-                style.textContent =
-                  'html.' + scrollClass + ' :is(.card,.page-heading,.profile-pro-card,.shop-pro-card,.settings-group,.admin-section,.notification-card,.announcement-card,.search-panel,.conversation-list,.chat-panel,.vote-card,.vote-create-card,.top,.community-footer,.side-menu,.faux-search,.global-notice,.reaction-picker,.post-more-menu,.vote-opponent-results,.mc-live-weather-page)' +
-                  '{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;filter:none!important;}' +
-                  'html.' + scrollClass + ' :is(.winner-balloons i,.vote-pulse-orb,#mcLiveWeatherBg,.mc-live-weather-hero-symbol)' +
-                  '{animation-play-state:paused!important;}';
-                (doc.head || root).appendChild(style);
-              }
-
-              function clearScrollModeSoon(delay) {
-                clearTimeout(clearTimer);
-                clearTimer = setTimeout(function () {
-                  root.classList.remove(scrollClass);
-                }, delay || 140);
-              }
-
-              function markScrolling() {
-                installScrollStyle();
-                if (!root.classList.contains(scrollClass)) {
-                  root.classList.add(scrollClass);
-                }
-                clearScrollModeSoon(160);
-              }
-
-              addEventListener('touchstart', markScrolling, { passive: true, capture: true });
-              addEventListener('touchmove', markScrolling, { passive: true, capture: true });
-              addEventListener('scroll', markScrolling, { passive: true, capture: true });
-              addEventListener('touchend', function () { clearScrollModeSoon(140); }, { passive: true, capture: true });
-              addEventListener('touchcancel', function () { clearScrollModeSoon(100); }, { passive: true, capture: true });
             })();
         """
     }
