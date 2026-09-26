@@ -40,7 +40,7 @@ jobs:
             "platforms;android-35" \
             "build-tools;35.0.0" \
             "emulator" \
-            "system-images;android-35;google_apis;x86_64"
+            "system-images;android-35;default;x86_64"
 
       - name: Compile APK
         shell: bash
@@ -69,7 +69,7 @@ jobs:
           rm -rf "$ANDROID_AVD_HOME/MyChhachhQA.avd" "$ANDROID_AVD_HOME/MyChhachhQA.ini"
           echo "no" | "$AVDMANAGER" create avd --force \
             --name MyChhachhQA \
-            --package "system-images;android-35;google_apis;x86_64" \
+            --package "system-images;android-35;default;x86_64" \
             --device "pixel_6"
 
           adb kill-server || true
@@ -84,6 +84,8 @@ jobs:
             -no-snapshot-save \
             -wipe-data \
             -gpu swiftshader_indirect \
+            -cores 4 \
+            -memory 4096 \
             > "$ART/emulator.log" 2>&1 &
           echo $! > "$ART/emulator.pid"
 
@@ -110,7 +112,8 @@ jobs:
           adb logcat -c || true
           adb shell am force-stop com.mychhachh.app || true
           adb shell am start -W -n com.mychhachh.app/.MainActivity | tee "$ART/app-launch.txt"
-          sleep 20
+          # Let the live page and WebView renderer settle before stressing scroll.
+          sleep 40
 
           pid="$(adb shell pidof com.mychhachh.app | tr -d '\r')"
           test -n "$pid"
@@ -118,6 +121,9 @@ jobs:
           adb shell dumpsys window windows | grep -E "mCurrentFocus|mFocusedApp" | tee "$ART/focus-before.txt" || true
           adb exec-out screencap -p > "$ART/before-scroll.png"
           test -s "$ART/before-scroll.png"
+
+          # Isolate scroll-only failures from boot/page-load pressure.
+          adb logcat -c || true
 
           for i in $(seq 1 8); do
             adb shell input swipe 540 1850 540 450 320
