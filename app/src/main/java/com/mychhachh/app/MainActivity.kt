@@ -127,6 +127,16 @@ class MainActivity : ComponentActivity() {
         webView.isVerticalScrollBarEnabled = false
         webView.isHorizontalScrollBarEnabled = false
 
+        if (BuildConfig.DEBUG) {
+            var lastLoggedScrollY = Int.MIN_VALUE
+            webView.setOnScrollChangeListener { _, _, scrollY, _, _ ->
+                if (lastLoggedScrollY == Int.MIN_VALUE || kotlin.math.abs(scrollY - lastLoggedScrollY) >= 120) {
+                    Log.i(SCROLL_LOG_TAG, "SCROLL_Y=$scrollY")
+                    lastLoggedScrollY = scrollY
+                }
+            }
+        }
+
         installDocumentStartLoaderGuard()
 
         webView.webViewClient = object : WebViewClient() {
@@ -324,6 +334,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val HOME_URL = "https://chhachh.pages.dev/"
         private const val WEBVIEW_LOG_TAG = "MyChhachhWebView"
+        private const val SCROLL_LOG_TAG = "MyChhachhScroll"
         private const val LOADER_GUARD_JS = """
             (function(){
               try {
