@@ -326,8 +326,8 @@ jobs:
           read -r screen_w screen_h <<< "$physical_size"
           test -n "$screen_w"
           test -n "$screen_h"
-          # Scroll from the far-right page margin so feed cards cannot interpret QA swipes as clicks.
-          swipe_x=$((screen_w * 99 / 100))
+          # Use the real content area, matching a normal user's vertical swipe.
+          swipe_x=$((screen_w * 50 / 100))
           swipe_low=$((screen_h * 74 / 100))
           swipe_high=$((screen_h * 32 / 100))
           echo "screen=${screen_w}x${screen_h} swipe_x=${swipe_x} low=${swipe_low} high=${swipe_high}" | tee "$ART/scroll-coordinates.txt"
@@ -345,6 +345,15 @@ jobs:
             adb shell pidof com.mychhachh.app >/dev/null
           done
           adb exec-out screencap -p > "$ART/after-scroll-up.png"
+
+          adb logcat -d -v brief -s MyChhachhScroll:I > "$ART/scroll-position-log.txt" || true
+          cat "$ART/scroll-position-log.txt" || true
+          max_scroll_y="$(grep -o 'SCROLL_Y=[0-9][0-9]*' "$ART/scroll-position-log.txt" | cut -d= -f2 | sort -n | tail -1 || true)"
+          if [ -z "$max_scroll_y" ] || [ "$max_scroll_y" -lt 300 ]; then
+            echo "::error::WebView did not actually scroll: max_scroll_y=${max_scroll_y:-missing}"
+            exit 1
+          fi
+          echo "PASS: real WebView scroll displacement max_scroll_y=$max_scroll_y" | tee "$ART/scroll-displacement-verdict.txt"
 
           pid_after="$(adb shell pidof com.mychhachh.app | tr -d '\r')"
           test -n "$pid_after"
