@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
@@ -105,6 +106,9 @@ class MainActivity : ComponentActivity() {
             setBackgroundColor(Color.rgb(223, 247, 255))
             isVerticalScrollBarEnabled = false
             isHorizontalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+            setLayerType(View.LAYER_TYPE_HARDWARE, null)
+            setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
         }
         setContentView(webView)
 
@@ -146,6 +150,7 @@ class MainActivity : ComponentActivity() {
             useWideViewPort = false
             textZoom = 100
             cacheMode = WebSettings.LOAD_DEFAULT
+            offscreenPreRaster = true
             mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
             userAgentString = userAgentString + " MyChhachhAndroid/2.0"
         }
