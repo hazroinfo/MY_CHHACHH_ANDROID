@@ -14,7 +14,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: webview-final-stable-${{ github.ref }}
+  group: webview-final-stable-main-qa-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
