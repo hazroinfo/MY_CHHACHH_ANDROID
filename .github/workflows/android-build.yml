@@ -214,9 +214,9 @@ jobs:
           # Measure the user's known-smooth historical WebView on this exact emulator first.
           physical_size="$(adb shell wm size | tr -d '\r' | tail -1 | sed -E 's/.* ([0-9]+)x([0-9]+).*/\1 \2/')"
           read -r baseline_w baseline_h <<< "$physical_size"
-          baseline_x=$((baseline_w * 50 / 100))
+          baseline_x=$((baseline_w * 25 / 100))
           baseline_low=$((baseline_h * 82 / 100))
-          baseline_high=$((baseline_h * 52 / 100))
+          baseline_high=$((baseline_h * 42 / 100))
 
           adb uninstall com.mychhachh.app >/dev/null 2>&1 || true
           adb install -t "$GITHUB_WORKSPACE/known-smooth-baseline.apk" | tee "$ART/baseline-install.txt"
@@ -388,7 +388,7 @@ jobs:
           # Use a normal in-content swipe lane away from the center tab buttons.
           swipe_x=$((screen_w * 25 / 100))
           swipe_low=$((screen_h * 82 / 100))
-          swipe_high=$((screen_h * 52 / 100))
+          swipe_high=$((screen_h * 42 / 100))
           echo "screen=${screen_w}x${screen_h} swipe_x=${swipe_x} low=${swipe_low} high=${swipe_high}" | tee "$ART/scroll-coordinates.txt"
           adb logcat -c || true
           adb shell rm -f /sdcard/mychhachh-rapid-scroll.mp4 || true
