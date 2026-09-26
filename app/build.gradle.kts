@@ -11,8 +11,8 @@ android {
         applicationId = "com.mychhachh.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 30
-        versionName = "2.0.22"
+        versionCode = 31
+        versionName = "2.0.23"
     }
 
     compileOptions {
