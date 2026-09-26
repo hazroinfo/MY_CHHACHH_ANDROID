@@ -140,9 +140,6 @@ class MainActivity : ComponentActivity() {
             useWideViewPort = false
             textZoom = 100
             cacheMode = WebSettings.LOAD_DEFAULT
-            // Pre-raster the WebView's offscreen content so fast flings are less
-            // likely to expose unpainted/blank tiles. This does not alter website CSS.
-            offscreenPreRaster = true
             mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
             userAgentString = userAgentString + " MyChhachhAndroid/2.0"
         }
@@ -168,13 +165,11 @@ class MainActivity : ComponentActivity() {
             override fun onPageCommitVisible(view: WebView, url: String) {
                 super.onPageCommitVisible(view, url)
                 Log.i(WEBVIEW_LOG_TAG, "PAGE_COMMIT_VISIBLE $url")
-                applyAndroidWebViewPerformanceFix(view)
             }
 
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
                 Log.i(WEBVIEW_LOG_TAG, "PAGE_FINISHED $url")
-                applyAndroidWebViewPerformanceFix(view)
             }
 
             override fun onReceivedError(
@@ -279,10 +274,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun applyAndroidWebViewPerformanceFix(view: WebView) {
-        view.evaluateJavascript(ANDROID_WEBVIEW_PERF_JS, null)
-    }
-
     private fun handleUri(uri: Uri): Boolean {
         val scheme = uri.scheme?.lowercase().orEmpty()
         val host = uri.host?.lowercase().orEmpty()
@@ -348,18 +339,5 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val HOME_URL = "https://chhachh.pages.dev/"
         private const val WEBVIEW_LOG_TAG = "MyChhachhWebView"
-        private const val ANDROID_WEBVIEW_PERF_JS = """
-            (function(){
-              try {
-                var id='__mc_android_webview_perf';
-                if(document.getElementById(id)) return;
-                var s=document.createElement('style');
-                s.id=id;
-                s.textContent='body.weather-theme-ready .top,body.weather-theme-ready .card{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}';
-                (document.head||document.documentElement).appendChild(s);
-              } catch (_) {}
-            })();
-        """
-
     }
 }
