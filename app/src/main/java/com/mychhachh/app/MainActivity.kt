@@ -26,6 +26,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 
 class MainActivity : ComponentActivity() {
 
@@ -164,6 +166,8 @@ class MainActivity : ComponentActivity() {
         webView.isVerticalScrollBarEnabled = false
         webView.isHorizontalScrollBarEnabled = false
 
+        installAudioCaptureCompatAtDocumentStart()
+
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 return handleUri(request.url)
@@ -246,6 +250,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun installAudioCaptureCompatAtDocumentStart() {
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            WebViewCompat.addDocumentStartJavaScript(
+                webView,
+                AUDIO_CAPTURE_COMPAT_JS,
+                setOf("https://chhachh.pages.dev")
+            )
+        }
+    }
+
     private fun handleUri(uri: Uri): Boolean {
         val scheme = uri.scheme?.lowercase().orEmpty()
         val host = uri.host?.lowercase().orEmpty()
@@ -310,5 +324,46 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val HOME_URL = "https://chhachh.pages.dev/"
+
+        private const val AUDIO_CAPTURE_COMPAT_JS = """
+            (function () {
+              var media = navigator.mediaDevices;
+              if (!media || !media.getUserMedia || media.__mcAndroidAudioCompat) return;
+
+              var original = media.getUserMedia.bind(media);
+              media.__mcAndroidAudioCompat = true;
+
+              media.getUserMedia = function (constraints) {
+                var requested = constraints || {};
+                var safe = requested;
+
+                if (requested.audio && typeof requested.audio === 'object') {
+                  safe = { audio: true };
+                  if (Object.prototype.hasOwnProperty.call(requested, 'video')) {
+                    safe.video = requested.video;
+                  }
+                }
+
+                return original(safe).catch(function (firstError) {
+                  var retryable = safe.audio && firstError &&
+                    (firstError.name === 'NotReadableError' ||
+                     firstError.name === 'AbortError' ||
+                     firstError.name === 'OverconstrainedError');
+
+                  if (!retryable) throw firstError;
+
+                  return new Promise(function (resolve) {
+                    setTimeout(resolve, 300);
+                  }).then(function () {
+                    var retry = { audio: true };
+                    if (Object.prototype.hasOwnProperty.call(safe, 'video')) {
+                      retry.video = safe.video;
+                    }
+                    return original(retry);
+                  });
+                });
+              };
+            })();
+        """
     }
 }
