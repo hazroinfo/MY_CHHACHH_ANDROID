@@ -82,6 +82,11 @@ class MainActivity : ComponentActivity() {
         webView = WebView(this).apply {
             setBackgroundColor(Color.rgb(223, 247, 255))
             overScrollMode = View.OVER_SCROLL_NEVER
+            // Keep the visible WebView in one stable GPU-backed layer. This targets
+            // Samsung/Chromium checkerboarding where page layers briefly disappear
+            // during fast vertical scrolling.
+            setLayerType(View.LAYER_TYPE_HARDWARE, null)
+            setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
         }
         setContentView(webView)
 
@@ -332,7 +337,12 @@ class MainActivity : ComponentActivity() {
                 var s=document.createElement('style');
                 s.id=STYLE_ID;
                 s.textContent=
-                  '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}';
+                  '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}' +
+                  'html,body{scroll-behavior:auto!important;overscroll-behavior-y:none!important}' +
+                  '.top,.card,.community-footer,.side-menu,.faux-search,.page-heading,.global-notice{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;will-change:auto!important}' +
+                  '#chhachhWeatherBg{background-attachment:scroll!important;animation:none!important;transform:none!important;will-change:auto!important}' +
+                  '#chhachhWeatherBg *,#chhachhWeatherBg:before,#chhachhWeatherBg:after{animation:none!important;will-change:auto!important}' +
+                  '#mcLiveWeatherStage,#mcLiveWeatherStage *{animation:none!important;transition:none!important;will-change:auto!important}';
                 (document.head||document.documentElement).appendChild(s);
               } catch (_) {}
             })();
