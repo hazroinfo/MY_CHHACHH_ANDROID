@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
                 else -> false
             }
         }.toTypedArray()
-        if (allowed.isNotEmpty()) request.grant(request.resources) else request.deny()
+        if (allowed.isNotEmpty()) request.grant(allowed) else request.deny()
     }
 
     private val locationPermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -147,6 +147,15 @@ class MainActivity : ComponentActivity() {
         webView.isVerticalScrollBarEnabled = false
         webView.isHorizontalScrollBarEnabled = false
 
+        if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            var lastLoggedScrollY = Int.MIN_VALUE
+            webView.setOnScrollChangeListener { _, _, scrollY, _, _ ->
+                if (lastLoggedScrollY == Int.MIN_VALUE || kotlin.math.abs(scrollY - lastLoggedScrollY) >= 120) {
+                    Log.i(SCROLL_LOG_TAG, "SCROLL_Y=$scrollY")
+                    lastLoggedScrollY = scrollY
+                }
+            }
+        }
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -166,11 +175,13 @@ class MainActivity : ComponentActivity() {
             override fun onPageCommitVisible(view: WebView, url: String) {
                 super.onPageCommitVisible(view, url)
                 Log.i(WEBVIEW_LOG_TAG, "PAGE_COMMIT_VISIBLE $url")
+                applyAndroidWebViewPerformanceFix(view)
             }
 
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
                 Log.i(WEBVIEW_LOG_TAG, "PAGE_FINISHED $url")
+                applyAndroidWebViewPerformanceFix(view)
             }
 
             override fun onReceivedError(
@@ -259,6 +270,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun applyAndroidWebViewPerformanceFix(view: WebView) {
+        view.evaluateJavascript(ANDROID_WEBVIEW_PERF_JS, null)
+    }
+
     private fun handleUri(uri: Uri): Boolean {
         val scheme = uri.scheme?.lowercase().orEmpty()
         val host = uri.host?.lowercase().orEmpty()
@@ -324,6 +339,19 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val HOME_URL = "https://chhachh.pages.dev/"
         private const val WEBVIEW_LOG_TAG = "MyChhachhWebView"
+        private const val SCROLL_LOG_TAG = "MyChhachhScroll"
+        private const val ANDROID_WEBVIEW_PERF_JS = """
+            (function(){
+              try {
+                var id='__mc_android_webview_perf';
+                if(document.getElementById(id)) return;
+                var s=document.createElement('style');
+                s.id=id;
+                s.textContent='body.weather-theme-ready .top,body.weather-theme-ready .card{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}';
+                (document.head||document.documentElement).appendChild(s);
+              } catch (_) {}
+            })();
+        """
 
     }
 }
