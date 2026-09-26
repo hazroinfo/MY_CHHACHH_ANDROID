@@ -327,42 +327,124 @@ class MainActivity : ComponentActivity() {
 
         private const val AUDIO_CAPTURE_COMPAT_JS = """
             (function () {
+              if (window.__mcAndroidCompatInstalled) return;
+              window.__mcAndroidCompatInstalled = true;
+
               var media = navigator.mediaDevices;
-              if (!media || !media.getUserMedia || media.__mcAndroidAudioCompat) return;
+              if (media && media.getUserMedia && !media.__mcAndroidAudioCompat) {
+                var originalGetUserMedia = media.getUserMedia.bind(media);
+                media.__mcAndroidAudioCompat = true;
 
-              var original = media.getUserMedia.bind(media);
-              media.__mcAndroidAudioCompat = true;
+                media.getUserMedia = function (constraints) {
+                  var requested = constraints || {};
+                  var safe = requested;
 
-              media.getUserMedia = function (constraints) {
-                var requested = constraints || {};
-                var safe = requested;
-
-                if (requested.audio && typeof requested.audio === 'object') {
-                  safe = { audio: true };
-                  if (Object.prototype.hasOwnProperty.call(requested, 'video')) {
-                    safe.video = requested.video;
+                  if (requested.audio && typeof requested.audio === 'object') {
+                    safe = { audio: true };
+                    if (Object.prototype.hasOwnProperty.call(requested, 'video')) {
+                      safe.video = requested.video;
+                    }
                   }
+
+                  return originalGetUserMedia(safe).catch(function (firstError) {
+                    var retryable = safe.audio && firstError &&
+                      (firstError.name === 'NotReadableError' ||
+                       firstError.name === 'AbortError' ||
+                       firstError.name === 'OverconstrainedError');
+
+                    if (!retryable) throw firstError;
+
+                    return new Promise(function (resolve) {
+                      setTimeout(resolve, 300);
+                    }).then(function () {
+                      var retry = { audio: true };
+                      if (Object.prototype.hasOwnProperty.call(safe, 'video')) {
+                        retry.video = safe.video;
+                      }
+                      return originalGetUserMedia(retry);
+                    });
+                  });
+                };
+              }
+
+              if (window.FormData && !FormData.prototype.__mcAudioMimeCompat) {
+                var originalAppend = FormData.prototype.append;
+                try {
+                  Object.defineProperty(FormData.prototype, '__mcAudioMimeCompat', {
+                    value: true,
+                    configurable: false,
+                    enumerable: false
+                  });
+                } catch (_) {
+                  FormData.prototype.__mcAudioMimeCompat = true;
                 }
 
-                return original(safe).catch(function (firstError) {
-                  var retryable = safe.audio && firstError &&
-                    (firstError.name === 'NotReadableError' ||
-                     firstError.name === 'AbortError' ||
-                     firstError.name === 'OverconstrainedError');
-
-                  if (!retryable) throw firstError;
-
-                  return new Promise(function (resolve) {
-                    setTimeout(resolve, 300);
-                  }).then(function () {
-                    var retry = { audio: true };
-                    if (Object.prototype.hasOwnProperty.call(safe, 'video')) {
-                      retry.video = safe.video;
+                FormData.prototype.append = function (name, value, fileName) {
+                  try {
+                    if (value && typeof Blob !== 'undefined' && value instanceof Blob) {
+                      var originalType = String(value.type || '');
+                      if (/^audio\//i.test(originalType) && originalType.indexOf(';') !== -1) {
+                        var normalizedType = originalType.split(';')[0].trim().toLowerCase();
+                        if (typeof File !== 'undefined' && value instanceof File) {
+                          value = new File(
+                            [value],
+                            value.name || ('voice-' + Date.now()),
+                            {
+                              type: normalizedType,
+                              lastModified: value.lastModified || Date.now()
+                            }
+                          );
+                        } else {
+                          value = new Blob([value], { type: normalizedType });
+                        }
+                      }
                     }
-                    return original(retry);
-                  });
-                });
-              };
+                  } catch (_) {}
+
+                  if (arguments.length >= 3 && fileName !== undefined) {
+                    return originalAppend.call(this, name, value, fileName);
+                  }
+                  return originalAppend.call(this, name, value);
+                };
+              }
+
+              var doc = document;
+              var root = doc.documentElement;
+              var scrollClass = 'mc-android-scroll-active';
+              var clearTimer = 0;
+
+              function installScrollStyle() {
+                if (doc.getElementById('mc-android-scroll-style')) return;
+                var style = doc.createElement('style');
+                style.id = 'mc-android-scroll-style';
+                style.textContent =
+                  'html.' + scrollClass + ' :is(.card,.page-heading,.profile-pro-card,.shop-pro-card,.settings-group,.admin-section,.notification-card,.announcement-card,.search-panel,.conversation-list,.chat-panel,.vote-card,.vote-create-card,.top,.community-footer,.side-menu,.faux-search,.global-notice,.reaction-picker,.post-more-menu,.vote-opponent-results,.mc-live-weather-page)' +
+                  '{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;filter:none!important;}' +
+                  'html.' + scrollClass + ' :is(.winner-balloons i,.vote-pulse-orb,#mcLiveWeatherBg,.mc-live-weather-hero-symbol)' +
+                  '{animation-play-state:paused!important;}';
+                (doc.head || root).appendChild(style);
+              }
+
+              function clearScrollModeSoon(delay) {
+                clearTimeout(clearTimer);
+                clearTimer = setTimeout(function () {
+                  root.classList.remove(scrollClass);
+                }, delay || 140);
+              }
+
+              function markScrolling() {
+                installScrollStyle();
+                if (!root.classList.contains(scrollClass)) {
+                  root.classList.add(scrollClass);
+                }
+                clearScrollModeSoon(160);
+              }
+
+              addEventListener('touchstart', markScrolling, { passive: true, capture: true });
+              addEventListener('touchmove', markScrolling, { passive: true, capture: true });
+              addEventListener('scroll', markScrolling, { passive: true, capture: true });
+              addEventListener('touchend', function () { clearScrollModeSoon(140); }, { passive: true, capture: true });
+              addEventListener('touchcancel', function () { clearScrollModeSoon(100); }, { passive: true, capture: true });
             })();
         """
     }
