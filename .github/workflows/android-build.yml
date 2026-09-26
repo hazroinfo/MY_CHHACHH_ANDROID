@@ -215,8 +215,8 @@ jobs:
           physical_size="$(adb shell wm size | tr -d '\r' | tail -1 | sed -E 's/.* ([0-9]+)x([0-9]+).*/\1 \2/')"
           read -r baseline_w baseline_h <<< "$physical_size"
           baseline_x=$((baseline_w * 50 / 100))
-          baseline_low=$((baseline_h * 74 / 100))
-          baseline_high=$((baseline_h * 32 / 100))
+          baseline_low=$((baseline_h * 82 / 100))
+          baseline_high=$((baseline_h * 52 / 100))
 
           adb uninstall com.mychhachh.app >/dev/null 2>&1 || true
           adb install -t "$GITHUB_WORKSPACE/known-smooth-baseline.apk" | tee "$ART/baseline-install.txt"
@@ -387,8 +387,8 @@ jobs:
           test -n "$screen_h"
           # Use the real content area, matching a normal user's vertical swipe.
           swipe_x=$((screen_w * 50 / 100))
-          swipe_low=$((screen_h * 74 / 100))
-          swipe_high=$((screen_h * 32 / 100))
+          swipe_low=$((screen_h * 82 / 100))
+          swipe_high=$((screen_h * 52 / 100))
           echo "screen=${screen_w}x${screen_h} swipe_x=${swipe_x} low=${swipe_low} high=${swipe_high}" | tee "$ART/scroll-coordinates.txt"
           adb logcat -c || true
 
@@ -450,6 +450,11 @@ jobs:
 
           adb logcat -d -v threadtime > "$ART/logcat.txt" || true
           adb logcat -d -v brief -s MyChhachhWebView:I > "$ART/webview-during-scroll.txt" || true
+          if grep -E -q 'mode=(shops|following)|PAGE_FINISHED https://chhachh\.pages\.dev/index\.php\?mode=' "$ART/webview-during-scroll.txt"; then
+            echo "::error::Fast-scroll QA accidentally changed feed/tab instead of only scrolling"
+            cat "$ART/webview-during-scroll.txt" || true
+            exit 1
+          fi
           adb shell dumpsys activity exit-info com.mychhachh.app > "$ART/exit-info.txt" || true
           adb shell dumpsys gfxinfo com.mychhachh.app > "$ART/gfxinfo-after-scroll.txt" || true
           grep -E "Total frames rendered:|Janky frames:|50th percentile:|90th percentile:|95th percentile:|99th percentile:|Number Missed Vsync:|Number Slow UI thread:|Number Slow issue draw commands:|Number Frame deadline missed:" "$ART/gfxinfo-after-scroll.txt" > "$ART/scroll-frame-summary.txt" || true
