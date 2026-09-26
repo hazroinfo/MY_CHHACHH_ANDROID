@@ -23,6 +23,8 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 
 class MainActivity : ComponentActivity() {
 
@@ -78,11 +80,6 @@ class MainActivity : ComponentActivity() {
 
         webView = WebView(this).apply {
             setBackgroundColor(Color.rgb(223, 247, 255))
-            // Keep one compositor surface. Cover only the page's top 3dp loading strip
-            // with native WebView padding instead of a sibling overlay view.
-            val topGuardPx = (3 * resources.displayMetrics.density).toInt().coerceAtLeast(1)
-            setPadding(0, topGuardPx, 0, 0)
-            clipToPadding = true
         }
         setContentView(webView)
 
@@ -128,6 +125,8 @@ class MainActivity : ComponentActivity() {
         webView.isVerticalScrollBarEnabled = false
         webView.isHorizontalScrollBarEnabled = false
 
+        installAndroidWebViewStabilityStyle()
+
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 return handleUri(request.url)
@@ -146,11 +145,13 @@ class MainActivity : ComponentActivity() {
             override fun onPageCommitVisible(view: WebView, url: String) {
                 super.onPageCommitVisible(view, url)
                 Log.i(WEBVIEW_LOG_TAG, "PAGE_COMMIT_VISIBLE $url")
+                applyAndroidWebViewStabilityStyle(view)
             }
 
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
                 Log.i(WEBVIEW_LOG_TAG, "PAGE_FINISHED $url")
+                applyAndroidWebViewStabilityStyle(view)
             }
 
             override fun onReceivedError(
@@ -255,6 +256,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun installAndroidWebViewStabilityStyle() {
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            WebViewCompat.addDocumentStartJavaScript(
+                webView,
+                ANDROID_WEBVIEW_STABILITY_JS,
+                setOf("https://chhachh.pages.dev")
+            )
+        }
+    }
+
+    private fun applyAndroidWebViewStabilityStyle(view: WebView) {
+        view.evaluateJavascript(ANDROID_WEBVIEW_STABILITY_JS, null)
+    }
+
     private fun handleUri(uri: Uri): Boolean {
         val scheme = uri.scheme?.lowercase().orEmpty()
         val host = uri.host?.lowercase().orEmpty()
@@ -320,5 +335,23 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val HOME_URL = "https://chhachh.pages.dev/"
         private const val WEBVIEW_LOG_TAG = "MyChhachhWebView"
+        private const val ANDROID_WEBVIEW_STABILITY_JS = """
+            (function(){
+              try {
+                var id='__mc_android_webview_stability';
+                if(document.getElementById(id)) return;
+                var s=document.createElement('style');
+                s.id=id;
+                s.textContent=
+                  '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}' +
+                  'html body.weather-theme-ready{background-attachment:scroll!important}' +
+                  'html body.weather-theme-ready .top,html body.weather-theme-ready .card,html body.weather-theme-ready .page-heading,html body.weather-theme-ready .community-footer{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}' +
+                  'html #chhachhWeatherBg{transform:none!important;will-change:auto!important}' +
+                  'html #chhachhWeatherBg .aurora,html #chhachhWeatherBg .clouds,html #chhachhWeatherBg .fog,html #chhachhWeatherBg .rain,html #chhachhWeatherBg .stars,html #chhachhWeatherBg .sunGlow,html #chhachhWeatherBg .moonGlow,html #chhachhWeatherBg .stormflash{animation:none!important;transition:none!important;filter:none!important;transform:none!important;will-change:auto!important}';
+                (document.head||document.documentElement).appendChild(s);
+              } catch (_) {}
+            })();
+        """
+
     }
 }
