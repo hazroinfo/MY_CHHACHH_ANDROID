@@ -151,6 +151,7 @@ class MainActivity : ComponentActivity() {
         }
 
         installSingleLoaderStyleAtDocumentStart()
+        installAudioCaptureCompatAtDocumentStart()
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(
@@ -278,6 +279,16 @@ class MainActivity : ComponentActivity() {
                 setOf("https://chhachh.pages.dev")
             )
             documentStartLoaderStyleInstalled = true
+        }
+    }
+
+    private fun installAudioCaptureCompatAtDocumentStart() {
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            WebViewCompat.addDocumentStartJavaScript(
+                webView,
+                AUDIO_CAPTURE_COMPAT_JS,
+                setOf("https://chhachh.pages.dev")
+            )
         }
     }
 
