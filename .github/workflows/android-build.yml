@@ -177,7 +177,7 @@ jobs:
           # Measure the user's known-smooth historical WebView on this exact emulator first.
           physical_size="$(adb shell wm size | tr -d '\r' | tail -1 | sed -E 's/.* ([0-9]+)x([0-9]+).*/\1 \2/')"
           read -r baseline_w baseline_h <<< "$physical_size"
-          baseline_x=$((baseline_w * 99 / 100))
+          baseline_x=$((baseline_w * 50 / 100))
           baseline_low=$((baseline_h * 74 / 100))
           baseline_high=$((baseline_h * 32 / 100))
 
@@ -343,6 +343,15 @@ jobs:
           done
           adb exec-out screencap -p > "$ART/after-scroll-down.png"
 
+          # Prove the WebView itself actually moved. A swipe command alone is not a scroll test.
+          adb logcat -d -v brief -s MyChhachhScroll:I > "$ART/scroll-y-proof.txt" || true
+          cat "$ART/scroll-y-proof.txt" || true
+          max_scroll_y="$(grep -oE "SCROLL_Y=[0-9]+" "$ART/scroll-y-proof.txt" | cut -d= -f2 | sort -n | tail -1 || true)"
+          if [ -z "$max_scroll_y" ] || [ "$max_scroll_y" -lt 300 ]; then
+            echo "::error::Center-screen swipes did not produce real WebView scrolling"
+            exit 1
+          fi
+
           for i in $(seq 1 5); do
             adb shell input touchscreen swipe "$swipe_x" "$swipe_high" "$swipe_x" "$swipe_low" 240
             sleep 1
@@ -459,7 +468,7 @@ jobs:
             exit 1
           fi
 
-          echo "PASS: install, verified live My Chhachh WebView load, process-alive, repeated scroll, frame gate, screenshots and crash/ANR checks completed."
+          echo "PASS: live My Chhachh load + center-screen real WebView scrollY proof + process-alive + frame gate + screenshots + crash/ANR checks completed."
 
       - name: Upload fresh APK
         if: always()
