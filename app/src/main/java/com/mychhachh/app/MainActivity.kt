@@ -140,6 +140,9 @@ class MainActivity : ComponentActivity() {
             useWideViewPort = false
             textZoom = 100
             cacheMode = WebSettings.LOAD_DEFAULT
+            // Pre-raster the WebView's offscreen content so fast flings are less
+            // likely to expose unpainted/blank tiles. This does not alter website CSS.
+            offscreenPreRaster = true
             mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
             userAgentString = userAgentString + " MyChhachhAndroid/2.0"
         }
