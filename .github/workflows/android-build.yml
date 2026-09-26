@@ -1,4 +1,4 @@
-# clean single-pass WebView 2.0.22
+# clean single-pass WebView 2.0.23
 name: My Chhachh Smooth WebView Build
 
 on:
@@ -37,7 +37,7 @@ jobs:
           ! grep -q "org.jetbrains.kotlin.plugin.compose" app/build.gradle.kts
           ! grep -q "androidx.compose" app/build.gradle.kts
           ! grep -q "ANDROID_WEBVIEW_STABILITY_JS" app/src/main/java/com/mychhachh/app/MainActivity.kt
-          grep -q 'versionName = "2.0.22"' app/build.gradle.kts
+          grep -q 'versionName = "2.0.23"' app/build.gradle.kts
           grep -q 'android.permission.RECORD_AUDIO' app/src/main/AndroidManifest.xml
           grep -q 'android.permission.MODIFY_AUDIO_SETTINGS' app/src/main/AndroidManifest.xml
           ! grep -q 'startupMicPermission' app/src/main/java/com/mychhachh/app/MainActivity.kt
@@ -63,7 +63,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MY_CHHACHH_2.0.22_SCROLL_RESTORED
+          name: MY_CHHACHH_2.0.23_SCROLL_RESTORED
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             apk-sha256.txt
