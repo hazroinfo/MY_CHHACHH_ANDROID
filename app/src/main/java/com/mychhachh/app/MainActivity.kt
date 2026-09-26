@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -106,11 +107,9 @@ class MainActivity : ComponentActivity() {
             setBackgroundColor(Color.rgb(223, 247, 255))
             isVerticalScrollBarEnabled = false
             isHorizontalScrollBarEnabled = false
-            overScrollMode = View.OVER_SCROLL_NEVER
-            setLayerType(View.LAYER_TYPE_HARDWARE, null)
-            setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
         }
         setContentView(webView)
+        requestHighRefreshRate()
 
         configureWebView()
 
@@ -125,6 +124,20 @@ class MainActivity : ComponentActivity() {
                 if (webView.canGoBack()) webView.goBack() else finish()
             }
         })
+    }
+
+    private fun requestHighRefreshRate() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        webView.post {
+            val maxRate = webView.display
+                ?.supportedModes
+                ?.maxOfOrNull { it.refreshRate }
+                ?: 0f
+
+            if (maxRate > 0f) {
+                webView.setFrameRate(maxRate, View.FRAME_RATE_COMPATIBILITY_DEFAULT)
+            }
+        }
     }
 
     private fun configureWebView() {
@@ -150,7 +163,6 @@ class MainActivity : ComponentActivity() {
             useWideViewPort = false
             textZoom = 100
             cacheMode = WebSettings.LOAD_DEFAULT
-            offscreenPreRaster = true
             mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
             userAgentString = userAgentString + " MyChhachhAndroid/2.0"
         }
@@ -402,7 +414,10 @@ class MainActivity : ComponentActivity() {
                 '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,' +
                 '#loadingBar,#loading-bar,.loading-bar,.top-loading-bar,.top-progress,' +
                 '.page-progress,.route-progress,.spa-progress,[data-loader="top"],[data-progress="top"]' +
-                '{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;}';
+                '{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;}' +
+                'html,body{scroll-behavior:auto!important;overscroll-behavior-y:none!important;}' +
+                '.top,.card,.community-footer,.side-menu,.faux-search,.page-heading,.global-notice' +
+                '{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;will-change:auto!important;}';
 
               (document.head || document.documentElement).appendChild(style);
             })();
