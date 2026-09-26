@@ -147,16 +147,6 @@ class MainActivity : ComponentActivity() {
         webView.isVerticalScrollBarEnabled = false
         webView.isHorizontalScrollBarEnabled = false
 
-        if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
-            var lastLoggedScrollY = Int.MIN_VALUE
-            webView.setOnScrollChangeListener { _, _, scrollY, _, _ ->
-                if (lastLoggedScrollY == Int.MIN_VALUE || kotlin.math.abs(scrollY - lastLoggedScrollY) >= 120) {
-                    Log.i(SCROLL_LOG_TAG, "SCROLL_Y=$scrollY")
-                    lastLoggedScrollY = scrollY
-                }
-            }
-        }
-
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 return handleUri(request.url)
@@ -339,7 +329,6 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val HOME_URL = "https://chhachh.pages.dev/"
         private const val WEBVIEW_LOG_TAG = "MyChhachhWebView"
-        private const val SCROLL_LOG_TAG = "MyChhachhScroll"
         private const val ANDROID_WEBVIEW_PERF_JS = """
             (function(){
               try {
