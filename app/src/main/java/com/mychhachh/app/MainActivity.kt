@@ -230,13 +230,29 @@ class MainActivity : ComponentActivity() {
                     }
 
                     if (needed.isEmpty()) {
-                        request.grant(request.resources)
+                        val allowed = request.resources.filter { resource ->
+                            when (resource) {
+                                PermissionRequest.RESOURCE_AUDIO_CAPTURE ->
+                                    ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                                PermissionRequest.RESOURCE_VIDEO_CAPTURE ->
+                                    ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                                else -> false
+                            }
+                        }.toTypedArray()
+                        if (allowed.isNotEmpty()) request.grant(allowed) else request.deny()
                     } else {
                         pendingMediaRequest?.deny()
                         pendingMediaRequest = request
                         mediaPermissions.launch(needed.distinct().toTypedArray())
                     }
                 }
+            }
+
+            override fun onPermissionRequestCanceled(request: PermissionRequest) {
+                if (pendingMediaRequest === request) {
+                    pendingMediaRequest = null
+                }
+                super.onPermissionRequestCanceled(request)
             }
 
             override fun onGeolocationPermissionsShowPrompt(
