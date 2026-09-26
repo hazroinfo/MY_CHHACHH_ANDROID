@@ -214,7 +214,7 @@ jobs:
           # Measure the user's known-smooth historical WebView on this exact emulator first.
           physical_size="$(adb shell wm size | tr -d '\r' | tail -1 | sed -E 's/.* ([0-9]+)x([0-9]+).*/\1 \2/')"
           read -r baseline_w baseline_h <<< "$physical_size"
-          baseline_x=$((baseline_w * 25 / 100))
+          baseline_x=$((baseline_w * 1 / 100))
           baseline_low=$((baseline_h * 82 / 100))
           baseline_high=$((baseline_h * 42 / 100))
 
@@ -389,8 +389,8 @@ jobs:
           read -r screen_w screen_h <<< "$physical_size"
           test -n "$screen_w"
           test -n "$screen_h"
-          # Use a normal in-content swipe lane away from the center tab buttons.
-          swipe_x=$((screen_w * 25 / 100))
+          # Use the left page margin so rapid QA swipes cannot activate cards, posts, tabs or buttons.
+          swipe_x=$((screen_w * 1 / 100))
           swipe_low=$((screen_h * 82 / 100))
           swipe_high=$((screen_h * 42 / 100))
           echo "screen=${screen_w}x${screen_h} swipe_x=${swipe_x} low=${swipe_low} high=${swipe_high}" | tee "$ART/scroll-coordinates.txt"
