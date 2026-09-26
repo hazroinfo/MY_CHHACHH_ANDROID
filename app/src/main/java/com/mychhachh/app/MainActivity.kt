@@ -17,7 +17,6 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.view.View
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -104,9 +103,6 @@ class MainActivity : ComponentActivity() {
 
         webView = WebView(this).apply {
             setBackgroundColor(Color.rgb(223, 247, 255))
-            setLayerType(View.LAYER_TYPE_HARDWARE, null)
-            overScrollMode = View.OVER_SCROLL_NEVER
-            setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
             isVerticalScrollBarEnabled = false
             isHorizontalScrollBarEnabled = false
         }
@@ -150,7 +146,6 @@ class MainActivity : ComponentActivity() {
             useWideViewPort = false
             textZoom = 100
             cacheMode = WebSettings.LOAD_DEFAULT
-            offscreenPreRaster = false
             mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
             userAgentString = userAgentString + " MyChhachhAndroid/2.0"
         }
