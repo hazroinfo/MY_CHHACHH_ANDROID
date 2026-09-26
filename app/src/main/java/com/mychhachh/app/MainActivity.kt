@@ -402,5 +402,46 @@ class MainActivity : ComponentActivity() {
               (document.head || document.documentElement).appendChild(style);
             })();
         """
+
+        private const val AUDIO_CAPTURE_COMPAT_JS = """
+            (function () {
+              var media = navigator.mediaDevices;
+              if (!media || !media.getUserMedia || media.__mcAndroidAudioCompat) return;
+
+              var original = media.getUserMedia.bind(media);
+              media.__mcAndroidAudioCompat = true;
+
+              media.getUserMedia = function (constraints) {
+                var requested = constraints || {};
+                var safe = requested;
+
+                if (requested.audio && typeof requested.audio === 'object') {
+                  safe = { audio: true };
+                  if (Object.prototype.hasOwnProperty.call(requested, 'video')) {
+                    safe.video = requested.video;
+                  }
+                }
+
+                return original(safe).catch(function (firstError) {
+                  var retryable = safe.audio && firstError &&
+                    (firstError.name === 'NotReadableError' ||
+                     firstError.name === 'AbortError' ||
+                     firstError.name === 'OverconstrainedError');
+
+                  if (!retryable) throw firstError;
+
+                  return new Promise(function (resolve) {
+                    setTimeout(resolve, 300);
+                  }).then(function () {
+                    var retry = { audio: true };
+                    if (Object.prototype.hasOwnProperty.call(safe, 'video')) {
+                      retry.video = safe.video;
+                    }
+                    return original(retry);
+                  });
+                });
+              };
+            })();
+        """
     }
 }
