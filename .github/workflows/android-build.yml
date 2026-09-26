@@ -385,12 +385,16 @@ jobs:
           read -r screen_w screen_h <<< "$physical_size"
           test -n "$screen_w"
           test -n "$screen_h"
-          # Use the real content area, matching a normal user's vertical swipe.
-          swipe_x=$((screen_w * 50 / 100))
+          # Use a normal in-content swipe lane away from the center tab buttons.
+          swipe_x=$((screen_w * 25 / 100))
           swipe_low=$((screen_h * 82 / 100))
           swipe_high=$((screen_h * 52 / 100))
           echo "screen=${screen_w}x${screen_h} swipe_x=${swipe_x} low=${swipe_low} high=${swipe_high}" | tee "$ART/scroll-coordinates.txt"
           adb logcat -c || true
+          adb shell rm -f /sdcard/mychhachh-rapid-scroll.mp4 || true
+          adb shell screenrecord --bit-rate 8000000 --time-limit 20 /sdcard/mychhachh-rapid-scroll.mp4 >/dev/null 2>&1 &
+          screenrecord_host_pid=$!
+          sleep 1
 
           for i in $(seq 1 12); do
             adb shell input touchscreen swipe "$swipe_x" "$swipe_low" "$swipe_x" "$swipe_high" 120
@@ -433,6 +437,9 @@ jobs:
             fi
           done
           adb exec-out screencap -p > "$ART/after-scroll-up.png"
+          wait "$screenrecord_host_pid" || true
+          adb pull /sdcard/mychhachh-rapid-scroll.mp4 "$ART/rapid-scroll.mp4" >/dev/null 2>&1 || true
+          test -s "$ART/rapid-scroll.mp4"
 
           adb logcat -d -v brief -s MyChhachhScroll:I > "$ART/scroll-position-log.txt" || true
           cat "$ART/scroll-position-log.txt" || true
