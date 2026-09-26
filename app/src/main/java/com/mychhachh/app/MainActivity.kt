@@ -343,7 +343,8 @@ class MainActivity : ComponentActivity() {
                 var s=document.createElement('style');
                 s.id=STYLE_ID;
                 s.textContent=
-                  '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}';
+                  '#mcSmoothRouteBar,#mcSmoothV3Bar,#nprogress,.nprogress,.pace,.pace-progress,#loadingBar,.loading-bar,#loading-bar,.top-loading-bar,.top-progress,.page-progress,.route-progress,.spa-progress,.progress-line,.loader-line,[data-loader="top"],[data-progress="top"]{display:none!important;opacity:0!important;visibility:hidden!important;height:0!important;max-height:0!important;border:0!important;box-shadow:none!important;pointer-events:none!important}' +
+                  'body.weather-theme-ready .top,body.weather-theme-ready .card{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}';
                 (document.head||document.documentElement).appendChild(s);
               } catch (_) {}
             })();
