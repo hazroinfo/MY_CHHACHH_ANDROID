@@ -1,4 +1,4 @@
-name: My Chhachh Chrome Engine Test
+name: My Chhachh Fullscreen TWA Build
 
 on:
   push:
@@ -23,30 +23,53 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      - name: Verify browser engine only
+      - name: Verify TWA only
         shell: bash
         run: |
           set -euo pipefail
           ! grep -R "android.webkit.WebView" -n app/src/main/java
+          ! grep -R "CustomTabsIntent" -n app/src/main/java
           ! grep -R "evaluateJavascript" -n app/src/main/java
-          ! grep -R "createElement('style')" -n app/src/main/java
-          grep -q 'androidx.browser:browser' app/build.gradle.kts
-          grep -q 'versionName = "2.1.0"' app/build.gradle.kts
+          grep -R "TrustedWebActivityIntentBuilder" -n app/src/main/java
+          grep -q 'versionName = "2.2.0"' app/build.gradle.kts
 
-      - name: Build Chrome engine test APK
+      - name: Build TWA APK
         shell: bash
         run: |
           set -euo pipefail
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace clean assembleDebug
-          test -s app/build/outputs/apk/debug/app-debug.apk
-          sha256sum app/build/outputs/apk/debug/app-debug.apk | tee apk-sha256.txt
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          sha256sum "$APK" | tee apk-sha256.txt
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          if [ ! -x "$APKSIGNER" ]; then
+            APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort | tail -1)"
+          fi
+          "$APKSIGNER" verify --print-certs "$APK" | tee apk-cert.txt
+          CERT_SHA256="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' apk-cert.txt | head -1 | tr '[:lower:]' '[:upper:]' | sed 's/../&:/g;s/:$//')"
+          test -n "$CERT_SHA256"
+          cat > assetlinks.json <<EOF
+          [
+            {
+              "relation": ["delegate_permission/common.handle_all_urls"],
+              "target": {
+                "namespace": "android_app",
+                "package_name": "com.mychhachh.app",
+                "sha256_cert_fingerprints": ["$CERT_SHA256"]
+              }
+            }
+          ]
+          EOF
+          cat assetlinks.json
 
-      - name: Upload APK
+      - name: Upload TWA package
         uses: actions/upload-artifact@v4
         with:
-          name: MY_CHHACHH_2.1.0_CHROME_ENGINE_TEST
+          name: MY_CHHACHH_2.2.0_FULLSCREEN_TWA
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             apk-sha256.txt
+            apk-cert.txt
+            assetlinks.json
           if-no-files-found: error
