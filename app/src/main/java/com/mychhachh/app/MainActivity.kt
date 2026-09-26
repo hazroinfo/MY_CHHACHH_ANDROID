@@ -8,8 +8,6 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
-import android.view.Gravity
-import android.view.View
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
@@ -20,7 +18,6 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -79,31 +76,15 @@ class MainActivity : ComponentActivity() {
         window.navigationBarColor = Color.rgb(246, 243, 255)
         WebView.setWebContentsDebuggingEnabled(false)
 
-        webView = WebView(this)
-
-        val root = FrameLayout(this).apply {
+        webView = WebView(this).apply {
             setBackgroundColor(Color.rgb(223, 247, 255))
-            addView(
-                webView,
-                FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.MATCH_PARENT
-                )
-            )
-            addView(
-                View(this@MainActivity).apply {
-                    setBackgroundColor(Color.rgb(223, 247, 255))
-                    isClickable = false
-                    isFocusable = false
-                },
-                FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    (3 * resources.displayMetrics.density).toInt().coerceAtLeast(1),
-                    Gravity.TOP
-                )
-            )
+            // Keep one compositor surface. Cover only the page's top 3dp loading strip
+            // with native WebView padding instead of a sibling overlay view.
+            val topGuardPx = (3 * resources.displayMetrics.density).toInt().coerceAtLeast(1)
+            setPadding(0, topGuardPx, 0, 0)
+            clipToPadding = true
         }
-        setContentView(root)
+        setContentView(webView)
 
         configureWebView()
 
