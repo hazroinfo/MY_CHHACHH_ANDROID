@@ -83,6 +83,21 @@ jobs:
               if needle not in s:
                   raise SystemExit("baseline WebViewClient anchor not found")
               s = s.replace(needle, addition)
+          if "BaselineScroll" not in s:
+              scroll_anchor = "        webView.isVerticalScrollBarEnabled = false\n        webView.isHorizontalScrollBarEnabled = false\n"
+              scroll_addition = scroll_anchor + """
+          
+                  var baselineLastScrollY = Int.MIN_VALUE
+                  webView.setOnScrollChangeListener { _, _, scrollY, _, _ ->
+                      if (baselineLastScrollY == Int.MIN_VALUE || kotlin.math.abs(scrollY - baselineLastScrollY) >= 120) {
+                          Log.i("BaselineScroll", "SCROLL_Y=$scrollY")
+                          baselineLastScrollY = scrollY
+                      }
+                  }
+          """
+              if scroll_anchor not in s:
+                  raise SystemExit("baseline scroll anchor not found")
+              s = s.replace(scroll_anchor, scroll_addition)
           p.write_text(s)
           PY
 
@@ -218,12 +233,30 @@ jobs:
           test -n "$baseline_pid"
           adb exec-out screencap -p > "$ART/baseline-before-scroll.png"
           adb shell dumpsys gfxinfo com.mychhachh.app reset >/dev/null 2>&1 || true
+          adb logcat -c || true
 
           for i in $(seq 1 8); do
             adb shell input touchscreen swipe "$baseline_x" "$baseline_low" "$baseline_x" "$baseline_high" 240
             sleep 1
             adb shell pidof com.mychhachh.app >/dev/null
           done
+          adb exec-out screencap -p > "$ART/baseline-after-scroll-down.png"
+          adb logcat -d -v brief -s BaselineScroll:I > "$ART/baseline-scroll-down.txt" || true
+          cat "$ART/baseline-scroll-down.txt" || true
+          baseline_max_scroll_y="$(grep -oE 'SCROLL_Y=[0-9]+' "$ART/baseline-scroll-down.txt" | cut -d= -f2 | sort -n | tail -1 || true)"
+          if [ -z "$baseline_max_scroll_y" ] || [ "$baseline_max_scroll_y" -lt 300 ]; then
+            echo "::error::Known-smooth baseline did not produce real center-screen WebView scrolling"
+            exit 1
+          fi
+          baseline_reset_count="$(python3 - "$ART/baseline-scroll-down.txt" <<'PY'
+          import re, sys
+          vals = [int(x) for x in re.findall(r'SCROLL_Y=(\d+)', open(sys.argv[1], encoding='utf-8', errors='ignore').read())]
+          print(sum(1 for a,b in zip(vals, vals[1:]) if a >= 300 and b <= 100))
+          PY
+          )"
+          echo "baseline_max_scroll_y=$baseline_max_scroll_y" | tee "$ART/baseline-scroll-verdict.txt"
+          echo "baseline_downward_reset_count=$baseline_reset_count" | tee -a "$ART/baseline-scroll-verdict.txt"
+
           for i in $(seq 1 5); do
             adb shell input touchscreen swipe "$baseline_x" "$baseline_high" "$baseline_x" "$baseline_low" 240
             sleep 1
@@ -336,16 +369,6 @@ jobs:
           swipe_high=$((screen_h * 32 / 100))
           echo "screen=${screen_w}x${screen_h} swipe_x=${swipe_x} low=${swipe_low} high=${swipe_high}" | tee "$ART/scroll-coordinates.txt"
           adb logcat -c || true
-          adb shell input touchscreen swipe "$swipe_x" "$swipe_low" "$swipe_x" "$swipe_high" 450
-          sleep 2
-          adb logcat -d -v brief -s MyChhachhScroll:I > "$ART/real-scroll-proof.txt" || true
-          max_scroll_y="$(grep -oE "SCROLL_Y=[0-9]+" "$ART/real-scroll-proof.txt" | cut -d= -f2 | sort -n | tail -1)"
-          if [ -z "$max_scroll_y" ] || [ "$max_scroll_y" -lt 250 ]; then
-            echo "::error::Center-screen swipe did not produce real WebView scrolling; max_scroll_y=${max_scroll_y:-missing}"
-            cat "$ART/real-scroll-proof.txt" || true
-            exit 1
-          fi
-          echo "REAL_SCROLL_PASS max_scroll_y=$max_scroll_y" | tee "$ART/real-scroll-verdict.txt"
 
           for i in $(seq 1 8); do
             adb shell input touchscreen swipe "$swipe_x" "$swipe_low" "$swipe_x" "$swipe_high" 240
@@ -354,14 +377,27 @@ jobs:
           done
           adb exec-out screencap -p > "$ART/after-scroll-down.png"
 
-          # Prove the WebView itself actually moved. A swipe command alone is not a scroll test.
-          adb logcat -d -v brief -s MyChhachhScroll:I > "$ART/scroll-y-proof.txt" || true
-          cat "$ART/scroll-y-proof.txt" || true
-          max_scroll_y="$(grep -oE "SCROLL_Y=[0-9]+" "$ART/scroll-y-proof.txt" | cut -d= -f2 | sort -n | tail -1 || true)"
+          # Prove continuous real scrolling, not merely one successful swipe.
+          adb logcat -d -v brief -s MyChhachhScroll:I > "$ART/scroll-down.txt" || true
+          cat "$ART/scroll-down.txt" || true
+          max_scroll_y="$(grep -oE 'SCROLL_Y=[0-9]+' "$ART/scroll-down.txt" | cut -d= -f2 | sort -n | tail -1 || true)"
           if [ -z "$max_scroll_y" ] || [ "$max_scroll_y" -lt 300 ]; then
             echo "::error::Center-screen swipes did not produce real WebView scrolling"
             exit 1
           fi
+          candidate_reset_count="$(python3 - "$ART/scroll-down.txt" <<'PY'
+          import re, sys
+          vals = [int(x) for x in re.findall(r'SCROLL_Y=(\d+)', open(sys.argv[1], encoding='utf-8', errors='ignore').read())]
+          print(sum(1 for a,b in zip(vals, vals[1:]) if a >= 300 and b <= 100))
+          PY
+          )"
+          echo "candidate_max_scroll_y=$max_scroll_y" | tee "$ART/scroll-continuity-verdict.txt"
+          echo "candidate_downward_reset_count=$candidate_reset_count" | tee -a "$ART/scroll-continuity-verdict.txt"
+          if [ "$candidate_reset_count" -gt "$baseline_reset_count" ]; then
+            echo "::error::Candidate scroll reset/jump count ($candidate_reset_count) is worse than known-smooth baseline ($baseline_reset_count)"
+            exit 1
+          fi
+          echo "CONTINUOUS_SCROLL_PASS candidate_resets=$candidate_reset_count baseline_resets=$baseline_reset_count" | tee -a "$ART/scroll-continuity-verdict.txt"
 
           for i in $(seq 1 5); do
             adb shell input touchscreen swipe "$swipe_x" "$swipe_high" "$swipe_x" "$swipe_low" 240
