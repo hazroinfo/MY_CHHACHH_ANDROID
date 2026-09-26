@@ -127,7 +127,7 @@ class MainActivity : ComponentActivity() {
         webView.isVerticalScrollBarEnabled = false
         webView.isHorizontalScrollBarEnabled = false
 
-        if (BuildConfig.DEBUG) {
+        if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
             var lastLoggedScrollY = Int.MIN_VALUE
             webView.setOnScrollChangeListener { _, _, scrollY, _, _ ->
                 if (lastLoggedScrollY == Int.MIN_VALUE || kotlin.math.abs(scrollY - lastLoggedScrollY) >= 120) {
