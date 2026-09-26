@@ -5,10 +5,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.view.View
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
@@ -109,7 +107,6 @@ class MainActivity : ComponentActivity() {
             isHorizontalScrollBarEnabled = false
         }
         setContentView(webView)
-        requestHighRefreshRate()
 
         configureWebView()
 
@@ -124,20 +121,6 @@ class MainActivity : ComponentActivity() {
                 if (webView.canGoBack()) webView.goBack() else finish()
             }
         })
-    }
-
-    private fun requestHighRefreshRate() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
-        webView.post {
-            val maxRate = webView.display
-                ?.supportedModes
-                ?.maxOfOrNull { it.refreshRate }
-                ?: 0f
-
-            if (maxRate > 0f) {
-                webView.setFrameRate(maxRate, View.FRAME_RATE_COMPATIBILITY_DEFAULT)
-            }
-        }
     }
 
     private fun configureWebView() {
