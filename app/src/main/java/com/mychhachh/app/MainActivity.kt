@@ -44,19 +44,6 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-    private val startupMicPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (!granted &&
-                !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)
-            ) {
-                Toast.makeText(
-                    this,
-                    "Microphone permission is required for voice recording",
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-        }
-
     private val mediaPermissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             val request = pendingMediaRequest ?: return@registerForActivityResult
@@ -122,10 +109,6 @@ class MainActivity : ComponentActivity() {
         setContentView(webView)
 
         configureWebView()
-
-        if (!hasPermission(Manifest.permission.RECORD_AUDIO)) {
-            startupMicPermission.launch(Manifest.permission.RECORD_AUDIO)
-        }
 
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState)
