@@ -13,8 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - name: Checkout source
+      - name: Checkout current source archive only
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            chhachh_Android_Professional_Native_Source.zip
+          sparse-checkout-cone-mode: false
       - name: Confirm current source archive
         run: test -s chhachh_Android_Professional_Native_Source.zip
       - name: Extract standalone native project
