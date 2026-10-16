@@ -52,12 +52,22 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
-      - name: Build chhachh APK
+      - name: Build chhachh release APK without signing key
         working-directory: current-chhachh-app
-        run: gradle --no-daemon :app:assembleDebug
-      - name: Upload installable APK
+        run: gradle --no-daemon :app:assembleRelease
+      - name: Align unsigned release APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          ALI="$ANDROID_HOME/build-tools/35.0.0/zipalign"
+          SRC="current-chhachh-app/app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -s "$SRC"
+          "$ALI" -p -f 4 "$SRC" chhachh-release-unsigned-aligned.apk
+          "$ALI" -c -p 4 chhachh-release-unsigned-aligned.apk
+      - name: Upload unsigned APK for local signing in Termux
         uses: actions/upload-artifact@v4
         with:
-          name: chhachh-current-android-apk
-          path: current-chhachh-app/app/build/outputs/apk/debug/app-debug.apk
+          name: chhachh-release-unsigned-for-termux
+          path: chhachh-release-unsigned-aligned.apk
           if-no-files-found: error
