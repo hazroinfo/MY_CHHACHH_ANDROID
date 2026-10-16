@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'chhachh_Android_Professional_Native_Source.zip'
+      - '.github/workflows/chhachh-native-zip-build.yml'
 permissions:
   contents: read
 jobs:
