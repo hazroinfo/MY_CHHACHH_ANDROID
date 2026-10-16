@@ -29,6 +29,7 @@ jobs:
           # The archived activity is excluded, not overridden or compiled.
           # There is one active MainActivity implementation in the canonical GitHub source.
           unzip -q chhachh_Android_Professional_Native_Source.zip -d current-chhachh-app -x 'app/src/main/java/com/chhachh/app/MainActivity.java'
+          mkdir -p current-chhachh-app/app/src/main/java/com/chhachh/app
           install -m 644 chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java current-chhachh-app/app/src/main/java/com/chhachh/app/MainActivity.java
           test -f current-chhachh-app/app/src/main/java/com/chhachh/app/MainActivity.java
           test -f current-chhachh-app/app/src/main/AndroidManifest.xml
