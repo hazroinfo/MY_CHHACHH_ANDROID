@@ -6,6 +6,7 @@ on:
     paths:
       - 'chhachh_Android_Professional_Native_Source.zip'
       - '.github/workflows/chhachh-native-zip-build.yml'
+      - 'chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java'
 permissions:
   contents: read
 jobs:
@@ -18,13 +19,17 @@ jobs:
         with:
           sparse-checkout: |
             chhachh_Android_Professional_Native_Source.zip
+            chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java
           sparse-checkout-cone-mode: false
       - name: Confirm current source archive
         run: test -s chhachh_Android_Professional_Native_Source.zip
       - name: Extract standalone native project
         run: |
           mkdir -p current-chhachh-app
-          unzip -q chhachh_Android_Professional_Native_Source.zip -d current-chhachh-app
+          # The archived activity is excluded, not overridden or compiled.
+          # There is one active MainActivity implementation in the canonical GitHub source.
+          unzip -q chhachh_Android_Professional_Native_Source.zip -d current-chhachh-app -x 'app/src/main/java/com/chhachh/app/MainActivity.java'
+          install -m 644 chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java current-chhachh-app/app/src/main/java/com/chhachh/app/MainActivity.java
           test -f current-chhachh-app/app/src/main/java/com/chhachh/app/MainActivity.java
           test -f current-chhachh-app/app/src/main/AndroidManifest.xml
           test -f current-chhachh-app/app/build.gradle
