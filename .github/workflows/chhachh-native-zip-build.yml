@@ -17,6 +17,12 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/workflows/chhachh-native-zip-build.yml
+            chhachh_Android_Professional_Native_Source.zip
+            chhachh_android_canonical/
+          sparse-checkout-cone-mode: false
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
