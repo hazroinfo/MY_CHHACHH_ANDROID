@@ -1,117 +1,161 @@
-name: Build current chhachh WebView APK
+name: Verified chhachh Android release
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, chhachh-signed-release-qa-20261017]
     paths:
       - 'chhachh_Android_Professional_Native_Source.zip'
+      - 'chhachh_android_canonical/**'
       - '.github/workflows/chhachh-native-zip-build.yml'
-      - 'chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java'
-      - 'chhachh_android_canonical/app/build.gradle'
-      - 'chhachh_android_canonical/app/src/main/AndroidManifest.xml'
+
 permissions:
   contents: read
+
 jobs:
-  build-current-native:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
+  build-and-sign:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
     steps:
-      - name: Checkout current source archive only
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           sparse-checkout: |
+            .github/workflows/chhachh-native-zip-build.yml
             chhachh_Android_Professional_Native_Source.zip
-            chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java
-            chhachh_android_canonical/app/build.gradle
-            chhachh_android_canonical/app/src/main/AndroidManifest.xml
+            chhachh_android_canonical/
           sparse-checkout-cone-mode: false
-      - name: Confirm current source archive
-        run: test -s chhachh_Android_Professional_Native_Source.zip
-      - name: Extract standalone native project
-        run: |
-          mkdir -p current-chhachh-app
-          # The archived activity is excluded, not overridden or compiled.
-          # There is one active MainActivity implementation in the canonical GitHub source.
-          unzip -q chhachh_Android_Professional_Native_Source.zip -d current-chhachh-app -x 'app/src/main/java/com/chhachh/app/MainActivity.java' 'app/build.gradle' 'app/src/main/AndroidManifest.xml'
-          mkdir -p current-chhachh-app/app/src/main/java/com/chhachh/app
-          install -m 644 chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java current-chhachh-app/app/src/main/java/com/chhachh/app/MainActivity.java
-          install -m 644 chhachh_android_canonical/app/build.gradle current-chhachh-app/app/build.gradle
-          install -m 644 chhachh_android_canonical/app/src/main/AndroidManifest.xml current-chhachh-app/app/src/main/AndroidManifest.xml
-          grep -q 'minSdk 23' current-chhachh-app/app/build.gradle
-          test -f current-chhachh-app/app/src/main/java/com/chhachh/app/MainActivity.java
-          test -f current-chhachh-app/app/src/main/AndroidManifest.xml
-          test -f current-chhachh-app/app/build.gradle
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Android 35 SDK using runner SDK
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Install Android SDK
         shell: bash
         run: |
           set -euo pipefail
           export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
-          export ANDROID_SDK_ROOT="$ANDROID_HOME"
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
-      - name: Set up Gradle 8.11.1
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.11.1'
-      - name: Build chhachh release APK without signing key
-        working-directory: current-chhachh-app
-        run: gradle --no-daemon :app:assembleDebug :app:assembleRelease
-      - name: Align unsigned release APK
+      - name: Unpack single canonical Android application
         shell: bash
         run: |
           set -euo pipefail
-          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
-          ALI="$ANDROID_HOME/build-tools/35.0.0/zipalign"
-          SRC="current-chhachh-app/app/build/outputs/apk/release/app-release-unsigned.apk"
-          test -s "$SRC"
-          "$ALI" -p -f 4 "$SRC" chhachh-release-unsigned-aligned.apk
-          "$ALI" -c -p 4 chhachh-release-unsigned-aligned.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging chhachh-release-unsigned-aligned.apk | grep -E 'package:|sdkVersion:|targetSdkVersion:'
-          test -s current-chhachh-app/app/build/outputs/apk/debug/app-debug.apk
-      - name: Upload unsigned APK for local signing in Termux
+          test -s chhachh_Android_Professional_Native_Source.zip
+          mkdir -p native
+          unzip -q chhachh_Android_Professional_Native_Source.zip -d native \
+            -x 'app/src/main/java/com/chhachh/app/MainActivity.java' \
+               'app/build.gradle' 'app/src/main/AndroidManifest.xml'
+          install -D -m 644 chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java \
+            native/app/src/main/java/com/chhachh/app/MainActivity.java
+          install -m 644 chhachh_android_canonical/app/build.gradle native/app/build.gradle
+          install -m 644 chhachh_android_canonical/app/src/main/AndroidManifest.xml native/app/src/main/AndroidManifest.xml
+          grep -q 'minSdk 23' native/app/build.gradle
+          grep -q 'versionCode 3' native/app/build.gradle
+          grep -q "applicationId 'com.chhachh.app'" native/app/build.gradle
+      - name: Build unsigned release from source
+        working-directory: native
+        run: gradle --no-daemon --stacktrace :app:assembleRelease
+      - name: Align, sign and verify with the existing permanent release key
+        shell: bash
+        env:
+          CHHACHH_KEYSTORE_B64: ${{ secrets.CHHACHH_KEYSTORE_B64 }}
+          CHHACHH_STORE_PASSWORD: ${{ secrets.CHHACHH_STORE_PASSWORD }}
+          CHHACHH_KEY_ALIAS: ${{ secrets.CHHACHH_KEY_ALIAS }}
+          CHHACHH_KEY_PASSWORD: ${{ secrets.CHHACHH_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for var in CHHACHH_KEYSTORE_B64 CHHACHH_STORE_PASSWORD CHHACHH_KEY_ALIAS CHHACHH_KEY_PASSWORD; do
+            if [[ -z "${!var:-}" ]]; then
+              echo "::error::Missing permanent signing secret $var. No APK will be released."
+              exit 1
+            fi
+          done
+          umask 077
+          key="$RUNNER_TEMP/chhachh-release.jks"
+          trap 'rm -f "$key"' EXIT
+          printf '%s' "$CHHACHH_KEYSTORE_B64" | base64 --decode > "$key"
+          buildtools="$ANDROID_HOME/build-tools/35.0.0"
+          unsigned=native/app/build/outputs/apk/release/app-release-unsigned.apk
+          test -s "$unsigned"
+          "$buildtools/zipalign" -f -p 4 "$unsigned" "$RUNNER_TEMP/aligned.apk"
+          "$buildtools/apksigner" sign \
+            --ks "$key" --ks-key-alias "$CHHACHH_KEY_ALIAS" \
+            --ks-pass env:CHHACHH_STORE_PASSWORD \
+            --key-pass env:CHHACHH_KEY_PASSWORD \
+            --min-sdk-version 23 \
+            --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true \
+            --out chhachh-release.apk "$RUNNER_TEMP/aligned.apk"
+          "$buildtools/zipalign" -c -v 4 chhachh-release.apk
+          "$buildtools/apksigner" verify --min-sdk-version 23 --verbose --print-certs chhachh-release.apk > "$RUNNER_TEMP/verification.txt"
+          # Cert pinned to the existing 2026-10-16 release, not any debug key.
+          grep -qi 'bd1088e290df0d1a714a4a88f5fe8a82b56ea7d84d151112fbeb5af2ad75d676' "$RUNNER_TEMP/verification.txt" || {
+            echo '::error::Release signing certificate changed. Refusing incompatible update.'
+            exit 1
+          }
+          "$buildtools/aapt" dump badging chhachh-release.apk > "$RUNNER_TEMP/badging.txt"
+          grep -q "package: name='com.chhachh.app' versionCode='3'" "$RUNNER_TEMP/badging.txt"
+          grep -q "sdkVersion:'23'" "$RUNNER_TEMP/badging.txt"
+      - name: Upload only signed candidate for installation QA
         uses: actions/upload-artifact@v4
         with:
-          name: chhachh-release-unsigned-for-termux
-          path: chhachh-release-unsigned-aligned.apk
+          name: chhachh-signed-candidate-internal
+          path: chhachh-release.apk
           if-no-files-found: error
-      - name: Upload test APK for compatibility verification
-        uses: actions/upload-artifact@v4
-        with:
-          name: chhachh-compatibility-debug-test
-          path: current-chhachh-app/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          retention-days: 7
 
-  android-install-smoke:
-    needs: build-current-native
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+  verify-real-installation:
+    needs: build-and-sign
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        api-level: [23, 35]
+        api-level: [23, 35, 36]
     steps:
-      - name: Download freshly built debug APK
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: chhachh-compatibility-debug-test
-          path: apks
-      - name: Boot Android, install and launch chhachh
+          name: chhachh-signed-candidate-internal
+      - name: Fresh install the EXACT signed candidate on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api-level }}
-          target: google_apis
           arch: x86_64
-          profile: pixel_2
-          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
           disable-animations: true
+          emulator-options: -no-window -noaudio -no-boot-anim -gpu swiftshader_indirect
           script: |
-            adb install -r apks/app-debug.apk
-            adb shell am start -W -n com.chhachh.app/.MainActivity
-            sleep 4
+            set -euo pipefail
+            adb install chhachh-release.apk | tee install.txt
+            grep -q 'Success' install.txt
+            adb shell pm path com.chhachh.app | grep -q 'base.apk'
+            adb shell am start -W -n com.chhachh.app/.MainActivity | tee launch.txt
+            sleep 5
             adb shell pidof com.chhachh.app
+            adb exec-out screencap -p > screen.png
+            test -s screen.png
+      - name: Upload Android installation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chhachh-install-proof-api-${{ matrix.api-level }}
+          path: |
+            install.txt
+            launch.txt
+            screen.png
+          if-no-files-found: warn
+
+  publish-tested-release:
+    needs: [build-and-sign, verify-real-installation]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: chhachh-signed-candidate-internal
+      - run: test -s chhachh-release.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chhachh-verified-signed-Android6-to-16
+          path: chhachh-release.apk
+          if-no-files-found: error
+          retention-days: 30
