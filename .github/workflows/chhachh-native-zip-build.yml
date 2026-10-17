@@ -7,6 +7,8 @@ on:
       - 'chhachh_Android_Professional_Native_Source.zip'
       - '.github/workflows/chhachh-native-zip-build.yml'
       - 'chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java'
+      - 'chhachh_android_canonical/app/build.gradle'
+      - 'chhachh_android_canonical/app/src/main/AndroidManifest.xml'
 permissions:
   contents: read
 jobs:
@@ -20,6 +22,8 @@ jobs:
           sparse-checkout: |
             chhachh_Android_Professional_Native_Source.zip
             chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java
+            chhachh_android_canonical/app/build.gradle
+            chhachh_android_canonical/app/src/main/AndroidManifest.xml
           sparse-checkout-cone-mode: false
       - name: Confirm current source archive
         run: test -s chhachh_Android_Professional_Native_Source.zip
@@ -28,9 +32,12 @@ jobs:
           mkdir -p current-chhachh-app
           # The archived activity is excluded, not overridden or compiled.
           # There is one active MainActivity implementation in the canonical GitHub source.
-          unzip -q chhachh_Android_Professional_Native_Source.zip -d current-chhachh-app -x 'app/src/main/java/com/chhachh/app/MainActivity.java'
+          unzip -q chhachh_Android_Professional_Native_Source.zip -d current-chhachh-app -x 'app/src/main/java/com/chhachh/app/MainActivity.java' 'app/build.gradle' 'app/src/main/AndroidManifest.xml'
           mkdir -p current-chhachh-app/app/src/main/java/com/chhachh/app
           install -m 644 chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java current-chhachh-app/app/src/main/java/com/chhachh/app/MainActivity.java
+          install -m 644 chhachh_android_canonical/app/build.gradle current-chhachh-app/app/build.gradle
+          install -m 644 chhachh_android_canonical/app/src/main/AndroidManifest.xml current-chhachh-app/app/src/main/AndroidManifest.xml
+          grep -q 'minSdk 23' current-chhachh-app/app/build.gradle
           test -f current-chhachh-app/app/src/main/java/com/chhachh/app/MainActivity.java
           test -f current-chhachh-app/app/src/main/AndroidManifest.xml
           test -f current-chhachh-app/app/build.gradle
@@ -54,7 +61,7 @@ jobs:
           gradle-version: '8.11.1'
       - name: Build chhachh release APK without signing key
         working-directory: current-chhachh-app
-        run: gradle --no-daemon :app:assembleRelease
+        run: gradle --no-daemon :app:assembleDebug :app:assembleRelease
       - name: Align unsigned release APK
         shell: bash
         run: |
@@ -65,9 +72,17 @@ jobs:
           test -s "$SRC"
           "$ALI" -p -f 4 "$SRC" chhachh-release-unsigned-aligned.apk
           "$ALI" -c -p 4 chhachh-release-unsigned-aligned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging chhachh-release-unsigned-aligned.apk | grep -E 'package:|sdkVersion:|targetSdkVersion:'
+          test -s current-chhachh-app/app/build/outputs/apk/debug/app-debug.apk
       - name: Upload unsigned APK for local signing in Termux
         uses: actions/upload-artifact@v4
         with:
           name: chhachh-release-unsigned-for-termux
           path: chhachh-release-unsigned-aligned.apk
+          if-no-files-found: error
+      - name: Upload test APK for compatibility verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: chhachh-compatibility-debug-test
+          path: current-chhachh-app/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
