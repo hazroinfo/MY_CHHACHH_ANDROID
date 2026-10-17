@@ -45,6 +45,7 @@ public final class MainActivity extends Activity {
     private static final String HOME = "https://chhachh.com/";
     private static final int REQUEST_FILES = 401;
     private static final int REQUEST_MEDIA_PERMISSION = 402;
+    private static final int REQUEST_LEGACY_STORAGE = 403;
     private WebView web;
     private FrameLayout root, offline;
     private View fullscreenView;
@@ -52,6 +53,7 @@ public final class MainActivity extends Activity {
     private ValueCallback<Uri[]> fileCallback;
     private Uri cameraFile;
     private boolean pickerLaunched = false;
+    private WebChromeClient.FileChooserParams pendingChooserParams;
     private PermissionRequest pendingPermission;
     private String[] pendingResources;
 
@@ -88,7 +90,7 @@ public final class MainActivity extends Activity {
         s.setJavaScriptCanOpenWindowsAutomatically(false);
         s.setSupportMultipleWindows(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        s.setSafeBrowsingEnabled(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) s.setSafeBrowsingEnabled(true);
         s.setUserAgentString(s.getUserAgentString() + " ChhachhNativeAndroid/1.0");
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
@@ -122,35 +124,17 @@ public final class MainActivity extends Activity {
                 if (fileCallback != null) fileCallback.onReceiveValue(null);
                 fileCallback = callback;
                 cameraFile = null;
-                try {
-                    Intent picker = params.createIntent();
-                    picker.addCategory(Intent.CATEGORY_OPENABLE);
-                    ArrayList<Intent> cameraChoices = new ArrayList<>();
-                    String[] types = params.getAcceptTypes();
-                    boolean acceptsVideo = accepts(types, "video");
-                    boolean acceptsImage = accepts(types, "image");
-                    if (acceptsImage && getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
-                        Intent capture = captureIntent(false);
-                        if (capture != null) cameraChoices.add(capture);
-                    }
-                    if (acceptsVideo && !acceptsImage && getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
-                        Intent capture = captureIntent(true);
-                        if (capture != null) cameraChoices.add(capture);
-                    }
-                    if (params.isCaptureEnabled() && !cameraChoices.isEmpty()) {
-                        startActivityForResult(cameraChoices.get(0), REQUEST_FILES);
-                    } else {
-                        Intent chooser = Intent.createChooser(picker, "Choose media");
-                        chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, cameraChoices.toArray(new Intent[0]));
-                        startActivityForResult(chooser, REQUEST_FILES);
-                    }
-                    pickerLaunched = true;
-                    return true;
-                } catch (Exception failure) {
-                    fileCallback.onReceiveValue(null);
-                    fileCallback = null;
-                    return true;
+                boolean needsLegacyPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
+                        && getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
+                        && (accepts(params.getAcceptTypes(), "image") || accepts(params.getAcceptTypes(), "video"))
+                        && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED;
+                if (needsLegacyPermission) {
+                    pendingChooserParams = params;
+                    requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_LEGACY_STORAGE);
+                } else {
+                    launchFileChooser(params, true);
                 }
+                return true;
             }
             @Override public void onPermissionRequest(PermissionRequest req) {
                 runOnUiThread(() -> handleMediaRequest(req));
@@ -224,6 +208,39 @@ public final class MainActivity extends Activity {
             }
             return false; // Let WebView own normal scroll, taps and input events.
         });
+    }
+
+    private void launchFileChooser(WebChromeClient.FileChooserParams params, boolean allowCamera) {
+        if (fileCallback == null) return;
+        try {
+            Intent picker = params.createIntent();
+            picker.addCategory(Intent.CATEGORY_OPENABLE);
+            ArrayList<Intent> cameras = new ArrayList<>();
+            String[] types = params.getAcceptTypes();
+            boolean acceptsVideo = accepts(types, "video");
+            boolean acceptsImage = accepts(types, "image");
+            if (allowCamera && getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
+                if (acceptsImage) {
+                    Intent photo = captureIntent(false);
+                    if (photo != null) cameras.add(photo);
+                } else if (acceptsVideo) {
+                    Intent video = captureIntent(true);
+                    if (video != null) cameras.add(video);
+                }
+            }
+            if (params.isCaptureEnabled() && !cameras.isEmpty()) {
+                startActivityForResult(cameras.get(0), REQUEST_FILES);
+            } else {
+                Intent chooser = Intent.createChooser(picker, "Choose media");
+                chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, cameras.toArray(new Intent[0]));
+                startActivityForResult(chooser, REQUEST_FILES);
+            }
+            pickerLaunched = true;
+        } catch (Exception failure) {
+            if (fileCallback != null) fileCallback.onReceiveValue(null);
+            fileCallback = null;
+            pendingChooserParams = null;
+        }
     }
 
     private boolean accepts(String[] types, String category) {
@@ -303,6 +320,13 @@ public final class MainActivity extends Activity {
 
     @Override public void onRequestPermissionsResult(int request, String[] perms, int[] grants) {
         super.onRequestPermissionsResult(request, perms, grants);
+        if (request == REQUEST_LEGACY_STORAGE && pendingChooserParams != null) {
+            WebChromeClient.FileChooserParams chooser = pendingChooserParams;
+            pendingChooserParams = null;
+            boolean permitted = grants.length > 0 && grants[0] == PackageManager.PERMISSION_GRANTED;
+            launchFileChooser(chooser, permitted);
+            return;
+        }
         if (request != REQUEST_MEDIA_PERMISSION || pendingPermission == null) return;
         for (int result : grants) {
             if (result != PackageManager.PERMISSION_GRANTED) {
@@ -400,6 +424,7 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() { super.onResume(); if (web != null) web.onResume(); }
     @Override protected void onDestroy() {
         if (fileCallback != null) fileCallback.onReceiveValue(null);
+        pendingChooserParams = null;
         if (web != null) {
             root.removeView(web);
             web.destroy();
