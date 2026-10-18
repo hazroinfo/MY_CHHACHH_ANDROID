@@ -2,6 +2,7 @@ package com.chhachh.app;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
 import android.content.ContentValues;
@@ -16,6 +17,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -140,7 +142,12 @@ public final class MainActivity extends Activity {
                 runOnUiThread(() -> handleMediaRequest(req));
             }
             @Override public void onPermissionRequestCanceled(PermissionRequest req) {
-                if (pendingPermission == req) { pendingPermission = null; pendingResources = null; }
+                runOnUiThread(() -> {
+                    if (pendingPermission == req) {
+                        pendingPermission = null;
+                        pendingResources = null;
+                    }
+                });
             }
             @Override public void onShowCustomView(View view, CustomViewCallback cb) {
                 if (fullscreenView != null) { cb.onCustomViewHidden(); return; }
@@ -296,51 +303,97 @@ public final class MainActivity extends Activity {
         return false;
     }
 
+    // Only trusted HTTPS pages may receive Android microphone/camera access.
     private void handleMediaRequest(PermissionRequest req) {
-        if (!isTrusted(req.getOrigin())) { req.deny(); return; }
-        ArrayList<String> valid = new ArrayList<>();
+        if (!isTrusted(req.getOrigin())) {
+            req.deny();
+            return;
+        }
+        if (pendingPermission != null && pendingPermission != req) {
+            pendingPermission.deny();
+            pendingPermission = null;
+            pendingResources = null;
+        }
+        ArrayList<String> resources = new ArrayList<>();
         ArrayList<String> permissions = new ArrayList<>();
         for (String resource : req.getResources()) {
-            if (resource.equals(PermissionRequest.RESOURCE_VIDEO_CAPTURE)) {
-                valid.add(resource);
-                if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
-                    permissions.add(Manifest.permission.CAMERA);
-            } else if (resource.equals(PermissionRequest.RESOURCE_AUDIO_CAPTURE)) {
-                valid.add(resource);
-                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED)
+            if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)) {
+                resources.add(resource);
+                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED
+                        && !permissions.contains(Manifest.permission.RECORD_AUDIO))
                     permissions.add(Manifest.permission.RECORD_AUDIO);
+            } else if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource)) {
+                resources.add(resource);
+                if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+                        && !permissions.contains(Manifest.permission.CAMERA))
+                    permissions.add(Manifest.permission.CAMERA);
             }
         }
-        if (valid.isEmpty()) { req.deny(); return; }
+        if (resources.isEmpty()) { req.deny(); return; }
+        if (permissions.isEmpty()) {
+            req.grant(resources.toArray(new String[0]));
+            return;
+        }
         pendingPermission = req;
-        pendingResources = valid.toArray(new String[0]);
-        if (permissions.isEmpty()) finishMediaPermission();
-        else requestPermissions(permissions.toArray(new String[0]), REQUEST_MEDIA_PERMISSION);
+        pendingResources = resources.toArray(new String[0]);
+        requestPermissions(permissions.toArray(new String[0]), REQUEST_MEDIA_PERMISSION);
     }
 
     @Override public void onRequestPermissionsResult(int request, String[] perms, int[] grants) {
         super.onRequestPermissionsResult(request, perms, grants);
-        if (request == REQUEST_LEGACY_STORAGE && pendingChooserParams != null) {
-            WebChromeClient.FileChooserParams chooser = pendingChooserParams;
-            pendingChooserParams = null;
-            boolean permitted = grants.length > 0 && grants[0] == PackageManager.PERMISSION_GRANTED;
-            launchFileChooser(chooser, permitted);
+        if (request == REQUEST_CAMERA_CHOOSER) {
+            WebChromeClient.FileChooserParams params = queuedChooser;
+            queuedChooser = null;
+            if (params != null && fileCallback != null) launchChooser(params);
             return;
         }
         if (request != REQUEST_MEDIA_PERMISSION || pendingPermission == null) return;
-        for (int result : grants) {
-            if (result != PackageManager.PERMISSION_GRANTED) {
-                pendingPermission.deny(); pendingPermission = null; pendingResources = null; return;
-            }
-        }
-        finishMediaPermission();
-    }
-
-    private void finishMediaPermission() {
-        if (pendingPermission == null) return;
-        pendingPermission.grant(pendingResources);
+        PermissionRequest waiting = pendingPermission;
+        String[] resources = pendingResources;
         pendingPermission = null;
         pendingResources = null;
+        boolean granted = grants.length > 0 && grants.length == perms.length;
+        for (int result : grants)
+            if (result != PackageManager.PERMISSION_GRANTED) granted = false;
+        boolean microphoneDenied = false;
+        if (resources != null) {
+            for (String resource : resources) {
+                if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)) {
+                    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                        microphoneDenied = true;
+                        granted = false;
+                    }
+                } else if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource) &&
+                           checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                    granted = false;
+                }
+            }
+        } else {
+            granted = false;
+        }
+        if (granted) waiting.grant(resources);
+        else {
+            waiting.deny();
+            showMediaPermissionHelp(microphoneDenied);
+        }
+    }
+
+    private void showMediaPermissionHelp(boolean microphone) {
+        if (isFinishing() || isDestroyed()) return;
+        String feature = microphone ? "Microphone" : "Camera";
+        new AlertDialog.Builder(this)
+            .setTitle(feature + " permission required")
+            .setMessage("To use " + (microphone ? "voice recording" : "the camera") +
+                " in chhachh, enable " + feature.toLowerCase() +
+                " in Android Settings > Apps > chhachh > Permissions. Then return and try again.")
+            .setNegativeButton("Not now", null)
+            .setPositiveButton("Open settings", (dialog, which) -> {
+                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + getPackageName()));
+                try { startActivity(intent); }
+                catch (ActivityNotFoundException ignored) { }
+            })
+            .show();
     }
 
     private void download(String url, String userAgent, String disposition, String type) {
@@ -423,6 +476,11 @@ public final class MainActivity extends Activity {
     @Override protected void onPause() { if (web != null) web.onPause(); super.onPause(); }
     @Override protected void onResume() { super.onResume(); if (web != null) web.onResume(); }
     @Override protected void onDestroy() {
+        if (pendingPermission != null) {
+            pendingPermission.deny();
+            pendingPermission = null;
+            pendingResources = null;
+        }
         if (fileCallback != null) fileCallback.onReceiveValue(null);
         pendingChooserParams = null;
         if (web != null) {
