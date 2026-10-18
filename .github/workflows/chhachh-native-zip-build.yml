@@ -74,11 +74,15 @@ jobs:
           "$ALI" -c -p 4 chhachh-release-unsigned-aligned.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging chhachh-release-unsigned-aligned.apk | grep -E 'package:|sdkVersion:|targetSdkVersion:'
           test -s current-chhachh-app/app/build/outputs/apk/debug/app-debug.apk
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" apksigner.jar
+          test -s apksigner.jar
       - name: Upload unsigned APK for local signing in Termux
         uses: actions/upload-artifact@v4
         with:
           name: chhachh-release-unsigned-for-termux
-          path: chhachh-release-unsigned-aligned.apk
+          path: |
+            chhachh-release-unsigned-aligned.apk
+            apksigner.jar
           if-no-files-found: error
       - name: Upload test APK for compatibility verification
         uses: actions/upload-artifact@v4
