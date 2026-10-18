@@ -341,12 +341,6 @@ public final class MainActivity extends Activity {
 
     @Override public void onRequestPermissionsResult(int request, String[] perms, int[] grants) {
         super.onRequestPermissionsResult(request, perms, grants);
-        if (request == REQUEST_CAMERA_CHOOSER) {
-            WebChromeClient.FileChooserParams params = queuedChooser;
-            queuedChooser = null;
-            if (params != null && fileCallback != null) launchChooser(params);
-            return;
-        }
         if (request != REQUEST_MEDIA_PERMISSION || pendingPermission == null) return;
         PermissionRequest waiting = pendingPermission;
         String[] resources = pendingResources;
