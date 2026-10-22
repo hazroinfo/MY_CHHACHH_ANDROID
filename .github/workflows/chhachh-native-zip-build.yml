@@ -47,11 +47,11 @@ jobs:
           import zipfile
           from pathlib import Path
           mapping = {
-              "mipmap-mdpi-v4": "res/9w.png",
-              "mipmap-hdpi-v4": "res/yn.png",
-              "mipmap-xhdpi-v4": "res/FS.png",
-              "mipmap-xxhdpi-v4": "res/RJ.png",
-              "mipmap-xxxhdpi-v4": "res/o-.png",
+              "mipmap-mdpi": "res/9w.png",
+              "mipmap-hdpi": "res/yn.png",
+              "mipmap-xhdpi": "res/FS.png",
+              "mipmap-xxhdpi": "res/RJ.png",
+              "mipmap-xxxhdpi": "res/o-.png",
           }
           root = Path("current-chhachh-app/app/src/main/res")
           with zipfile.ZipFile("/tmp/chhachh-current.apk") as apk:
