@@ -82,7 +82,6 @@ public final class MainActivity extends Activity {
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
         root.addView(web, new FrameLayout.LayoutParams(-1, -1));
         configureWindowInsets();
-        enablePullToRefresh();
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -184,74 +183,6 @@ public final class MainActivity extends Activity {
             return insets;
         });
         root.requestApplyInsets();
-    }
-
-    // Native refresh gesture: pull down from the top of the page.
-    // No Android progress strip; the website retains its existing round loader.
-    // The listener observes touches without consuming them or breaking site gestures.
-    private void enablePullToRefresh() {
-        final float threshold = 96f * getResources().getDisplayMetrics().density;
-        final float horizontalLimit = 70f * getResources().getDisplayMetrics().density;
-        final float[] start = new float[2];
-        final boolean[] eligible = new boolean[1];
-        web.setOnTouchListener((view, event) -> {
-            switch (event.getActionMasked()) {
-                case android.view.MotionEvent.ACTION_DOWN:
-                    start[0] = event.getX();
-                    start[1] = event.getY();
-                    eligible[0] = !web.canScrollVertically(-1)
-                            && fullscreenView == null && fileCallback == null;
-                    break;
-                case android.view.MotionEvent.ACTION_POINTER_DOWN:
-                case android.view.MotionEvent.ACTION_CANCEL:
-                    eligible[0] = false;
-                    break;
-                case android.view.MotionEvent.ACTION_UP:
-                    if (eligible[0] && !web.canScrollVertically(-1)
-                            && event.getY() - start[1] >= threshold
-                            && Math.abs(event.getX() - start[0]) <= horizontalLimit) {
-                        eligible[0] = false;
-                        web.reload();
-                    }
-                    break;
-                default:
-                    break;
-            }
-            return false; // Let WebView own normal scroll, taps and input events.
-        });
-    }
-
-    private void launchFileChooser(WebChromeClient.FileChooserParams params, boolean allowCamera) {
-        if (fileCallback == null) return;
-        try {
-            Intent picker = params.createIntent();
-            picker.addCategory(Intent.CATEGORY_OPENABLE);
-            ArrayList<Intent> cameras = new ArrayList<>();
-            String[] types = params.getAcceptTypes();
-            boolean acceptsVideo = accepts(types, "video");
-            boolean acceptsImage = accepts(types, "image");
-            if (allowCamera && getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
-                if (acceptsImage) {
-                    Intent photo = captureIntent(false);
-                    if (photo != null) cameras.add(photo);
-                } else if (acceptsVideo) {
-                    Intent video = captureIntent(true);
-                    if (video != null) cameras.add(video);
-                }
-            }
-            if (params.isCaptureEnabled() && !cameras.isEmpty()) {
-                startActivityForResult(cameras.get(0), REQUEST_FILES);
-            } else {
-                Intent chooser = Intent.createChooser(picker, "Choose media");
-                chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, cameras.toArray(new Intent[0]));
-                startActivityForResult(chooser, REQUEST_FILES);
-            }
-            pickerLaunched = true;
-        } catch (Exception failure) {
-            if (fileCallback != null) fileCallback.onReceiveValue(null);
-            fileCallback = null;
-            pendingChooserParams = null;
-        }
     }
 
     private boolean accepts(String[] types, String category) {
