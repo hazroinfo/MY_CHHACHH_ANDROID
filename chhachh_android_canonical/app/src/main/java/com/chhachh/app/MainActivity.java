@@ -193,6 +193,45 @@ public final class MainActivity extends Activity {
         return false;
     }
 
+    // The file picker has a single entry point for gallery, camera and video capture.
+    private void launchFileChooser(WebChromeClient.FileChooserParams params, boolean allowCamera) {
+        pendingChooserParams = null;
+        try {
+            Intent picker = params.createIntent();
+            picker.addCategory(Intent.CATEGORY_OPENABLE);
+            ArrayList<Intent> cameraChoices = new ArrayList<>();
+            if (allowCamera && getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
+                boolean images = accepts(params.getAcceptTypes(), "image");
+                boolean videos = accepts(params.getAcceptTypes(), "video");
+                if (images) {
+                    Intent capture = captureIntent(false);
+                    if (capture != null) cameraChoices.add(capture);
+                } else if (videos) {
+                    Intent capture = captureIntent(true);
+                    if (capture != null) cameraChoices.add(capture);
+                }
+            }
+            if (params.isCaptureEnabled() && !cameraChoices.isEmpty()) {
+                startActivityForResult(cameraChoices.get(0), REQUEST_FILES);
+            } else {
+                Intent chooser = Intent.createChooser(picker, "Choose media");
+                chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS,
+                        cameraChoices.toArray(new Intent[0]));
+                startActivityForResult(chooser, REQUEST_FILES);
+            }
+            pickerLaunched = true;
+        } catch (Exception error) {
+            if (cameraFile != null) {
+                try { getContentResolver().delete(cameraFile, null, null); }
+                catch (Exception ignored) { }
+            }
+            cameraFile = null;
+            if (fileCallback != null) fileCallback.onReceiveValue(null);
+            fileCallback = null;
+            pickerLaunched = false;
+        }
+    }
+
     private Intent captureIntent(boolean video) {
         String mime = video ? "video/mp4" : "image/jpeg";
         ContentValues values = new ContentValues();
@@ -276,6 +315,14 @@ public final class MainActivity extends Activity {
 
     @Override public void onRequestPermissionsResult(int request, String[] perms, int[] grants) {
         super.onRequestPermissionsResult(request, perms, grants);
+        if (request == REQUEST_LEGACY_STORAGE) {
+            WebChromeClient.FileChooserParams queued = pendingChooserParams;
+            pendingChooserParams = null;
+            if (queued != null)
+                launchFileChooser(queued, grants.length > 0 &&
+                        grants[0] == PackageManager.PERMISSION_GRANTED);
+            return;
+        }
         if (request != REQUEST_MEDIA_PERMISSION || pendingPermission == null) return;
         PermissionRequest waiting = pendingPermission;
         String[] resources = pendingResources;
