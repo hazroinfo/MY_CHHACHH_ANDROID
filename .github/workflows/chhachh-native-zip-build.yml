@@ -9,6 +9,7 @@ on:
       - 'chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java'
       - 'chhachh_android_canonical/app/build.gradle'
       - 'chhachh_android_canonical/app/src/main/AndroidManifest.xml'
+      - 'chhachh_android_canonical/app/src/main/res/drawable/chhachh_launcher.xml'
 permissions:
   contents: read
 jobs:
@@ -24,6 +25,7 @@ jobs:
             chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java
             chhachh_android_canonical/app/build.gradle
             chhachh_android_canonical/app/src/main/AndroidManifest.xml
+            chhachh_android_canonical/app/src/main/res/drawable/chhachh_launcher.xml
           sparse-checkout-cone-mode: false
       - name: Confirm current source archive
         run: test -s chhachh_Android_Professional_Native_Source.zip
@@ -37,6 +39,8 @@ jobs:
           install -m 644 chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java current-chhachh-app/app/src/main/java/com/chhachh/app/MainActivity.java
           install -m 644 chhachh_android_canonical/app/build.gradle current-chhachh-app/app/build.gradle
           install -m 644 chhachh_android_canonical/app/src/main/AndroidManifest.xml current-chhachh-app/app/src/main/AndroidManifest.xml
+          mkdir -p current-chhachh-app/app/src/main/res/drawable
+          install -m 644 chhachh_android_canonical/app/src/main/res/drawable/chhachh_launcher.xml current-chhachh-app/app/src/main/res/drawable/chhachh_launcher.xml
           grep -q 'minSdk 23' current-chhachh-app/app/build.gradle
           test -f current-chhachh-app/app/src/main/java/com/chhachh/app/MainActivity.java
           test -f current-chhachh-app/app/src/main/AndroidManifest.xml
