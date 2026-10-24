@@ -9,8 +9,8 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <application android:allowBackup="false" android:label="chhachh"
-        android:theme="@style/AppTheme" android:icon="@drawable/chhachh_launcher"
-        android:roundIcon="@drawable/chhachh_launcher" android:usesCleartextTraffic="false"
+        android:theme="@style/AppTheme" android:icon="@drawable/chhachh_launcher_exact"
+        android:roundIcon="@drawable/chhachh_launcher_exact" android:usesCleartextTraffic="false"
         android:supportsRtl="true">
         <activity android:name=".MainActivity" android:exported="true"
             android:configChanges="keyboardHidden|orientation|screenSize"
