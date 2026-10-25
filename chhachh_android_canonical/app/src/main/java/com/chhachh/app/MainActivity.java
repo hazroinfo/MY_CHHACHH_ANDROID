@@ -10,6 +10,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.content.res.ColorStateList;
 import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Build;
@@ -19,6 +21,7 @@ import android.os.Handler;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
@@ -38,6 +41,7 @@ import android.webkit.WebViewClient;
 import android.net.http.SslError;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ProgressBar;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import java.util.ArrayList;
@@ -49,6 +53,9 @@ public final class MainActivity extends Activity {
     private static final int REQUEST_MEDIA_PERMISSION = 402;
     private static final int REQUEST_LEGACY_STORAGE = 403;
     private WebView web;
+    private ProgressBar loadingRing;
+    private long navigationToken = 0;
+    private float refreshGestureStartY = -1;
     private FrameLayout root, offline;
     private View fullscreenView;
     private WebChromeClient.CustomViewCallback fullscreenCallback;
@@ -81,6 +88,17 @@ public final class MainActivity extends Activity {
         web.setHorizontalScrollBarEnabled(false);
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
         root.addView(web, new FrameLayout.LayoutParams(-1, -1));
+        // Keep the approved round cyan loading feedback, never the old blue line
+        // or a full-screen white overlay. Only actual main-frame navigation shows it.
+        loadingRing = new ProgressBar(this);
+        loadingRing.setIndeterminateTintList(ColorStateList.valueOf(Color.rgb(0, 242, 255)));
+        int ringSize = Math.round(26 * getResources().getDisplayMetrics().density);
+        FrameLayout.LayoutParams ringLayout = new FrameLayout.LayoutParams(
+                ringSize, ringSize, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        ringLayout.topMargin = Math.round(6 * getResources().getDisplayMetrics().density);
+        root.addView(loadingRing, ringLayout);
+        loadingRing.setVisibility(View.GONE);
+        enableSafeHomeRefresh();
         configureWindowInsets();
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
@@ -115,7 +133,16 @@ public final class MainActivity extends Activity {
                 handler.cancel(); // Never ignore invalid certificates.
                 showOffline();
             }
+            @Override public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                long token = ++navigationToken;
+                view.postDelayed(() -> {
+                    if (token == navigationToken && loadingRing != null)
+                        loadingRing.setVisibility(View.VISIBLE);
+                }, 180);
+            }
             @Override public void onPageFinished(WebView view, String url) {
+                ++navigationToken;
+                if (loadingRing != null) loadingRing.setVisibility(View.GONE);
                 // Deliberately no progress bar. Website owns its round loader.
                 if (url != null && isTrusted(Uri.parse(url))) hideOffline();
             }
@@ -183,6 +210,42 @@ public final class MainActivity extends Activity {
             return insets;
         });
         root.requestApplyInsets();
+    }
+
+    // Restore pull-to-refresh on the Home feed only. The user's finger can
+    // scroll a chat or a nested message list without ever reloading the WebView.
+    private void enableSafeHomeRefresh() {
+        web.setOnTouchListener((view, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    refreshGestureStartY = event.getY();
+                    break;
+                case MotionEvent.ACTION_UP:
+                    if (refreshGestureStartY >= 0 &&
+                            event.getY() - refreshGestureStartY >
+                                145 * getResources().getDisplayMetrics().density &&
+                            web.getScrollY() <= 1) {
+                        // Check the actual SPA route and scroll owner; Android
+                        // cannot infer it from WebView.getScrollY alone.
+                        web.evaluateJavascript(
+                          "(function(){var p=document.querySelector('main#app');" +
+                          "return !!(p&&p.querySelector('.home-page-shell')&&" +
+                          "!p.querySelector('.message-page-frame,.message-chat-page')&&" +
+                          "!document.documentElement.classList.contains('mc-chat-active')&&" +
+                          "!(document.scrollingElement&&document.scrollingElement.scrollTop>2)&&" +
+                          "!document.querySelector('[role=dialog]:not([hidden]),.mc-media-viewer:not([hidden])'))})()",
+                          allowed -> {
+                              if ("true".equals(allowed) && web != null) web.reload();
+                          });
+                    }
+                    refreshGestureStartY = -1;
+                    break;
+                case MotionEvent.ACTION_CANCEL:
+                    refreshGestureStartY = -1;
+                    break;
+            }
+            return false; // Keep native scroll, tap, media and gesture handling intact.
+        });
     }
 
     private boolean accepts(String[] types, String category) {
