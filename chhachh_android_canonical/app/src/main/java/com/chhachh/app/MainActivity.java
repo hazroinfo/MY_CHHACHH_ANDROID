@@ -18,6 +18,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.view.Gravity;
@@ -46,9 +47,26 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.Locale;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 public final class MainActivity extends Activity {
     private static final String HOME = "https://chhachh.com/";
+    private static final String BUILD_ENDPOINT = "https://chhachh.com/__build";
+    private final Handler releaseHandler = new Handler(Looper.getMainLooper());
+    private boolean releaseRunning = false, releaseForeground = false;
+    private long lastReleaseCheck = 0L;
+    private String releaseReloaded = "";
+    private final Runnable releaseTimer = new Runnable() {
+        @Override public void run() {
+            if (!releaseForeground || web == null) return;
+            checkCloudflareRelease();
+            releaseHandler.postDelayed(this, 90000L);
+        }
+    };
     private static final int REQUEST_FILES = 401;
     private static final int REQUEST_MEDIA_PERMISSION = 402;
     private static final int REQUEST_LEGACY_STORAGE = 403;
@@ -103,6 +121,8 @@ public final class MainActivity extends Activity {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
+        // Keep image/video cache for performance; clear only for a new release.
+        s.setCacheMode(WebSettings.LOAD_DEFAULT);
         // Respect the site's device-width viewport and prevent WebView-only desktop scaling.
         s.setUseWideViewPort(true);
         s.setLoadWithOverviewMode(true);
@@ -192,6 +212,90 @@ public final class MainActivity extends Activity {
         });
         web.setDownloadListener((url, ua, disposition, mime, len) -> download(url, ua, disposition, mime));
         web.loadUrl(HOME);
+    }
+
+    // Independent native release check. An old WebView document may still run
+    // old JS even after the Cloudflare site has been deployed.
+    private void checkCloudflareRelease() {
+        if (!releaseForeground || web == null || releaseRunning || fullscreenView != null) return;
+        String here = web.getUrl();
+        if (here == null || !isTrusted(Uri.parse(here))) return;
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (now - lastReleaseCheck < 60000L) return;
+        lastReleaseCheck = now;
+        releaseRunning = true;
+        new Thread(() -> {
+            String remote = null;
+            HttpURLConnection conn = null;
+            try {
+                conn = (HttpURLConnection) new URL(BUILD_ENDPOINT).openConnection();
+                conn.setRequestMethod("GET");
+                conn.setUseCaches(false);
+                conn.setRequestProperty("Cache-Control", "no-cache, no-store");
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+                if (conn.getResponseCode() == 200) {
+                    try (BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                        remote = reader.readLine();
+                    }
+                }
+            } catch (Exception ignored) {
+                // Offline is not an error: preserve the current page.
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+            final String target = remote == null ? "" : remote.trim();
+            runOnUiThread(() -> {
+                releaseRunning = false;
+                if (!releaseForeground || web == null || fullscreenView != null) return;
+                if (!target.matches("V97\\.[0-9]+-[A-Za-z0-9._-]{1,85}") ||
+                        target.equals(releaseReloaded)) return;
+                int remoteNumber;
+                try { remoteNumber = Integer.parseInt(target.substring(4, target.indexOf('-'))); }
+                catch (Exception badVersion) { return; }
+                if (remoteNumber <= 0) return;
+                // Never reload during draft entry, file selection, recording or posting.
+                final String script = """
+                    (function() {
+                      try {
+                        var local = String(document.body && document.body.dataset.build || '');
+                        var current = Number(local.split('-')[0].split('.')[1] || 0);
+                        if (!current || current >= __VERSION__ || document.hidden) return 'skip';
+                        var a = document.activeElement;
+                        if (a && a.matches('textarea,input,select,[contenteditable]')) return 'busy';
+                        if (document.querySelector('.is-recording,.is-uploading,[data-recording="1"],[data-submitting="1"]')) return 'busy';
+                        for (var f of document.querySelectorAll('input[type=file]')) {
+                          if (f.files && f.files.length) return 'busy';
+                        }
+                        for (var i of document.querySelectorAll('textarea,input:not([type=hidden]),[contenteditable=true]')) {
+                          if (i.isContentEditable && i.textContent.trim()) return 'busy';
+                          if ('value' in i && i.type !== 'checkbox' && i.type !== 'radio' &&
+                              i.value !== i.defaultValue) return 'busy';
+                        }
+                        if (typeof hasUnsavedReleaseWork === 'function' && hasUnsavedReleaseWork()) return 'busy';
+                        return 'ready';
+                      } catch (e) { return 'skip'; }
+                    })()
+                    """.replace("__VERSION__", Integer.toString(remoteNumber));
+                web.evaluateJavascript(script, result -> {
+                    if (!releaseForeground || web == null || !"\"ready\"".equals(result)) return;
+                    String page = web.getUrl();
+                    if (page == null || !isTrusted(Uri.parse(page))) return;
+                    releaseReloaded = target; // one reload at most per build
+                    web.clearCache(true); // never clears cookies or localStorage
+                    Uri current = Uri.parse(page);
+                    Uri.Builder next = current.buildUpon().clearQuery();
+                    for (String key : current.getQueryParameterNames()) {
+                        if ("__mc_release".equals(key)) continue;
+                        for (String val : current.getQueryParameters(key))
+                            next.appendQueryParameter(key, val);
+                    }
+                    next.appendQueryParameter("__mc_release", target);
+                    web.loadUrl(next.build().toString());
+                });
+            });
+        }, "ChhachhReleaseCheck").start();
     }
 
     // Android 15+ enforces edge-to-edge windows for target SDK 35+. The WebView
@@ -512,9 +616,22 @@ public final class MainActivity extends Activity {
         else if (web != null && web.canGoBack()) web.goBack();
         else super.onBackPressed();
     }
-    @Override protected void onPause() { if (web != null) web.onPause(); super.onPause(); }
-    @Override protected void onResume() { super.onResume(); if (web != null) web.onResume(); }
+    @Override protected void onPause() {
+        releaseForeground = false;
+        releaseHandler.removeCallbacks(releaseTimer);
+        if (web != null) web.onPause();
+        super.onPause();
+    }
+    @Override protected void onResume() {
+        super.onResume();
+        if (web != null) web.onResume();
+        releaseForeground = true;
+        releaseHandler.removeCallbacks(releaseTimer);
+        releaseHandler.postDelayed(releaseTimer, 1500L);
+    }
     @Override protected void onDestroy() {
+        releaseForeground = false;
+        releaseHandler.removeCallbacks(releaseTimer);
         if (pendingPermission != null) {
             pendingPermission.deny();
             pendingPermission = null;
