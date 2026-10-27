@@ -221,7 +221,7 @@ public final class MainActivity extends Activity {
         String here = web.getUrl();
         if (here == null || !isTrusted(Uri.parse(here))) return;
         long now = android.os.SystemClock.elapsedRealtime();
-        if (now - lastReleaseCheck < 60000L) return;
+        if (lastReleaseCheck != 0L && now - lastReleaseCheck < 60000L) return;
         lastReleaseCheck = now;
         releaseRunning = true;
         new Thread(() -> {
