@@ -3,6 +3,7 @@ package com.chhachh.app;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.location.LocationManager;
 import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
 import android.content.ContentValues;
@@ -87,6 +88,7 @@ public final class MainActivity extends Activity {
     private String[] pendingResources;
     private GeolocationPermissions.Callback pendingGeoCallback;
     private String pendingGeoOrigin;
+    private boolean returningFromLocationSettings = false;
 
     private boolean isTrusted(Uri uri) {
         String host = uri == null ? null : uri.getHost();
@@ -453,21 +455,61 @@ public final class MainActivity extends Activity {
     }
 
     // A user-initiated At... action requests device location through the trusted WebView origin.
+    private boolean hasLocationPermission() {
+        return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+               checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private boolean isDeviceLocationOn() {
+        try {
+            LocationManager manager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+            if (manager == null) return false;
+            if (Build.VERSION.SDK_INT >= 28) return manager.isLocationEnabled();
+            return manager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                   manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        } catch (RuntimeException ex) { return false; }
+    }
+
+    private void finishGeolocation(boolean allowed) {
+        GeolocationPermissions.Callback cb = pendingGeoCallback;
+        String origin = pendingGeoOrigin;
+        pendingGeoCallback = null;
+        pendingGeoOrigin = null;
+        returningFromLocationSettings = false;
+        if (cb != null) cb.invoke(origin, allowed, allowed);
+    }
+
+    private void afterLocationPermission() {
+        if (pendingGeoCallback == null) return;
+        if (!hasLocationPermission()) { finishGeolocation(false); return; }
+        if (isDeviceLocationOn()) { finishGeolocation(true); return; }
+        // System-wide Location can only be enabled by the user.
+        new AlertDialog.Builder(this)
+            .setTitle("Turn on Location")
+            .setMessage("Turn on your phone's Location to add a place to this post.")
+            .setPositiveButton("Location settings", (dialog, which) -> {
+                try {
+                    returningFromLocationSettings = true;
+                    startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                } catch (Exception error) { finishGeolocation(false); }
+            })
+            .setNegativeButton("Cancel", (dialog, which) -> finishGeolocation(false))
+            .setOnCancelListener(dialog -> finishGeolocation(false))
+            .show();
+    }
+
     private void handleGeolocationRequest(String origin, GeolocationPermissions.Callback callback) {
         if (origin == null || !isTrusted(Uri.parse(origin)) || isFinishing()) {
             callback.invoke(origin, false, false);
             return;
         }
-        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-                checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            callback.invoke(origin, true, true);
-            return;
-        }
-        if (pendingGeoCallback != null) pendingGeoCallback.invoke(pendingGeoOrigin, false, false);
+        if (pendingGeoCallback != null) finishGeolocation(false);
         pendingGeoCallback = callback;
         pendingGeoOrigin = origin;
-        requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_GEOLOCATION_PERMISSION);
+        if (hasLocationPermission()) afterLocationPermission();
+        else requestPermissions(new String[]{
+                Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION
+        }, REQUEST_GEOLOCATION_PERMISSION);
     }
 
     // Only trusted HTTPS pages may receive Android microphone/camera access.
@@ -509,15 +551,7 @@ public final class MainActivity extends Activity {
     @Override public void onRequestPermissionsResult(int request, String[] perms, int[] grants) {
         super.onRequestPermissionsResult(request, perms, grants);
         if (request == REQUEST_GEOLOCATION_PERMISSION) {
-            GeolocationPermissions.Callback waiting = pendingGeoCallback;
-            String origin = pendingGeoOrigin;
-            pendingGeoCallback = null;
-            pendingGeoOrigin = null;
-            if (waiting != null) {
-                boolean allowed = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-                        checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
-                waiting.invoke(origin, allowed, allowed);
-            }
+            afterLocationPermission();
             return;
         }
         if (request == REQUEST_LEGACY_STORAGE) {
@@ -663,6 +697,11 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         if (web != null) web.onResume();
+        if (returningFromLocationSettings) {
+            returningFromLocationSettings = false;
+            if (pendingGeoCallback != null) finishGeolocation(
+                    hasLocationPermission() && isDeviceLocationOn());
+        }
         releaseForeground = true;
         releaseHandler.removeCallbacks(releaseTimer);
         releaseHandler.postDelayed(releaseTimer, 1500L);
@@ -670,11 +709,7 @@ public final class MainActivity extends Activity {
     @Override protected void onDestroy() {
         releaseForeground = false;
         releaseHandler.removeCallbacks(releaseTimer);
-        if (pendingGeoCallback != null) {
-            pendingGeoCallback.invoke(pendingGeoOrigin, false, false);
-            pendingGeoCallback = null;
-            pendingGeoOrigin = null;
-        }
+        if (pendingGeoCallback != null) finishGeolocation(false);
         if (pendingPermission != null) {
             pendingPermission.deny();
             pendingPermission = null;
