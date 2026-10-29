@@ -30,6 +30,9 @@ import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
+import android.webkit.JavascriptInterface;
+import android.util.Base64;
+import android.media.MediaScannerConnection;
 import android.webkit.GeolocationPermissions;
 import android.webkit.PermissionRequest;
 import android.webkit.SslErrorHandler;
@@ -53,6 +56,11 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.io.IOException;
+import java.util.UUID;
 import java.nio.charset.StandardCharsets;
 
 public final class MainActivity extends Activity {
@@ -88,6 +96,8 @@ public final class MainActivity extends Activity {
     private String[] pendingResources;
     private GeolocationPermissions.Callback pendingGeoCallback;
     private String pendingGeoOrigin;
+    private volatile String nativeDownloadToken = UUID.randomUUID().toString();
+    private final NativeDownloads nativeDownloads = new NativeDownloads();
     private boolean returningFromLocationSettings = false;
 
     private boolean isTrusted(Uri uri) {
@@ -161,6 +171,7 @@ public final class MainActivity extends Activity {
                 showOffline();
             }
             @Override public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                nativeDownloadToken = UUID.randomUUID().toString();
                 long token = ++navigationToken;
                 view.postDelayed(() -> {
                     if (token == navigationToken && loadingRing != null)
@@ -168,6 +179,10 @@ public final class MainActivity extends Activity {
                 }, 180);
             }
             @Override public void onPageFinished(WebView view, String url) {
+                if (url != null && isTrusted(Uri.parse(url))) {
+                    view.evaluateJavascript("Object.defineProperty(window,'__chhachhNativeToken',{value:'"
+                        + nativeDownloadToken + "',configurable:true})", null);
+                }
                 ++navigationToken;
                 if (loadingRing != null) loadingRing.setVisibility(View.GONE);
                 // Deliberately no progress bar. Website owns its round loader.
@@ -210,6 +225,10 @@ public final class MainActivity extends Activity {
                 });
             }
             @Override public void onShowCustomView(View view, CustomViewCallback cb) {
+                // Chhachh owns inline/fullscreen video UI, never Android native chrome.
+                if (web != null && isTrusted(Uri.parse(String.valueOf(web.getUrl())))) {
+                    cb.onCustomViewHidden(); return;
+                }
                 if (fullscreenView != null) { cb.onCustomViewHidden(); return; }
                 fullscreenView = view;
                 fullscreenCallback = cb;
@@ -220,6 +239,7 @@ public final class MainActivity extends Activity {
             }
             @Override public void onHideCustomView() { exitVideoFullscreen(); }
         });
+        web.addJavascriptInterface(nativeDownloads, "ChhachhNativeDownloads");
         web.setDownloadListener((url, ua, disposition, mime, len) -> download(url, ua, disposition, mime));
         web.loadUrl(HOME);
     }
@@ -611,6 +631,99 @@ public final class MainActivity extends Activity {
             .show();
     }
 
+    // Canonical Android Download handler for completed video blobs from chhachh.com.
+    // A per-navigation secret avoids exposing file writes to third-party iframes.
+    public final class NativeDownloads {
+        private OutputStream output;
+        private Uri destination;
+        private File legacyFile;
+        private long expectedBytes, writtenBytes;
+        private int activeId, serial;
+        private boolean valid(String token) {
+            return token != null && token.equals(nativeDownloadToken);
+        }
+        private void clear(boolean keep) {
+            try { if (output != null) output.close(); } catch (Exception ignored) { }
+            output = null;
+            if (!keep) {
+                if (destination != null) try { getContentResolver().delete(destination, null, null); }
+                    catch (Exception ignored) { }
+                if (legacyFile != null) legacyFile.delete();
+            }
+            destination = null; legacyFile = null; expectedBytes = 0;
+            writtenBytes = 0; activeId = 0;
+        }
+        @JavascriptInterface public synchronized int begin(String token, String filename,
+                String mime, double size) {
+            if (!valid(token) || activeId != 0 || filename == null ||
+                    filename.length() > 100 || !filename.matches("[A-Za-z0-9_.-]+") ||
+                    !(filename.endsWith(".mp4") || filename.endsWith(".webm")) ||
+                    !("video/mp4".equals(mime) || "video/webm".equals(mime)) ||
+                    !Double.isFinite(size) || size <= 0 || size > 250L*1024*1024) return 0;
+            try {
+                expectedBytes = (long)size;
+                if (Build.VERSION.SDK_INT >= 29) {
+                    ContentValues cv = new ContentValues();
+                    cv.put(MediaStore.Downloads.DISPLAY_NAME, filename);
+                    cv.put(MediaStore.Downloads.MIME_TYPE, mime);
+                    cv.put(MediaStore.Downloads.RELATIVE_PATH,
+                            Environment.DIRECTORY_DOWNLOADS + "/chhachh");
+                    cv.put(MediaStore.Downloads.IS_PENDING, 1);
+                    destination = getContentResolver().insert(
+                            MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                    if (destination == null) throw new IOException("No destination");
+                    output = getContentResolver().openOutputStream(destination, "w");
+                } else {
+                    if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                            != PackageManager.PERMISSION_GRANTED) {
+                        runOnUiThread(() -> requestPermissions(new String[] {
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE }, REQUEST_LEGACY_STORAGE));
+                        clear(false); return 0;
+                    }
+                    File folder = new File(Environment.getExternalStoragePublicDirectory(
+                            Environment.DIRECTORY_DOWNLOADS), "chhachh");
+                    if (!folder.exists() && !folder.mkdirs())
+                        throw new IOException("Cannot create Downloads folder");
+                    legacyFile = new File(folder, filename);
+                    output = new FileOutputStream(legacyFile);
+                }
+                if (output == null) throw new IOException("No output stream");
+                activeId = ++serial; if (activeId == 0) activeId = ++serial;
+                writtenBytes = 0;
+                return activeId;
+            } catch (Exception e) { clear(false); return 0; }
+        }
+        @JavascriptInterface public synchronized boolean append(String token, int id, String base64) {
+            if (!valid(token) || id == 0 || id != activeId || output == null ||
+                    base64 == null || base64.length() > 100000) return false;
+            try {
+                byte[] b = Base64.decode(base64, Base64.DEFAULT);
+                if (b.length == 0 || writtenBytes + b.length > expectedBytes) return false;
+                output.write(b); writtenBytes += b.length; return true;
+            } catch (Exception e) { clear(false); return false; }
+        }
+        @JavascriptInterface public synchronized boolean finish(String token, int id) {
+            if (!valid(token) || id == 0 || id != activeId || output == null ||
+                    writtenBytes != expectedBytes) { clear(false); return false; }
+            try {
+                output.flush(); output.close(); output = null;
+                if (destination != null && Build.VERSION.SDK_INT >= 29) {
+                    ContentValues cv = new ContentValues();
+                    cv.put(MediaStore.Downloads.IS_PENDING, 0);
+                    if (getContentResolver().update(destination, cv, null, null) < 1)
+                        throw new IOException("Finalizing download failed");
+                } else if (legacyFile != null) {
+                    MediaScannerConnection.scanFile(MainActivity.this,
+                        new String[] { legacyFile.getAbsolutePath() }, null, null);
+                }
+                clear(true); return true;
+            } catch (Exception e) { clear(false); return false; }
+        }
+        @JavascriptInterface public synchronized void abort(String token, int id) {
+            if (valid(token) && id == activeId) clear(false);
+        }
+    }
+
     private void download(String url, String userAgent, String disposition, String type) {
         try {
             Uri uri = Uri.parse(url);
@@ -684,9 +797,21 @@ public final class MainActivity extends Activity {
     }
 
     @Override public void onBackPressed() {
-        if (fullscreenView != null) exitVideoFullscreen();
-        else if (web != null && web.canGoBack()) web.goBack();
-        else super.onBackPressed();
+        if (fullscreenView != null) { exitVideoFullscreen(); return; }
+        if (web == null || !isTrusted(Uri.parse(String.valueOf(web.getUrl())))) {
+            super.onBackPressed(); return;
+        }
+        // In-app Back closes the existing media overlay before navigating.
+        web.evaluateJavascript("(function(){try{if(typeof FEED_VIDEO_EXPANDED!=='undefined'"
+            + "&&FEED_VIDEO_EXPANDED&&typeof closeExpandedFeedVideo==='function'){"
+            + "closeExpandedFeedVideo();return true;}"
+            + "if(document.querySelector('.post-photo-expanded-layer')"
+            + "&&typeof closeExpandedPostPhoto==='function'){closeExpandedPostPhoto();return true;}"
+            + "}catch(e){}return false;})()", result -> {
+            if ("true".equals(result)) return;
+            if (web != null && web.canGoBack()) web.goBack();
+            else MainActivity.super.onBackPressed();
+        });
     }
     @Override protected void onPause() {
         releaseForeground = false;
