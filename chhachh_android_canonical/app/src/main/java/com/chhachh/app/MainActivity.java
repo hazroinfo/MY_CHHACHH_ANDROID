@@ -29,6 +29,7 @@ import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
+import android.webkit.GeolocationPermissions;
 import android.webkit.PermissionRequest;
 import android.webkit.SslErrorHandler;
 import android.webkit.URLUtil;
@@ -70,6 +71,7 @@ public final class MainActivity extends Activity {
     private static final int REQUEST_FILES = 401;
     private static final int REQUEST_MEDIA_PERMISSION = 402;
     private static final int REQUEST_LEGACY_STORAGE = 403;
+    private static final int REQUEST_GEOLOCATION_PERMISSION = 404;
     private WebView web;
     private ProgressBar loadingRing;
     private long navigationToken = 0;
@@ -83,6 +85,8 @@ public final class MainActivity extends Activity {
     private WebChromeClient.FileChooserParams pendingChooserParams;
     private PermissionRequest pendingPermission;
     private String[] pendingResources;
+    private GeolocationPermissions.Callback pendingGeoCallback;
+    private String pendingGeoOrigin;
 
     private boolean isTrusted(Uri uri) {
         String host = uri == null ? null : uri.getHost();
@@ -121,6 +125,7 @@ public final class MainActivity extends Activity {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
+        s.setGeolocationEnabled(true);
         // Keep image/video cache for performance; clear only for a new release.
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
         // Respect the site's device-width viewport and prevent WebView-only desktop scaling.
@@ -187,6 +192,9 @@ public final class MainActivity extends Activity {
                     launchFileChooser(params, true);
                 }
                 return true;
+            }
+            @Override public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+                runOnUiThread(() -> handleGeolocationRequest(origin, callback));
             }
             @Override public void onPermissionRequest(PermissionRequest req) {
                 runOnUiThread(() -> handleMediaRequest(req));
@@ -444,6 +452,24 @@ public final class MainActivity extends Activity {
         return false;
     }
 
+    // A user-initiated At... action requests device location through the trusted WebView origin.
+    private void handleGeolocationRequest(String origin, GeolocationPermissions.Callback callback) {
+        if (origin == null || !isTrusted(Uri.parse(origin)) || isFinishing()) {
+            callback.invoke(origin, false, false);
+            return;
+        }
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            callback.invoke(origin, true, true);
+            return;
+        }
+        if (pendingGeoCallback != null) pendingGeoCallback.invoke(pendingGeoOrigin, false, false);
+        pendingGeoCallback = callback;
+        pendingGeoOrigin = origin;
+        requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_GEOLOCATION_PERMISSION);
+    }
+
     // Only trusted HTTPS pages may receive Android microphone/camera access.
     private void handleMediaRequest(PermissionRequest req) {
         if (!isTrusted(req.getOrigin())) {
@@ -482,6 +508,18 @@ public final class MainActivity extends Activity {
 
     @Override public void onRequestPermissionsResult(int request, String[] perms, int[] grants) {
         super.onRequestPermissionsResult(request, perms, grants);
+        if (request == REQUEST_GEOLOCATION_PERMISSION) {
+            GeolocationPermissions.Callback waiting = pendingGeoCallback;
+            String origin = pendingGeoOrigin;
+            pendingGeoCallback = null;
+            pendingGeoOrigin = null;
+            if (waiting != null) {
+                boolean allowed = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                        checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+                waiting.invoke(origin, allowed, allowed);
+            }
+            return;
+        }
         if (request == REQUEST_LEGACY_STORAGE) {
             WebChromeClient.FileChooserParams queued = pendingChooserParams;
             pendingChooserParams = null;
@@ -632,6 +670,11 @@ public final class MainActivity extends Activity {
     @Override protected void onDestroy() {
         releaseForeground = false;
         releaseHandler.removeCallbacks(releaseTimer);
+        if (pendingGeoCallback != null) {
+            pendingGeoCallback.invoke(pendingGeoOrigin, false, false);
+            pendingGeoCallback = null;
+            pendingGeoOrigin = null;
+        }
         if (pendingPermission != null) {
             pendingPermission.deny();
             pendingPermission = null;
