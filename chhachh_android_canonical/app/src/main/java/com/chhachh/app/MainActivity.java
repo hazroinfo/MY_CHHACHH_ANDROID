@@ -98,6 +98,7 @@ public final class MainActivity extends Activity {
     private String pendingGeoOrigin;
     private volatile String nativeDownloadToken = UUID.randomUUID().toString();
     private final NativeDownloads nativeDownloads = new NativeDownloads();
+    private final NativeShare nativeShare = new NativeShare();
     private boolean returningFromLocationSettings = false;
 
     private boolean isTrusted(Uri uri) {
@@ -240,6 +241,7 @@ public final class MainActivity extends Activity {
             @Override public void onHideCustomView() { exitVideoFullscreen(); }
         });
         web.addJavascriptInterface(nativeDownloads, "ChhachhNativeDownloads");
+        web.addJavascriptInterface(nativeShare, "ChhachhNativeShare");
         web.setDownloadListener((url, ua, disposition, mime, len) -> download(url, ua, disposition, mime));
         web.loadUrl(HOME);
     }
@@ -629,6 +631,32 @@ public final class MainActivity extends Activity {
                 catch (ActivityNotFoundException ignored) { }
             })
             .show();
+    }
+
+    // Open the real Android Sharesheet for a user-initiated Share tap.
+    // The navigation token is injected only into the trusted top-level Chhachh page.
+    public final class NativeShare {
+        @JavascriptInterface public boolean open(String token, String url, String title) {
+            if (token == null || !token.equals(nativeDownloadToken) ||
+                    url == null || url.length() > 2048) return false;
+            Uri uri;
+            try { uri = Uri.parse(url); }
+            catch (Exception ignored) { return false; }
+            if (!isTrusted(uri)) return false;
+            final String target = uri.toString();
+            final String label = title != null && title.length() <= 100 && !title.trim().isEmpty()
+                    ? title.trim() : "Chhachh";
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                Intent send = new Intent(Intent.ACTION_SEND);
+                send.setType("text/plain");
+                send.putExtra(Intent.EXTRA_TEXT, target);
+                send.putExtra(Intent.EXTRA_SUBJECT, label);
+                try { startActivity(Intent.createChooser(send, "Share")); }
+                catch (ActivityNotFoundException ignored) { }
+            });
+            return true;
+        }
     }
 
     // Canonical Android Download handler for completed video blobs from chhachh.com.
