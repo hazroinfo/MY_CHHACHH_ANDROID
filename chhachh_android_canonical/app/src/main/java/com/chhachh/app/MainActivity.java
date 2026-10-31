@@ -282,11 +282,11 @@ public final class MainActivity extends Activity {
                 releaseRunning = false;
                 if (!releaseForeground || web == null || fullscreenView != null) return;
                 // Compare the whole V<major>.<minor> release, not just the V97 minor number.
-                if (!target.matches("V[0-9]{1,4}\\\\.[0-9]{1,9}-[A-Za-z0-9._-]{1,85}") ||
+                if (!target.matches("V[0-9]{1,4}\\.[0-9]{1,9}-[A-Za-z0-9._-]{1,85}") ||
                         target.equals(releaseReloaded)) return;
                 long remoteNumber;
                 try {
-                    String[] pair = target.substring(1, target.indexOf('-')).split("\\\\.");
+                    String[] pair = target.substring(1, target.indexOf('-')).split("\\.");
                     remoteNumber = Long.parseLong(pair[0]) * 1000000000L + Long.parseLong(pair[1]);
                 } catch (Exception badVersion) { return; }
                 if (remoteNumber <= 0) return;
