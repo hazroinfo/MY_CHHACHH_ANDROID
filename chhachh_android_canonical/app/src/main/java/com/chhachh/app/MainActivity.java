@@ -7,6 +7,7 @@ import android.location.LocationManager;
 import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
 import android.content.ContentValues;
+import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -81,6 +82,7 @@ public final class MainActivity extends Activity {
     private static final int REQUEST_MEDIA_PERMISSION = 402;
     private static final int REQUEST_LEGACY_STORAGE = 403;
     private static final int REQUEST_GEOLOCATION_PERMISSION = 404;
+    private static final int REQUEST_CAMERA_CAPTURE_PERMISSION = 405;
     private WebView web;
     private ProgressBar loadingRing;
     private long navigationToken = 0;
@@ -89,7 +91,7 @@ public final class MainActivity extends Activity {
     private View fullscreenView;
     private WebChromeClient.CustomViewCallback fullscreenCallback;
     private ValueCallback<Uri[]> fileCallback;
-    private Uri cameraFile;
+    private final ArrayList<Uri> cameraFiles = new ArrayList<>();
     private boolean pickerLaunched = false;
     private WebChromeClient.FileChooserParams pendingChooserParams;
     private PermissionRequest pendingPermission;
@@ -197,8 +199,16 @@ public final class MainActivity extends Activity {
         web.setWebChromeClient(new WebChromeClient() {
             @Override public boolean onShowFileChooser(WebView w, ValueCallback<Uri[]> callback, FileChooserParams params) {
                 if (fileCallback != null) fileCallback.onReceiveValue(null);
+                clearUnusedCameraFiles(null);
                 fileCallback = callback;
-                cameraFile = null;
+                // A live camera request is the only upload action that asks for CAMERA.
+                if (params.isCaptureEnabled()
+                        && getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
+                        && checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                    pendingChooserParams = params;
+                    requestPermissions(new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_CAPTURE_PERMISSION);
+                    return true;
+                }
                 boolean needsLegacyPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
                         && getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
                         && (accepts(params.getAcceptTypes(), "image") || accepts(params.getAcceptTypes(), "video"))
@@ -403,13 +413,15 @@ public final class MainActivity extends Activity {
             Intent picker = params.createIntent();
             picker.addCategory(Intent.CATEGORY_OPENABLE);
             ArrayList<Intent> cameraChoices = new ArrayList<>();
-            if (allowCamera && getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
+            if (allowCamera && getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
+                    && checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
                 boolean images = accepts(params.getAcceptTypes(), "image");
                 boolean videos = accepts(params.getAcceptTypes(), "video");
                 if (images) {
                     Intent capture = captureIntent(false);
                     if (capture != null) cameraChoices.add(capture);
-                } else if (videos) {
+                }
+                if (videos) {
                     Intent capture = captureIntent(true);
                     if (capture != null) cameraChoices.add(capture);
                 }
@@ -424,11 +436,7 @@ public final class MainActivity extends Activity {
             }
             pickerLaunched = true;
         } catch (Exception error) {
-            if (cameraFile != null) {
-                try { getContentResolver().delete(cameraFile, null, null); }
-                catch (Exception ignored) { }
-            }
-            cameraFile = null;
+            clearUnusedCameraFiles(null);
             if (fileCallback != null) fileCallback.onReceiveValue(null);
             fileCallback = null;
             pickerLaunched = false;
@@ -444,9 +452,10 @@ public final class MainActivity extends Activity {
         Uri collection = video ? MediaStore.Video.Media.EXTERNAL_CONTENT_URI : MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
         Uri uri = getContentResolver().insert(collection, values);
         if (uri == null) return null;
-        cameraFile = uri;
+        cameraFiles.add(uri);
         Intent intent = new Intent(video ? MediaStore.ACTION_VIDEO_CAPTURE : MediaStore.ACTION_IMAGE_CAPTURE);
         intent.putExtra(MediaStore.EXTRA_OUTPUT, uri);
+        intent.setClipData(ClipData.newUri(getContentResolver(), "Chhachh media capture", uri));
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
         return intent;
     }
@@ -462,22 +471,42 @@ public final class MainActivity extends Activity {
                 for (int i = 0; i < n; i++) output[i] = data.getClipData().getItemAt(i).getUri();
             } else if (data != null && data.getData() != null) {
                 output = new Uri[] { data.getData() };
-            } else if (cameraFile != null) {
-                output = new Uri[] { cameraFile };
+            } else {
+                Uri captured = findRecordedCameraFile();
+                if (captured != null) output = new Uri[] { captured };
             }
         }
-        if (cameraFile != null && (output == null || !contains(output, cameraFile))) {
-            try { getContentResolver().delete(cameraFile, null, null); } catch (Exception ignored) {}
-        }
-        cameraFile = null;
+        clearUnusedCameraFiles(output);
         fileCallback.onReceiveValue(output);
         fileCallback = null;
         pickerLaunched = false;
     }
 
     private boolean contains(Uri[] list, Uri item) {
+        if (list == null) return false;
         for (Uri uri : list) if (item.equals(uri)) return true;
         return false;
+    }
+
+    // Separate photo/video output placeholders; only return a nonempty capture.
+    private Uri findRecordedCameraFile() {
+        for (Uri uri : cameraFiles) {
+            try (android.os.ParcelFileDescriptor fd =
+                         getContentResolver().openFileDescriptor(uri, "r")) {
+                if (fd != null && fd.getStatSize() > 0) return uri;
+            } catch (Exception ignored) { }
+        }
+        return null;
+    }
+
+    private void clearUnusedCameraFiles(Uri[] selected) {
+        for (Uri uri : cameraFiles) {
+            if (!contains(selected, uri)) {
+                try { getContentResolver().delete(uri, null, null); }
+                catch (Exception ignored) { }
+            }
+        }
+        cameraFiles.clear();
     }
 
     // A user-initiated At... action requests device location through the trusted WebView origin.
@@ -578,6 +607,14 @@ public final class MainActivity extends Activity {
         super.onRequestPermissionsResult(request, perms, grants);
         if (request == REQUEST_GEOLOCATION_PERMISSION) {
             afterLocationPermission();
+            return;
+        }
+        if (request == REQUEST_CAMERA_CAPTURE_PERMISSION) {
+            WebChromeClient.FileChooserParams queued = pendingChooserParams;
+            pendingChooserParams = null;
+            if (queued != null)
+                launchFileChooser(queued, grants.length > 0 &&
+                        grants[0] == PackageManager.PERMISSION_GRANTED);
             return;
         }
         if (request == REQUEST_LEGACY_STORAGE) {
@@ -873,6 +910,7 @@ public final class MainActivity extends Activity {
             pendingResources = null;
         }
         if (fileCallback != null) fileCallback.onReceiveValue(null);
+        clearUnusedCameraFiles(null);
         pendingChooserParams = null;
         if (web != null) {
             root.removeView(web);
