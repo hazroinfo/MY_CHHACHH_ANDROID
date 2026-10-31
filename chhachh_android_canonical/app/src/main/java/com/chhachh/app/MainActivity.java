@@ -281,18 +281,22 @@ public final class MainActivity extends Activity {
             runOnUiThread(() -> {
                 releaseRunning = false;
                 if (!releaseForeground || web == null || fullscreenView != null) return;
-                if (!target.matches("V97\\.[0-9]+-[A-Za-z0-9._-]{1,85}") ||
+                // Compare the whole V<major>.<minor> release, not just the V97 minor number.
+                if (!target.matches("V[0-9]{1,4}\\\\.[0-9]{1,9}-[A-Za-z0-9._-]{1,85}") ||
                         target.equals(releaseReloaded)) return;
-                int remoteNumber;
-                try { remoteNumber = Integer.parseInt(target.substring(4, target.indexOf('-'))); }
-                catch (Exception badVersion) { return; }
+                long remoteNumber;
+                try {
+                    String[] pair = target.substring(1, target.indexOf('-')).split("\\\\.");
+                    remoteNumber = Long.parseLong(pair[0]) * 1000000000L + Long.parseLong(pair[1]);
+                } catch (Exception badVersion) { return; }
                 if (remoteNumber <= 0) return;
                 // Never reload during draft entry, file selection, recording or posting.
                 final String script = """
                     (function() {
                       try {
                         var local = String(document.body && document.body.dataset.build || '');
-                        var current = Number(local.split('-')[0].split('.')[1] || 0);
+                        var match = /^V(\\d+)\\.(\\d+)-/.exec(local);
+                        var current = match ? (Number(match[1]) * 1000000000 + Number(match[2])) : 0;
                         if (!current || current >= __VERSION__ || document.hidden) return 'skip';
                         var a = document.activeElement;
                         if (a && a.matches('textarea,input,select,[contenteditable]')) return 'busy';
@@ -309,7 +313,7 @@ public final class MainActivity extends Activity {
                         return 'ready';
                       } catch (e) { return 'skip'; }
                     })()
-                    """.replace("__VERSION__", Integer.toString(remoteNumber));
+                    """.replace("__VERSION__", Long.toString(remoteNumber));
                 web.evaluateJavascript(script, result -> {
                     if (!releaseForeground || web == null || !"\"ready\"".equals(result)) return;
                     String page = web.getUrl();
