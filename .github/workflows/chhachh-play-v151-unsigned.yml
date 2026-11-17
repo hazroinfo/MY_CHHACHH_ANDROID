@@ -1,0 +1,84 @@
+name: Build chhachh Play V1.5.1 unsigned AAB
+on:
+  push:
+    branches: [chhachh-play-aab-20261117]
+    paths:
+      - '.github/workflows/chhachh-play-v151-unsigned.yml'
+      - 'chhachh_android_canonical/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout the original native Android source
+        uses: actions/checkout@v4
+
+      - name: Assemble canonical Android project
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir current-chhachh-app
+          unzip -q chhachh_Android_Professional_Native_Source.zip -d current-chhachh-app \
+            -x 'app/src/main/java/com/chhachh/app/MainActivity.java' \
+               'app/build.gradle' \
+               'app/src/main/AndroidManifest.xml'
+          mkdir -p current-chhachh-app/app/src/main/java/com/chhachh/app
+          install -m 644 chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java current-chhachh-app/app/src/main/java/com/chhachh/app/MainActivity.java
+          install -m 644 chhachh_android_canonical/app/build.gradle current-chhachh-app/app/build.gradle
+          install -m 644 chhachh_android_canonical/app/src/main/AndroidManifest.xml current-chhachh-app/app/src/main/AndroidManifest.xml
+          mkdir -p current-chhachh-app/app/src/main/res/drawable-nodpi
+          install -m 644 chhachh_android_canonical/app/src/main/res/drawable-nodpi/chhachh_launcher_exact.png current-chhachh-app/app/src/main/res/drawable-nodpi/chhachh_launcher_exact.png
+          grep -q "applicationId 'com.chhachh.app'" current-chhachh-app/app/build.gradle
+          grep -q "targetSdk 36" current-chhachh-app/app/build.gradle
+          grep -q "versionCode 13" current-chhachh-app/app/build.gradle
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36' 'build-tools;36.0.0'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Compile current native app and unsigned Play bundle
+        working-directory: current-chhachh-app
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:bundleRelease
+
+      - name: Check output and Android identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          AAB=current-chhachh-app/app/build/outputs/bundle/release/app-release.aab
+          APK=current-chhachh-app/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$AAB"
+          test -s "$APK"
+          unzip -t "$AAB" >/dev/null
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | tee chhachh-build-metadata.txt
+          grep -q "package: name='com.chhachh.app' versionCode='13'" chhachh-build-metadata.txt
+          grep -q "targetSdkVersion:'36'" chhachh-build-metadata.txt
+          sha256sum "$AAB" > chhachh-unsigned-sha256.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chhachh-v1-5-1-unsigned-aab-for-offline-signing
+          path: |
+            current-chhachh-app/app/build/outputs/bundle/release/app-release.aab
+            current-chhachh-app/app/build/outputs/apk/debug/app-debug.apk
+            chhachh-build-metadata.txt
+            chhachh-unsigned-sha256.txt
+          if-no-files-found: error
+          retention-days: 14
