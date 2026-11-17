@@ -2,13 +2,13 @@ plugins { id 'com.android.application' }
 
 android {
     namespace 'com.chhachh.app'
-    compileSdk 35
+    compileSdk 36
     defaultConfig {
         applicationId 'com.chhachh.app'
         minSdk 23
-        targetSdk 35
+        targetSdk 36
         versionCode 12
-        versionName '1.4.6'
+        versionName '1.5.1'
     }
     buildTypes { release { minifyEnabled false } }
     compileOptions {

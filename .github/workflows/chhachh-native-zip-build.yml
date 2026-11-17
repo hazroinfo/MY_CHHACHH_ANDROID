@@ -1,4 +1,4 @@
-name: Build current chhachh WebView APK
+name: Build current chhachh WebView APK and Play AAB
 on:
   workflow_dispatch:
   pull_request:
@@ -55,7 +55,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Android 35 SDK using runner SDK
+      - name: Install Android 36 SDK using runner SDK
         shell: bash
         run: |
           set -euo pipefail
@@ -63,14 +63,34 @@ jobs:
           export ANDROID_SDK_ROOT="$ANDROID_HOME"
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
+          sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0' 'platforms;android-36' 'build-tools;36.0.0'
       - name: Set up Gradle 8.11.1
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
       - name: Build chhachh release APK without signing key
         working-directory: current-chhachh-app
-        run: gradle --no-daemon :app:assembleDebug :app:assembleRelease
+        run: gradle --no-daemon :app:assembleDebug :app:assembleRelease :app:bundleRelease
+      - name: Verify Play AAB build and signing boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE="current-chhachh-app/app/build/outputs/bundle/release/app-release.aab"
+          test -s "$BUNDLE"
+          grep -q 'applicationId .com.chhachh.app.' current-chhachh-app/app/build.gradle
+          grep -q 'targetSdk 36' current-chhachh-app/app/build.gradle
+          grep -q 'versionCode 12' current-chhachh-app/app/build.gradle
+          echo "Unsigned AAB built for offline signing with original Chhachh upload key"
+          sha256sum "$BUNDLE" > current-chhachh-app/unsigned-aab-sha256.txt
+      - name: Upload Play AAB for offline signing
+        uses: actions/upload-artifact@v4
+        with:
+          name: chhachh-v151-play-unsigned-aab
+          path: |
+            current-chhachh-app/app/build/outputs/bundle/release/app-release.aab
+            current-chhachh-app/unsigned-aab-sha256.txt
+          if-no-files-found: error
+          retention-days: 7
       - name: Align unsigned release APK
         shell: bash
         run: |
