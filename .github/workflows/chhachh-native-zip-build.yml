@@ -28,6 +28,7 @@ jobs:
           sparse-checkout: |
             chhachh_Android_Professional_Native_Source.zip
             chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java
+            chhachh_android_canonical/app/src/main/java/com/chhachh/app/ChhachhFirebaseMessagingService.java
             chhachh_android_canonical/app/build.gradle
             chhachh_android_canonical/app/src/main/AndroidManifest.xml
             chhachh_android_canonical/app/src/main/res/drawable-nodpi/chhachh_launcher_exact.png
@@ -42,6 +43,7 @@ jobs:
           unzip -q chhachh_Android_Professional_Native_Source.zip -d current-chhachh-app -x 'app/src/main/java/com/chhachh/app/MainActivity.java' 'app/build.gradle' 'app/src/main/AndroidManifest.xml'
           mkdir -p current-chhachh-app/app/src/main/java/com/chhachh/app
           install -m 644 chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java current-chhachh-app/app/src/main/java/com/chhachh/app/MainActivity.java
+          install -m 644 chhachh_android_canonical/app/src/main/java/com/chhachh/app/ChhachhFirebaseMessagingService.java current-chhachh-app/app/src/main/java/com/chhachh/app/ChhachhFirebaseMessagingService.java
           install -m 644 chhachh_android_canonical/app/build.gradle current-chhachh-app/app/build.gradle
           install -m 644 chhachh_android_canonical/app/src/main/AndroidManifest.xml current-chhachh-app/app/src/main/AndroidManifest.xml
           mkdir -p current-chhachh-app/app/src/main/res/drawable-nodpi
