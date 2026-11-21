@@ -7,8 +7,8 @@ android {
         applicationId 'com.chhachh.app'
         minSdk 24
         targetSdk 36
-        versionCode 14
-        versionName '1.5.2'
+        versionCode 15
+        versionName '1.5.3'
         manifestPlaceholders = [chhachhAdmobAppId: (project.findProperty('CHHACHH_ADMOB_APP_ID') ?: 'ca-app-pub-9541416611227313~1392802162')]
     }
     // Chhachh AdMob app ID supplied by the owner; ad unit IDs are administered separately.
