@@ -2,6 +2,7 @@ package com.chhachh.app;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.PendingIntent;
 import android.app.AlertDialog;
 import android.location.LocationManager;
 import android.app.DownloadManager;
@@ -13,6 +14,10 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.drawable.Icon;
+import android.service.chooser.ChooserAction;
 import android.content.res.ColorStateList;
 import android.net.ConnectivityManager;
 import android.net.Uri;
@@ -101,7 +106,33 @@ public final class MainActivity extends Activity {
     private volatile String nativeDownloadToken = UUID.randomUUID().toString();
     private final NativeDownloads nativeDownloads = new NativeDownloads();
     private final NativeShare nativeShare = new NativeShare();
+    private static final String INTERNAL_SHARE_REPOST = "com.chhachh.app.SHARE_REPOST";
+    private static final String INTERNAL_SHARE_RECIPIENTS = "com.chhachh.app.SHARE_RECIPIENTS";
+    // A one-time nonce binds Android's chooser actions to the active WebView.
+    // The exported activity cannot accept an arbitrary app-supplied repost intent.
+    private String pendingChooserNonce = "";
     private boolean returningFromLocationSettings = false;
+
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (intent == null || web == null) return;
+        final String action = intent.getAction();
+        if (!INTERNAL_SHARE_REPOST.equals(action) && !INTERNAL_SHARE_RECIPIENTS.equals(action)) return;
+        final String nonce = intent.getStringExtra("ch_share_nonce");
+        if (nonce == null || nonce.isEmpty() || !nonce.equals(pendingChooserNonce)) return;
+        pendingChooserNonce = ""; // Consume once, including on repeated broadcasts/intents.
+        final String kind = intent.getStringExtra("ch_share_kind");
+        final int id = intent.getIntExtra("ch_share_id", 0);
+        if (!("post".equals(kind) || "shop".equals(kind) || "vote".equals(kind) ||
+                "announcement".equals(kind)) || id < 1) return;
+        if (web.getUrl() == null || !isTrusted(Uri.parse(web.getUrl()))) return;
+        final String method = INTERNAL_SHARE_REPOST.equals(action) ? "nativeRepost" : "nativeRecipients";
+        // kind is from an explicit whitelist and id is an integer: no string interpolation of user input.
+        web.post(() -> web.evaluateJavascript(
+                "(window.ChhachhShare&&window.ChhachhShare." + method +
+                "('" + kind + "'," + id + "))", null));
+    }
 
     private boolean isTrusted(Uri uri) {
         String host = uri == null ? null : uri.getHost();
@@ -674,9 +705,88 @@ public final class MainActivity extends Activity {
             .show();
     }
 
-    // Open the real Android Sharesheet for a user-initiated Share tap.
-    // The navigation token is injected only into the trusted top-level Chhachh page.
+    // Android's own Sharesheet displays real installed-app icons. Android 14+
+    // supports Chhachh's Repost and Send to buttons as native chooser actions.
+    // There are no hard-coded or duplicated WhatsApp/Facebook/Messenger tiles.
+    private Icon shareChooserIcon(boolean repost) {
+        final Bitmap bitmap = Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888);
+        final Canvas c = new Canvas(bitmap);
+        final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setColor(Color.rgb(0, 242, 255));
+        c.drawCircle(48, 48, 46, p);
+        p.setColor(Color.rgb(8, 56, 66));
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(7f);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        p.setStrokeJoin(Paint.Join.ROUND);
+        if (repost) {
+            c.drawLine(23, 35, 70, 35, p);
+            c.drawLine(23, 35, 35, 23, p);
+            c.drawLine(23, 35, 35, 47, p);
+            c.drawLine(73, 61, 26, 61, p);
+            c.drawLine(73, 61, 61, 49, p);
+            c.drawLine(73, 61, 61, 73, p);
+        } else {
+            c.drawCircle(34, 34, 8, p);
+            c.drawCircle(64, 34, 8, p);
+            c.drawArc(19, 50, 49, 83, 195f, 150f, false, p);
+            c.drawArc(49, 50, 79, 83, 195f, 150f, false, p);
+        }
+        return Icon.createWithBitmap(bitmap);
+    }
+
+    private PendingIntent sharePendingIntent(String action, String nonce, String kind, int id) {
+        final Intent intent = new Intent(this, MainActivity.class)
+                .setAction(action)
+                .setData(Uri.parse("chhah-native-share://action/" +
+                        (INTERNAL_SHARE_REPOST.equals(action) ? "repost/" : "send/") + nonce))
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .putExtra("ch_share_nonce", nonce)
+                .putExtra("ch_share_kind", kind)
+                .putExtra("ch_share_id", id);
+        return PendingIntent.getActivity(this, INTERNAL_SHARE_REPOST.equals(action) ? 7101 : 7102,
+                intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    // The navigation token exists only in a trusted top-level Chhachh document.
     public final class NativeShare {
+        @JavascriptInterface public boolean openPost(String token, String url, String title,
+                                                     String kind, int id) {
+            if (token == null || !token.equals(nativeDownloadToken) ||
+                    url == null || url.length() > 2048 || id < 1 ||
+                    !("post".equals(kind) || "shop".equals(kind) || "vote".equals(kind)
+                      || "announcement".equals(kind))) return false;
+            Uri uri;
+            try { uri = Uri.parse(url); } catch (Exception ignored) { return false; }
+            if (!isTrusted(uri)) return false;
+            final String target = uri.toString();
+            final String label = title != null && title.length() <= 100 && !title.trim().isEmpty()
+                    ? title.trim() : "Chhachh";
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                Intent send = new Intent(Intent.ACTION_SEND);
+                send.setType("text/plain");
+                send.putExtra(Intent.EXTRA_TEXT, target);
+                send.putExtra(Intent.EXTRA_SUBJECT, label);
+                Intent chooser = Intent.createChooser(send, "Share");
+                pendingChooserNonce = "";
+                if (Build.VERSION.SDK_INT >= 34) {
+                    String nonce = UUID.randomUUID().toString();
+                    pendingChooserNonce = nonce;
+                    PendingIntent repost = sharePendingIntent(INTERNAL_SHARE_REPOST, nonce, kind, id);
+                    PendingIntent recipients = sharePendingIntent(INTERNAL_SHARE_RECIPIENTS, nonce, kind, id);
+                    ChooserAction[] actions = new ChooserAction[] {
+                        new ChooserAction.Builder(shareChooserIcon(true), "Repost", repost).build(),
+                        new ChooserAction.Builder(shareChooserIcon(false), "Send to", recipients).build()
+                    };
+                    chooser.putExtra(Intent.EXTRA_CHOOSER_CUSTOM_ACTIONS, actions);
+                }
+                try { startActivity(chooser); }
+                catch (ActivityNotFoundException ignored) { pendingChooserNonce = ""; }
+            });
+            return true;
+        }
+
         @JavascriptInterface public boolean open(String token, String url, String title) {
             if (token == null || !token.equals(nativeDownloadToken) ||
                     url == null || url.length() > 2048) return false;
