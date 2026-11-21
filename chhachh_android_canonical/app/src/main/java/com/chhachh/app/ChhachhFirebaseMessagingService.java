@@ -18,6 +18,7 @@ import java.util.Map;
 public final class ChhachhFirebaseMessagingService extends FirebaseMessagingService {
     public static final String CHANNEL_SOCIAL = "chhachh_updates";
     public static final String CHANNEL_ANNOUNCEMENTS = "chhachh_announcements";
+    public static final String CHANNEL_ANNOUNCEMENTS_SILENT = "chhachh_announcements_silent";
     private static final String BASE = "https://chhachh.com/";
     public static void ensureChannels(Context ctx) {
         if (Build.VERSION.SDK_INT < 26) return;
@@ -31,6 +32,12 @@ public final class ChhachhFirebaseMessagingService extends FirebaseMessagingServ
         announcements.setDescription("Announcements from Chhachh");
         nm.createNotificationChannel(social);
         nm.createNotificationChannel(announcements);
+        NotificationChannel silent = new NotificationChannel(CHANNEL_ANNOUNCEMENTS_SILENT,
+                "Silent live voice announcements", NotificationManager.IMPORTANCE_DEFAULT);
+        silent.setDescription("Keep Chhachh live announcement notices visible without alarm sound.");
+        silent.setSound(null, null);
+        silent.enableVibration(false);
+        nm.createNotificationChannel(silent);
     }
     @Override public void onNewToken(String token) {
         super.onNewToken(token);
@@ -43,8 +50,13 @@ public final class ChhachhFirebaseMessagingService extends FirebaseMessagingServ
         final Map<String, String> data = message.getData();
         String type = data.get("type");
         if (type == null) type = "activity";
-        final String channel = "announcement".equals(type) || "live_announcement".equals(type) || "live_voice".equals(type)
-                ? CHANNEL_ANNOUNCEMENTS : CHANNEL_SOCIAL;
+        final boolean live = "announcement".equals(type) || "live_announcement".equals(type)
+                || "live_voice".equals(type);
+        final boolean alarm = getSharedPreferences("chhachh_notifications", MODE_PRIVATE)
+                .getBoolean("live_announcement_alarm", true);
+        final String channel = live
+                ? (alarm ? CHANNEL_ANNOUNCEMENTS : CHANNEL_ANNOUNCEMENTS_SILENT)
+                : CHANNEL_SOCIAL;
         String title = data.get("title");
         String body = data.get("body");
         if (title == null || title.trim().isEmpty()) title =
