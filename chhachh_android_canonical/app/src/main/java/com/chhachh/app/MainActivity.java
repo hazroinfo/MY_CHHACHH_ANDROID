@@ -361,8 +361,9 @@ public final class MainActivity extends Activity {
             }
             @Override public void onPageFinished(WebView view, String url) {
                 if (url != null && isTrusted(Uri.parse(url))) {
-                    view.evaluateJavascript("Object.defineProperty(window,'__chhachhNativeToken',{value:'"
-                        + nativeDownloadToken + "',configurable:true})", null);
+                    view.evaluateJavascript("(function(){Object.defineProperty(window,'__chhachhNativeToken',{value:'"
+                        + nativeDownloadToken + "',configurable:true});"
+                        + "window.dispatchEvent(new Event('chhachh:native-share-ready'));})()", null);
                 }
                 ++navigationToken;
                 // Website owns its only loader; no native overlay or page jump.
@@ -933,8 +934,10 @@ public final class MainActivity extends Activity {
                 java.util.List<ResolveInfo> candidates = new ArrayList<>(
                         pm.queryIntentActivities(send, PackageManager.MATCH_DEFAULT_ONLY));
                 candidates.sort((a, b) -> {
-                    int x = rankApp(a.activityInfo.packageName);
-                    int y = rankApp(b.activityInfo.packageName);
+                    String ap = a.activityInfo == null ? "" : a.activityInfo.packageName;
+                    String bp = b.activityInfo == null ? "" : b.activityInfo.packageName;
+                    int x = rankApp(ap);
+                    int y = rankApp(bp);
                     if (x != y) return Integer.compare(x,y);
                     return String.valueOf(a.loadLabel(pm))
                             .compareToIgnoreCase(String.valueOf(b.loadLabel(pm)));
@@ -943,32 +946,37 @@ public final class MainActivity extends Activity {
                 java.util.HashSet<String> seen = new java.util.HashSet<>();
                 for (ResolveInfo item : candidates) {
                     if (result.length() >= 16) break;
-                    if (item.activityInfo == null || !item.activityInfo.exported) continue;
-                    String pkg = item.activityInfo.packageName;
-                    if (pkg == null || pkg.equals(getPackageName()) || !seen.add(pkg)) continue;
-                    Drawable drawable = item.loadIcon(pm);
-                    if (drawable == null) continue;
-                    int px = Math.round(50 * getResources().getDisplayMetrics().density);
-                    px = Math.max(50, Math.min(px, 112));
-                    Bitmap bitmap = Bitmap.createBitmap(px,px,Bitmap.Config.ARGB_8888);
-                    Canvas canvas = new Canvas(bitmap);
-                    drawable.setBounds(0,0,px,px);
-                    drawable.draw(canvas);
-                    ByteArrayOutputStream output = new ByteArrayOutputStream();
-                    if (!bitmap.compress(Bitmap.CompressFormat.PNG, 85, output)) continue;
-                    String icon = "data:image/png;base64," +
-                            Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP);
-                    if (icon.length() > 95000) continue;
-                    String id = "app" + result.length();
-                    nativeShareApps.put(id, new ComponentName(pkg,item.activityInfo.name));
-                    JSONObject row = new JSONObject();
-                    row.put("id",id);
-                    row.put("label", String.valueOf(item.loadLabel(pm)));
-                    row.put("icon",icon);
-                    result.put(row);
+                    try {
+                        if (item.activityInfo == null || !item.activityInfo.exported) continue;
+                        String pkg = item.activityInfo.packageName;
+                        if (pkg == null || pkg.equals(getPackageName()) || seen.contains(pkg)) continue;
+                        Drawable drawable = item.loadIcon(pm);
+                        if (drawable == null) continue;
+                        int px = Math.round(48 * getResources().getDisplayMetrics().density);
+                        px = Math.max(48, Math.min(px, 96));
+                        Bitmap bitmap = Bitmap.createBitmap(px,px,Bitmap.Config.ARGB_8888);
+                        Canvas canvas = new Canvas(bitmap);
+                        drawable.setBounds(0,0,px,px);
+                        drawable.draw(canvas);
+                        ByteArrayOutputStream output = new ByteArrayOutputStream();
+                        if (!bitmap.compress(Bitmap.CompressFormat.PNG, 85, output)) continue;
+                        String icon = "data:image/png;base64," +
+                                Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP);
+                        if (icon.length() > 95000) continue;
+                        String id = "app" + result.length();
+                        nativeShareApps.put(id, new ComponentName(pkg,item.activityInfo.name));
+                        JSONObject row = new JSONObject();
+                        row.put("id",id);
+                        row.put("label", String.valueOf(item.loadLabel(pm)));
+                        row.put("icon",icon);
+                        result.put(row);
+                        seen.add(pkg);
+                    } catch (Exception ignored) {
+                        // One broken installed app icon cannot hide ALL other real apps.
+                    }
                 }
             } catch (Exception ignored) {
-                // Android without a share-capable app will still show More apps.
+                // Missing resolver services: do not invent external app destinations.
             }
             return result.toString();
         }
