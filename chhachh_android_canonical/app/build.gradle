@@ -9,9 +9,9 @@ android {
         targetSdk 36
         versionCode 14
         versionName '1.5.2'
-        manifestPlaceholders = [chhachhAdmobAppId: (project.findProperty('CHHACHH_ADMOB_APP_ID') ?: 'ca-app-pub-3940256099942544~3347511713')]
+        manifestPlaceholders = [chhachhAdmobAppId: (project.findProperty('CHHACHH_ADMOB_APP_ID') ?: 'ca-app-pub-9541416611227313~1392802162')]
     }
-    // AdMob uses Google's public test App ID until the real Chhachh ID is configured.
+    // Chhachh AdMob app ID supplied by the owner; ad unit IDs are administered separately.
     buildTypes { release { minifyEnabled false } }
     buildFeatures { buildConfig true }
     compileOptions {
