@@ -3,6 +3,10 @@ package com.chhachh.app;
 import android.Manifest;
 import android.app.Activity;
 import android.app.PendingIntent;
+import android.app.NotificationManager;
+import com.google.android.gms.ads.MobileAds;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.messaging.FirebaseMessaging;
 import android.app.AlertDialog;
 import android.location.LocationManager;
 import android.app.DownloadManager;
@@ -88,6 +92,7 @@ public final class MainActivity extends Activity {
     private static final int REQUEST_LEGACY_STORAGE = 403;
     private static final int REQUEST_GEOLOCATION_PERMISSION = 404;
     private static final int REQUEST_CAMERA_CAPTURE_PERMISSION = 405;
+    private static final int REQUEST_NOTIFICATION_PERMISSION = 406;
     private WebView web;
     private ProgressBar loadingRing;
     private long navigationToken = 0;
@@ -117,6 +122,10 @@ public final class MainActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         if (intent == null || web == null) return;
+        if (Intent.ACTION_VIEW.equals(intent.getAction()) && isTrusted(intent.getData())) {
+            web.loadUrl(intent.getData().toString());
+            return;
+        }
         final String action = intent.getAction();
         if (!INTERNAL_SHARE_REPOST.equals(action) && !INTERNAL_SHARE_RECIPIENTS.equals(action)) return;
         final String nonce = intent.getStringExtra("ch_share_nonce");
@@ -134,6 +143,21 @@ public final class MainActivity extends Activity {
                 "('" + kind + "'," + id + "))", null));
     }
 
+    private void requestNotificationPermissionOnce() {
+        if (Build.VERSION.SDK_INT < 33 ||
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
+            return;
+        final android.content.SharedPreferences prefs =
+                getSharedPreferences("chhachh_permissions", MODE_PRIVATE);
+        if (prefs.getBoolean("notification_asked", false)) return;
+        prefs.edit().putBoolean("notification_asked", true).apply();
+        if (web != null) web.postDelayed(() -> {
+            if (!isFinishing() && !isDestroyed())
+                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                        REQUEST_NOTIFICATION_PERMISSION);
+        }, 3000);
+    }
+
     private boolean isTrusted(Uri uri) {
         String host = uri == null ? null : uri.getHost();
         return uri != null && "https".equalsIgnoreCase(uri.getScheme()) &&
@@ -143,6 +167,22 @@ public final class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        ChhachhFirebaseMessagingService.ensureChannels(this);
+        // A configured Firebase project is mandatory before obtaining a real push token.
+        // Firebase data is configured through the Play bundle; never invent Firebase IDs.
+        if (FirebaseApp.initializeApp(this) != null) {
+            FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token -> {
+                if (token != null && !token.isEmpty())
+                    getSharedPreferences("chhachh_push", MODE_PRIVATE).edit()
+                            .putString("current_fcm_token", token).apply();
+            });
+        }
+        // Initialize Google Mobile Ads using its embedded test ID.
+        // No ads are requested until verified live IDs and policy-based placements exist.
+        new Thread(() -> {
+            try { MobileAds.initialize(getApplicationContext(), status -> {}); }
+            catch (Exception ignored) { }
+        }, "chhachh-ads-init").start();
         getWindow().setStatusBarColor(Color.WHITE);
         getWindow().setNavigationBarColor(Color.WHITE);
         getWindow().getDecorView().setSystemUiVisibility(
@@ -221,6 +261,7 @@ public final class MainActivity extends Activity {
                 if (loadingRing != null) loadingRing.setVisibility(View.GONE);
                 // Deliberately no progress bar. Website owns its round loader.
                 if (url != null && isTrusted(Uri.parse(url))) hideOffline();
+                requestNotificationPermissionOnce();
             }
             @Override public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail detail) {
                 recreate();
@@ -284,7 +325,8 @@ public final class MainActivity extends Activity {
         web.addJavascriptInterface(nativeDownloads, "ChhachhNativeDownloads");
         web.addJavascriptInterface(nativeShare, "ChhachhNativeShare");
         web.setDownloadListener((url, ua, disposition, mime, len) -> download(url, ua, disposition, mime));
-        web.loadUrl(HOME);
+        Uri launch = getIntent() == null ? null : getIntent().getData();
+        web.loadUrl(isTrusted(launch) ? launch.toString() : HOME);
     }
 
     // Independent native release check. An old WebView document may still run
@@ -636,6 +678,7 @@ public final class MainActivity extends Activity {
 
     @Override public void onRequestPermissionsResult(int request, String[] perms, int[] grants) {
         super.onRequestPermissionsResult(request, perms, grants);
+        if (request == REQUEST_NOTIFICATION_PERMISSION) return;
         if (request == REQUEST_GEOLOCATION_PERMISSION) {
             afterLocationPermission();
             return;
