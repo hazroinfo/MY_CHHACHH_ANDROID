@@ -12,7 +12,7 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
-    <application android:allowBackup="false" android:label="chhachh"
+    <application android:name=".ChhachhApplication" android:allowBackup="false" android:label="chhachh"
         android:theme="@style/AppTheme" android:icon="@drawable/chhachh_launcher_exact"
         android:roundIcon="@drawable/chhachh_launcher_exact" android:usesCleartextTraffic="false"
         android:supportsRtl="true">
