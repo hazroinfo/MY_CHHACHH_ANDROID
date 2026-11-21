@@ -113,6 +113,9 @@ public final class MainActivity extends Activity {
     private final NativeDownloads nativeDownloads = new NativeDownloads();
     private final NativeShare nativeShare = new NativeShare();
     private final NativePush nativePush = new NativePush();
+    private final NativeAds nativeAds = new NativeAds();
+    private final NativeNotifications nativeNotifications = new NativeNotifications();
+    private ChhachhAdManager adManager;
     private volatile boolean firebaseConfigLoading = false;
     private static final String INTERNAL_SHARE_REPOST = "com.chhachh.app.SHARE_REPOST";
     private static final String INTERNAL_SHARE_RECIPIENTS = "com.chhachh.app.SHARE_RECIPIENTS";
@@ -149,6 +152,36 @@ public final class MainActivity extends Activity {
     // The JavaScript interface is callable only with the current trusted
     // navigation token. The returned FCM token belongs to the signed-in user
     // only after the web page posts it to the authenticated backend.
+    public final class NativeAds {
+        @JavascriptInterface public void show(String token, String placement) {
+            if (token == null || !token.equals(nativeDownloadToken)
+                    || web == null || web.getUrl() == null ||
+                    !isTrusted(Uri.parse(web.getUrl()))) return;
+            final String target = placement == null ? "none" : placement;
+            runOnUiThread(() -> {
+                if (adManager != null && !isFinishing() && !isDestroyed())
+                    adManager.show(target);
+            });
+        }
+    }
+
+    public final class NativeNotifications {
+        @JavascriptInterface public boolean getAlarmEnabled(String token) {
+            if (token == null || !token.equals(nativeDownloadToken) ||
+                    web == null || web.getUrl() == null ||
+                    !isTrusted(Uri.parse(web.getUrl()))) return true;
+            return getSharedPreferences("chhachh_notifications", MODE_PRIVATE)
+                    .getBoolean("live_announcement_alarm", true);
+        }
+        @JavascriptInterface public boolean setAlarmEnabled(String token, boolean enabled) {
+            if (token == null || !token.equals(nativeDownloadToken) ||
+                    web == null || web.getUrl() == null ||
+                    !isTrusted(Uri.parse(web.getUrl()))) return false;
+            return getSharedPreferences("chhachh_notifications", MODE_PRIVATE).edit()
+                    .putBoolean("live_announcement_alarm", enabled).commit();
+        }
+    }
+
     public final class NativePush {
         @JavascriptInterface public String getToken(String token) {
             if (token == null || !token.equals(nativeDownloadToken) ||
@@ -272,7 +305,7 @@ public final class MainActivity extends Activity {
         web.setVerticalScrollBarEnabled(false);
         web.setHorizontalScrollBarEnabled(false);
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        root.addView(web, new FrameLayout.LayoutParams(-1, -1));
+        adManager = new ChhachhAdManager(this, root, web);
         // The website owns the only cyan loading indicator.
         // No second Android loading ring or blue progress bar is overlaid.
         enableSafeHomeRefresh();
@@ -314,6 +347,7 @@ public final class MainActivity extends Activity {
                 showOffline();
             }
             @Override public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                if (adManager != null) adManager.show("none");
                 nativeDownloadToken = UUID.randomUUID().toString();
                 ++navigationToken;
             }
@@ -391,6 +425,8 @@ public final class MainActivity extends Activity {
         web.addJavascriptInterface(nativeDownloads, "ChhachhNativeDownloads");
         web.addJavascriptInterface(nativeShare, "ChhachhNativeShare");
         web.addJavascriptInterface(nativePush, "ChhachhNativePush");
+        web.addJavascriptInterface(nativeAds, "ChhachhNativeAds");
+        web.addJavascriptInterface(nativeNotifications, "ChhachhNativeNotifications");
         web.setDownloadListener((url, ua, disposition, mime, len) -> download(url, ua, disposition, mime));
         Uri launch = getIntent() == null ? null : getIntent().getData();
         web.loadUrl(isTrusted(launch) ? launch.toString() : HOME);
@@ -1134,7 +1170,10 @@ public final class MainActivity extends Activity {
         clearUnusedCameraFiles(null);
         pendingChooserParams = null;
         if (web != null) {
-            root.removeView(web);
+            if (adManager != null) {
+                adManager.detachWeb(web);
+                adManager = null;
+            } else root.removeView(web);
             web.destroy();
             web = null;
         }
