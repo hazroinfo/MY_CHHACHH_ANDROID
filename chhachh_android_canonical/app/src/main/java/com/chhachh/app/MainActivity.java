@@ -44,6 +44,12 @@ import android.webkit.JavascriptInterface;
 import android.util.Base64;
 import android.media.MediaScannerConnection;
 import org.json.JSONObject;
+import org.json.JSONArray;
+import android.content.ComponentName;
+import android.content.pm.ResolveInfo;
+import android.graphics.drawable.Drawable;
+import java.io.ByteArrayOutputStream;
+import java.util.concurrent.ConcurrentHashMap;
 import java.io.InputStream;
 import android.webkit.GeolocationPermissions;
 import android.webkit.PermissionRequest;
@@ -112,6 +118,7 @@ public final class MainActivity extends Activity {
     private volatile String nativeDownloadToken = UUID.randomUUID().toString();
     private final NativeDownloads nativeDownloads = new NativeDownloads();
     private final NativeShare nativeShare = new NativeShare();
+    private final java.util.Map<String, ComponentName> nativeShareApps = new ConcurrentHashMap<>();
     private final NativePush nativePush = new NativePush();
     private final NativeAds nativeAds = new NativeAds();
     private final NativeNotifications nativeNotifications = new NativeNotifications();
@@ -349,6 +356,7 @@ public final class MainActivity extends Activity {
             @Override public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 if (adManager != null) adManager.show("none");
                 nativeDownloadToken = UUID.randomUUID().toString();
+                nativeShareApps.clear();
                 ++navigationToken;
             }
             @Override public void onPageFinished(WebView view, String url) {
@@ -896,6 +904,98 @@ public final class MainActivity extends Activity {
 
     // The navigation token exists only in a trusted top-level Chhachh document.
     public final class NativeShare {
+        private boolean valid(String token) {
+            return token != null && token.equals(nativeDownloadToken);
+        }
+
+        private int rankApp(String pkg) {
+            if ("com.whatsapp".equals(pkg)) return 0;
+            if ("com.facebook.orca".equals(pkg)) return 1;
+            if ("org.telegram.messenger".equals(pkg)) return 2;
+            if ("com.facebook.katana".equals(pkg)) return 3;
+            if ("com.instagram.android".equals(pkg)) return 4;
+            if ("com.google.android.gm".equals(pkg)) return 5;
+            if ("com.twitter.android".equals(pkg)) return 6;
+            if ("com.snapchat.android".equals(pkg)) return 7;
+            if ("com.zhiliaoapp.musically".equals(pkg)) return 8;
+            return 100;
+        }
+
+        // Return the ORIGINAL Android installed app labels and icons. The
+        // resulting tiles are displayed inside the ONE Chhachh Share sheet.
+        // No fake/social brand images are shipped with the website.
+        @JavascriptInterface public String listShareApps(String token) {
+            if (!valid(token)) return "[]";
+            JSONArray result = new JSONArray();
+            try {
+                PackageManager pm = getPackageManager();
+                Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain");
+                java.util.List<ResolveInfo> candidates = new ArrayList<>(
+                        pm.queryIntentActivities(send, PackageManager.MATCH_DEFAULT_ONLY));
+                candidates.sort((a, b) -> {
+                    int x = rankApp(a.activityInfo.packageName);
+                    int y = rankApp(b.activityInfo.packageName);
+                    if (x != y) return Integer.compare(x,y);
+                    return String.valueOf(a.loadLabel(pm))
+                            .compareToIgnoreCase(String.valueOf(b.loadLabel(pm)));
+                });
+                nativeShareApps.clear();
+                java.util.HashSet<String> seen = new java.util.HashSet<>();
+                for (ResolveInfo item : candidates) {
+                    if (result.length() >= 16) break;
+                    if (item.activityInfo == null || !item.activityInfo.exported) continue;
+                    String pkg = item.activityInfo.packageName;
+                    if (pkg == null || pkg.equals(getPackageName()) || !seen.add(pkg)) continue;
+                    Drawable drawable = item.loadIcon(pm);
+                    if (drawable == null) continue;
+                    int px = Math.round(50 * getResources().getDisplayMetrics().density);
+                    px = Math.max(50, Math.min(px, 112));
+                    Bitmap bitmap = Bitmap.createBitmap(px,px,Bitmap.Config.ARGB_8888);
+                    Canvas canvas = new Canvas(bitmap);
+                    drawable.setBounds(0,0,px,px);
+                    drawable.draw(canvas);
+                    ByteArrayOutputStream output = new ByteArrayOutputStream();
+                    if (!bitmap.compress(Bitmap.CompressFormat.PNG, 85, output)) continue;
+                    String icon = "data:image/png;base64," +
+                            Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP);
+                    if (icon.length() > 95000) continue;
+                    String id = "app" + result.length();
+                    nativeShareApps.put(id, new ComponentName(pkg,item.activityInfo.name));
+                    JSONObject row = new JSONObject();
+                    row.put("id",id);
+                    row.put("label", String.valueOf(item.loadLabel(pm)));
+                    row.put("icon",icon);
+                    result.put(row);
+                }
+            } catch (Exception ignored) {
+                // Android without a share-capable app will still show More apps.
+            }
+            return result.toString();
+        }
+
+        @JavascriptInterface public boolean sendToShareApp(String token, String url, String id) {
+            if (!valid(token) || url == null || url.length() > 2048 ||
+                    id == null || !id.matches("app[0-9]{1,2}")) return false;
+            ComponentName component = nativeShareApps.get(id);
+            Uri uri;
+            try { uri = Uri.parse(url); } catch (Exception ignored) {return false;}
+            if (component == null || !isTrusted(uri)) return false;
+            try {
+                if (!getPackageManager().getActivityInfo(component,0).exported) return false;
+            } catch (Exception ignored) {return false;}
+            final String shareUrl = uri.toString();
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                Intent send = new Intent(Intent.ACTION_SEND);
+                send.setType("text/plain");
+                send.setComponent(component);
+                send.putExtra(Intent.EXTRA_TEXT,shareUrl);
+                send.putExtra(Intent.EXTRA_SUBJECT,"Chhachh");
+                try {startActivity(send);}
+                catch (Exception ignored) { /* Target was uninstalled or changed. */ }
+            });
+            return true;
+        }
         @JavascriptInterface public boolean openPost(String token, String url, String title,
                                                      String kind, int id) {
             if (token == null || !token.equals(nativeDownloadToken) ||
