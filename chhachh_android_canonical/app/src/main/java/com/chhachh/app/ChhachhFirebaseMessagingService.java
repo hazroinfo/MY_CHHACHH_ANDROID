@@ -43,7 +43,7 @@ public final class ChhachhFirebaseMessagingService extends FirebaseMessagingServ
         final Map<String, String> data = message.getData();
         String type = data.get("type");
         if (type == null) type = "activity";
-        final String channel = "announcement".equals(type) || "live_announcement".equals(type)
+        final String channel = "announcement".equals(type) || "live_announcement".equals(type) || "live_voice".equals(type)
                 ? CHANNEL_ANNOUNCEMENTS : CHANNEL_SOCIAL;
         String title = data.get("title");
         String body = data.get("body");
@@ -72,7 +72,7 @@ public final class ChhachhFirebaseMessagingService extends FirebaseMessagingServ
         android.app.Notification.Builder b = Build.VERSION.SDK_INT >= 26
                 ? new android.app.Notification.Builder(this, channel)
                 : new android.app.Notification.Builder(this);
-        b.setSmallIcon(android.R.drawable.ic_dialog_info)
+        b.setSmallIcon(R.drawable.chhachh_notification)
                 .setContentTitle(title.length() > 100 ? title.substring(0, 100) : title)
                 .setContentText(body.length() > 250 ? body.substring(0, 250) : body)
                 .setAutoCancel(true).setContentIntent(pi)
