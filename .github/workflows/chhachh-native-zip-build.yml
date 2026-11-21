@@ -85,12 +85,12 @@ jobs:
         run: |
           set -euo pipefail
           test -s current-chhachh-app/app/build/outputs/bundle/release/app-release.aab
-          cp current-chhachh-app/app/build/outputs/bundle/release/app-release.aab Chhachh_v1.5.2_version14_UNSIGNED.aab
+          cp current-chhachh-app/app/build/outputs/bundle/release/app-release.aab Chhachh_v1.5.3_version15_UNSIGNED.aab
       - name: Upload unsigned Android App Bundle
         uses: actions/upload-artifact@v4
         with:
-          name: chhachh-v1-5-2-version14-unsigned-aab
-          path: Chhachh_v1.5.2_version14_UNSIGNED.aab
+          name: chhachh-v1-5-3-version15-unsigned-aab
+          path: Chhachh_v1.5.3_version15_UNSIGNED.aab
           if-no-files-found: error
       - name: Align unsigned release APK
         shell: bash
