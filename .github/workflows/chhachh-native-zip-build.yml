@@ -30,6 +30,7 @@ jobs:
             chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java
             chhachh_android_canonical/app/src/main/java/com/chhachh/app/ChhachhFirebaseMessagingService.java
             chhachh_android_canonical/app/src/main/java/com/chhachh/app/ChhachhApplication.java
+            chhachh_android_canonical/app/src/main/java/com/chhachh/app/ChhachhAdManager.java
             chhachh_android_canonical/app/src/main/res/drawable/chhachh_notification.xml
             chhachh_android_canonical/app/build.gradle
             chhachh_android_canonical/app/src/main/AndroidManifest.xml
@@ -47,6 +48,7 @@ jobs:
           install -m 644 chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java current-chhachh-app/app/src/main/java/com/chhachh/app/MainActivity.java
           install -m 644 chhachh_android_canonical/app/src/main/java/com/chhachh/app/ChhachhFirebaseMessagingService.java current-chhachh-app/app/src/main/java/com/chhachh/app/ChhachhFirebaseMessagingService.java
           install -m 644 chhachh_android_canonical/app/src/main/java/com/chhachh/app/ChhachhApplication.java current-chhachh-app/app/src/main/java/com/chhachh/app/ChhachhApplication.java
+          install -m 644 chhachh_android_canonical/app/src/main/java/com/chhachh/app/ChhachhAdManager.java current-chhachh-app/app/src/main/java/com/chhachh/app/ChhachhAdManager.java
           mkdir -p current-chhachh-app/app/src/main/res/drawable
           install -m 644 chhachh_android_canonical/app/src/main/res/drawable/chhachh_notification.xml current-chhachh-app/app/src/main/res/drawable/chhachh_notification.xml
           install -m 644 chhachh_android_canonical/app/build.gradle current-chhachh-app/app/build.gradle
