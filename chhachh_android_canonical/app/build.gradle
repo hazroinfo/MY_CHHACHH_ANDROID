@@ -9,15 +9,9 @@ android {
         targetSdk 36
         versionCode 14
         versionName '1.5.2'
+        manifestPlaceholders = [chhachhAdmobAppId: (project.findProperty('CHHACHH_ADMOB_APP_ID') ?: 'ca-app-pub-3940256099942544~3347511713')]
     }
-    // App ID is required by the Google Mobile Ads SDK even with ads disabled.
-    // The default is Google's official *test* App ID; live ads must never run
-    // until a real Chhachh AdMob App ID and approved placements are configured.
-    defaultConfig {
-        manifestPlaceholders = [
-            chhachhAdmobAppId: (project.findProperty('CHHACHH_ADMOB_APP_ID') ?: 'ca-app-pub-3940256099942544~3347511713')
-        ]
-    }
+    // AdMob uses Google's public test App ID until the real Chhachh ID is configured.
     buildTypes { release { minifyEnabled false } }
     buildFeatures { buildConfig true }
     compileOptions {
