@@ -35,6 +35,7 @@ public final class ChhachhAdManager {
     private long configCheckedAt = 0;
     private boolean fetching = false;
     private boolean loading = false;
+    private boolean loaded = false;
 
     public ChhachhAdManager(Activity a, FrameLayout root, WebView web) {
         activity = a;
@@ -104,7 +105,7 @@ public final class ChhachhAdManager {
         String unit = config.optString("unit_id", "");
         if (!unit.matches("ca-app-pub-9541416611227313/\\d{10}")) {hide();return;}
         if (banner != null && unit.equals(requestedUnit)) {
-            if (!loading && bannerHost.getChildCount() > 0) bannerHost.setVisibility(View.VISIBLE);
+            if (loaded && bannerHost.getChildCount() > 0) bannerHost.setVisibility(View.VISIBLE);
             return;
         }
         hide();
@@ -112,6 +113,7 @@ public final class ChhachhAdManager {
         AdView view = new AdView(activity);
         requestedUnit = unit;
         banner = view;
+        loaded = false;
         int widthPx = activity.getResources().getDisplayMetrics().widthPixels;
         float scale = activity.getResources().getDisplayMetrics().density;
         int widthDp = Math.max(320, Math.round(widthPx / Math.max(1f,scale)));
@@ -122,11 +124,13 @@ public final class ChhachhAdManager {
             @Override public void onAdLoaded() {
                 if (banner != view) return;
                 loading = false;
+                loaded = true;
                 bannerHost.setVisibility("none".equals(activePlacement) ? View.GONE : View.VISIBLE);
             }
             @Override public void onAdFailedToLoad(LoadAdError error) {
                 if (banner != view) return;
                 loading = false;
+                loaded = false;
                 bannerHost.setVisibility(View.GONE);
                 // Never simulate impressions or insert a fake ad tile.
             }
@@ -144,6 +148,7 @@ public final class ChhachhAdManager {
             banner = null;
             requestedUnit = "";
             loading = false;
+            loaded = false;
             bannerHost.removeView(previous);
             previous.destroy();
         }
