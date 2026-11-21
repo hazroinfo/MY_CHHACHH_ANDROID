@@ -10,9 +10,26 @@ android {
         versionCode 14
         versionName '1.5.2'
     }
+    // App ID is required by the Google Mobile Ads SDK even with ads disabled.
+    // The default is Google's official *test* App ID; live ads must never run
+    // until a real Chhachh AdMob App ID and approved placements are configured.
+    defaultConfig {
+        manifestPlaceholders = [
+            chhachhAdmobAppId: (project.findProperty('CHHACHH_ADMOB_APP_ID') ?: 'ca-app-pub-3940256099942544~3347511713')
+        ]
+    }
     buildTypes { release { minifyEnabled false } }
+    buildFeatures { buildConfig true }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+}
+
+// Native SDKs are deliberately packaged here, not duplicated as WebView assets.
+// Live FCM requires this app's Firebase config and the server-side push sender.
+// Live AdMob requires a real app ID and independently configured ad units.
+dependencies {
+    implementation 'com.google.firebase:firebase-messaging:26.0.2'
+    implementation 'com.google.android.gms:play-services-ads:25.5.0'
 }
