@@ -2,17 +2,28 @@ plugins { id 'com.android.application' }
 
 android {
     namespace 'com.chhachh.app'
-    compileSdk 35
+    compileSdk 36
     defaultConfig {
         applicationId 'com.chhachh.app'
-        minSdk 23
-        targetSdk 35
-        versionCode 12
-        versionName '1.4.6'
+        minSdk 24
+        targetSdk 36
+        versionCode 15
+        versionName '1.5.3'
+        manifestPlaceholders = [chhachhAdmobAppId: (project.findProperty('CHHACHH_ADMOB_APP_ID') ?: 'ca-app-pub-9541416611227313~1392802162')]
     }
+    // Chhachh AdMob app ID supplied by the owner; ad unit IDs are administered separately.
     buildTypes { release { minifyEnabled false } }
+    buildFeatures { buildConfig true }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+}
+
+// Native SDKs are deliberately packaged here, not duplicated as WebView assets.
+// Live FCM requires this app's Firebase config and the server-side push sender.
+// Live AdMob requires a real app ID and independently configured ad units.
+dependencies {
+    implementation 'com.google.firebase:firebase-messaging:26.0.2'
+    implementation 'com.google.android.gms:play-services-ads:25.5.0'
 }

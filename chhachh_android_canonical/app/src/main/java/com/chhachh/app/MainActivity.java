@@ -2,6 +2,11 @@ package com.chhachh.app;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.PendingIntent;
+import android.app.NotificationManager;
+import com.google.android.gms.ads.MobileAds;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.messaging.FirebaseMessaging;
 import android.app.AlertDialog;
 import android.location.LocationManager;
 import android.app.DownloadManager;
@@ -13,6 +18,10 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.drawable.Icon;
+import android.service.chooser.ChooserAction;
 import android.content.res.ColorStateList;
 import android.net.ConnectivityManager;
 import android.net.Uri;
@@ -34,6 +43,14 @@ import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
 import android.util.Base64;
 import android.media.MediaScannerConnection;
+import org.json.JSONObject;
+import org.json.JSONArray;
+import android.content.ComponentName;
+import android.content.pm.ResolveInfo;
+import android.graphics.drawable.Drawable;
+import java.io.ByteArrayOutputStream;
+import java.util.concurrent.ConcurrentHashMap;
+import java.io.InputStream;
 import android.webkit.GeolocationPermissions;
 import android.webkit.PermissionRequest;
 import android.webkit.SslErrorHandler;
@@ -83,8 +100,8 @@ public final class MainActivity extends Activity {
     private static final int REQUEST_LEGACY_STORAGE = 403;
     private static final int REQUEST_GEOLOCATION_PERMISSION = 404;
     private static final int REQUEST_CAMERA_CAPTURE_PERMISSION = 405;
+    private static final int REQUEST_NOTIFICATION_PERMISSION = 406;
     private WebView web;
-    private ProgressBar loadingRing;
     private long navigationToken = 0;
     private float refreshGestureStartY = -1;
     private FrameLayout root, offline;
@@ -101,7 +118,168 @@ public final class MainActivity extends Activity {
     private volatile String nativeDownloadToken = UUID.randomUUID().toString();
     private final NativeDownloads nativeDownloads = new NativeDownloads();
     private final NativeShare nativeShare = new NativeShare();
+    private final java.util.Map<String, ComponentName> nativeShareApps = new ConcurrentHashMap<>();
+    private final NativePush nativePush = new NativePush();
+    private final NativeAds nativeAds = new NativeAds();
+    private final NativeNotifications nativeNotifications = new NativeNotifications();
+    private ChhachhAdManager adManager;
+    private volatile boolean firebaseConfigLoading = false;
+    private static final String INTERNAL_SHARE_REPOST = "com.chhachh.app.SHARE_REPOST";
+    private static final String INTERNAL_SHARE_RECIPIENTS = "com.chhachh.app.SHARE_RECIPIENTS";
+    // A one-time nonce binds Android's chooser actions to the active WebView.
+    // The exported activity cannot accept an arbitrary app-supplied repost intent.
+    private String pendingChooserNonce = "";
     private boolean returningFromLocationSettings = false;
+
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (intent == null || web == null) return;
+        if (Intent.ACTION_VIEW.equals(intent.getAction()) && isTrusted(intent.getData())) {
+            web.loadUrl(intent.getData().toString());
+            return;
+        }
+        final String action = intent.getAction();
+        if (!INTERNAL_SHARE_REPOST.equals(action) && !INTERNAL_SHARE_RECIPIENTS.equals(action)) return;
+        final String nonce = intent.getStringExtra("ch_share_nonce");
+        if (nonce == null || nonce.isEmpty() || !nonce.equals(pendingChooserNonce)) return;
+        pendingChooserNonce = ""; // Consume once, including on repeated broadcasts/intents.
+        final String kind = intent.getStringExtra("ch_share_kind");
+        final int id = intent.getIntExtra("ch_share_id", 0);
+        if (!("post".equals(kind) || "shop".equals(kind) || "vote".equals(kind) ||
+                "announcement".equals(kind)) || id < 1) return;
+        if (web.getUrl() == null || !isTrusted(Uri.parse(web.getUrl()))) return;
+        final String method = INTERNAL_SHARE_REPOST.equals(action) ? "nativeRepost" : "nativeRecipients";
+        // kind is from an explicit whitelist and id is an integer: no string interpolation of user input.
+        web.post(() -> web.evaluateJavascript(
+                "(window.ChhachhShare&&window.ChhachhShare." + method +
+                "('" + kind + "'," + id + "))", null));
+    }
+
+    // The JavaScript interface is callable only with the current trusted
+    // navigation token. The returned FCM token belongs to the signed-in user
+    // only after the web page posts it to the authenticated backend.
+    public final class NativeAds {
+        @JavascriptInterface public void show(String token, String placement) {
+            if (token == null || !token.equals(nativeDownloadToken)
+                    || web == null || web.getUrl() == null ||
+                    !isTrusted(Uri.parse(web.getUrl()))) return;
+            final String target = placement == null ? "none" : placement;
+            runOnUiThread(() -> {
+                if (adManager != null && !isFinishing() && !isDestroyed())
+                    adManager.show(target);
+            });
+        }
+    }
+
+    public final class NativeNotifications {
+        @JavascriptInterface public boolean getAlarmEnabled(String token) {
+            if (token == null || !token.equals(nativeDownloadToken) ||
+                    web == null || web.getUrl() == null ||
+                    !isTrusted(Uri.parse(web.getUrl()))) return true;
+            return getSharedPreferences("chhachh_notifications", MODE_PRIVATE)
+                    .getBoolean("live_announcement_alarm", true);
+        }
+        @JavascriptInterface public boolean setAlarmEnabled(String token, boolean enabled) {
+            if (token == null || !token.equals(nativeDownloadToken) ||
+                    web == null || web.getUrl() == null ||
+                    !isTrusted(Uri.parse(web.getUrl()))) return false;
+            return getSharedPreferences("chhachh_notifications", MODE_PRIVATE).edit()
+                    .putBoolean("live_announcement_alarm", enabled).commit();
+        }
+    }
+
+    public final class NativePush {
+        @JavascriptInterface public String getToken(String token) {
+            if (token == null || !token.equals(nativeDownloadToken) ||
+                    web == null || web.getUrl() == null ||
+                    !isTrusted(Uri.parse(web.getUrl()))) return "";
+            return getSharedPreferences("chhachh_push", MODE_PRIVATE)
+                    .getString("current_fcm_token", "");
+        }
+    }
+
+    private void fetchNativeFcmToken() {
+        if (!ChhachhApplication.ready(this)) return;
+        try {
+            FirebaseMessaging.getInstance().getToken()
+                .addOnSuccessListener(fcm -> {
+                    if (fcm != null && !fcm.isEmpty()) {
+                        getSharedPreferences("chhachh_push", MODE_PRIVATE).edit()
+                                .putString("current_fcm_token", fcm).apply();
+                        signalNativeFcmToken();
+                    }
+                });
+        } catch (Exception ignored) { /* Missing Google Play services. */ }
+    }
+
+    private void signalNativeFcmToken() {
+        if (web == null) return;
+        web.post(() -> {
+            if (web != null && web.getUrl() != null && isTrusted(Uri.parse(web.getUrl())))
+                web.evaluateJavascript("window.dispatchEvent(new Event('chhachh:native-fcm-token'))", null);
+        });
+    }
+
+    private void refreshFirebaseClientConfig() {
+        if (firebaseConfigLoading) return;
+        firebaseConfigLoading = true;
+        new Thread(() -> {
+            HttpURLConnection conn = null;
+            boolean configured = false;
+            try {
+                // Public Firebase Android client identifiers only.
+                // No HTTP redirects, untrusted hosts, private keys or credentials.
+                URL address = new URL("https://chhachh.com/api/android/firebase-client");
+                conn = (HttpURLConnection) address.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setInstanceFollowRedirects(false);
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+                conn.setRequestProperty("Accept", "application/json");
+                if (conn.getResponseCode() == 200) {
+                    try (InputStream input = conn.getInputStream()) {
+                        byte[] bytes = new byte[12000];
+                        int used = 0;
+                        while (used < bytes.length) {
+                            int got = input.read(bytes, used, bytes.length-used);
+                            if (got < 0) break;
+                            used += got;
+                        }
+                        if (used > 0 && used < bytes.length) {
+                            JSONObject data = new JSONObject(
+                                    new String(bytes, 0, used, StandardCharsets.UTF_8));
+                            configured = ChhachhApplication.initializeFromOptions(
+                                    getApplicationContext(), data);
+                        }
+                    }
+                }
+            } catch (Exception ignored) { /* Offline or config not saved yet. */ }
+            finally {
+                if (conn != null) conn.disconnect();
+                firebaseConfigLoading = false;
+            }
+            if (configured) runOnUiThread(() -> {
+                fetchNativeFcmToken();
+                requestNotificationPermissionOnce();
+            });
+        }, "chhachh-firebase-config").start();
+    }
+
+    private void requestNotificationPermissionOnce() {
+        if (Build.VERSION.SDK_INT < 33 ||
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
+            return;
+        final android.content.SharedPreferences prefs =
+                getSharedPreferences("chhachh_permissions", MODE_PRIVATE);
+        if (prefs.getBoolean("notification_asked", false)) return;
+        prefs.edit().putBoolean("notification_asked", true).apply();
+        if (web != null) web.postDelayed(() -> {
+            if (!isFinishing() && !isDestroyed())
+                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                        REQUEST_NOTIFICATION_PERMISSION);
+        }, 3000);
+    }
 
     private boolean isTrusted(Uri uri) {
         String host = uri == null ? null : uri.getHost();
@@ -112,6 +290,16 @@ public final class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        ChhachhFirebaseMessagingService.ensureChannels(this);
+        // Native Firebase initializes from the owner's saved client configuration,
+        // fetched from Chhachh after install. Server credentials are NEVER in this app.
+        if (ChhachhApplication.ready(this)) fetchNativeFcmToken();
+        // Initialize the configured Google Mobile Ads SDK, but never request
+        // an ad unless the admin enables an approved ad placement.
+        new Thread(() -> {
+            try { MobileAds.initialize(getApplicationContext(), status -> {}); }
+            catch (Exception ignored) { }
+        }, "chhachh-ads-init").start();
         getWindow().setStatusBarColor(Color.WHITE);
         getWindow().setNavigationBarColor(Color.WHITE);
         getWindow().getDecorView().setSystemUiVisibility(
@@ -124,17 +312,9 @@ public final class MainActivity extends Activity {
         web.setVerticalScrollBarEnabled(false);
         web.setHorizontalScrollBarEnabled(false);
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        root.addView(web, new FrameLayout.LayoutParams(-1, -1));
-        // Keep the approved round cyan loading feedback, never the old blue line
-        // or a full-screen white overlay. Only actual main-frame navigation shows it.
-        loadingRing = new ProgressBar(this);
-        loadingRing.setIndeterminateTintList(ColorStateList.valueOf(Color.rgb(0, 242, 255)));
-        int ringSize = Math.round(26 * getResources().getDisplayMetrics().density);
-        FrameLayout.LayoutParams ringLayout = new FrameLayout.LayoutParams(
-                ringSize, ringSize, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        ringLayout.topMargin = Math.round(6 * getResources().getDisplayMetrics().density);
-        root.addView(loadingRing, ringLayout);
-        loadingRing.setVisibility(View.GONE);
+        adManager = new ChhachhAdManager(this, root, web);
+        // The website owns the only cyan loading indicator.
+        // No second Android loading ring or blue progress bar is overlaid.
         enableSafeHomeRefresh();
         configureWindowInsets();
         WebSettings s = web.getSettings();
@@ -174,22 +354,23 @@ public final class MainActivity extends Activity {
                 showOffline();
             }
             @Override public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                if (adManager != null) adManager.show("none");
                 nativeDownloadToken = UUID.randomUUID().toString();
-                long token = ++navigationToken;
-                view.postDelayed(() -> {
-                    if (token == navigationToken && loadingRing != null)
-                        loadingRing.setVisibility(View.VISIBLE);
-                }, 180);
+                nativeShareApps.clear();
+                ++navigationToken;
             }
             @Override public void onPageFinished(WebView view, String url) {
                 if (url != null && isTrusted(Uri.parse(url))) {
-                    view.evaluateJavascript("Object.defineProperty(window,'__chhachhNativeToken',{value:'"
-                        + nativeDownloadToken + "',configurable:true})", null);
+                    view.evaluateJavascript("(function(){Object.defineProperty(window,'__chhachhNativeToken',{value:'"
+                        + nativeDownloadToken + "',configurable:true});"
+                        + "window.dispatchEvent(new Event('chhachh:native-share-ready'));})()", null);
                 }
                 ++navigationToken;
-                if (loadingRing != null) loadingRing.setVisibility(View.GONE);
-                // Deliberately no progress bar. Website owns its round loader.
-                if (url != null && isTrusted(Uri.parse(url))) hideOffline();
+                // Website owns its only loader; no native overlay or page jump.
+                if (url != null && isTrusted(Uri.parse(url))) {
+                    hideOffline();
+                    refreshFirebaseClientConfig();
+                }
             }
             @Override public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail detail) {
                 recreate();
@@ -252,8 +433,12 @@ public final class MainActivity extends Activity {
         });
         web.addJavascriptInterface(nativeDownloads, "ChhachhNativeDownloads");
         web.addJavascriptInterface(nativeShare, "ChhachhNativeShare");
+        web.addJavascriptInterface(nativePush, "ChhachhNativePush");
+        web.addJavascriptInterface(nativeAds, "ChhachhNativeAds");
+        web.addJavascriptInterface(nativeNotifications, "ChhachhNativeNotifications");
         web.setDownloadListener((url, ua, disposition, mime, len) -> download(url, ua, disposition, mime));
-        web.loadUrl(HOME);
+        Uri launch = getIntent() == null ? null : getIntent().getData();
+        web.loadUrl(isTrusted(launch) ? launch.toString() : HOME);
     }
 
     // Independent native release check. An old WebView document may still run
@@ -605,6 +790,7 @@ public final class MainActivity extends Activity {
 
     @Override public void onRequestPermissionsResult(int request, String[] perms, int[] grants) {
         super.onRequestPermissionsResult(request, perms, grants);
+        if (request == REQUEST_NOTIFICATION_PERMISSION) return;
         if (request == REQUEST_GEOLOCATION_PERMISSION) {
             afterLocationPermission();
             return;
@@ -674,9 +860,187 @@ public final class MainActivity extends Activity {
             .show();
     }
 
-    // Open the real Android Sharesheet for a user-initiated Share tap.
-    // The navigation token is injected only into the trusted top-level Chhachh page.
+    // Android's own Sharesheet displays real installed-app icons. Android 14+
+    // supports Chhachh's Repost and Send to buttons as native chooser actions.
+    // There are no hard-coded or duplicated WhatsApp/Facebook/Messenger tiles.
+    private Icon shareChooserIcon(boolean repost) {
+        final Bitmap bitmap = Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888);
+        final Canvas c = new Canvas(bitmap);
+        final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setColor(Color.rgb(0, 242, 255));
+        c.drawCircle(48, 48, 46, p);
+        p.setColor(Color.rgb(8, 56, 66));
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(7f);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        p.setStrokeJoin(Paint.Join.ROUND);
+        if (repost) {
+            c.drawLine(23, 35, 70, 35, p);
+            c.drawLine(23, 35, 35, 23, p);
+            c.drawLine(23, 35, 35, 47, p);
+            c.drawLine(73, 61, 26, 61, p);
+            c.drawLine(73, 61, 61, 49, p);
+            c.drawLine(73, 61, 61, 73, p);
+        } else {
+            c.drawCircle(34, 34, 8, p);
+            c.drawCircle(64, 34, 8, p);
+            c.drawArc(19, 50, 49, 83, 195f, 150f, false, p);
+            c.drawArc(49, 50, 79, 83, 195f, 150f, false, p);
+        }
+        return Icon.createWithBitmap(bitmap);
+    }
+
+    private PendingIntent sharePendingIntent(String action, String nonce, String kind, int id) {
+        final Intent intent = new Intent(this, MainActivity.class)
+                .setAction(action)
+                .setData(Uri.parse("chhah-native-share://action/" +
+                        (INTERNAL_SHARE_REPOST.equals(action) ? "repost/" : "send/") + nonce))
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .putExtra("ch_share_nonce", nonce)
+                .putExtra("ch_share_kind", kind)
+                .putExtra("ch_share_id", id);
+        return PendingIntent.getActivity(this, INTERNAL_SHARE_REPOST.equals(action) ? 7101 : 7102,
+                intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    // The navigation token exists only in a trusted top-level Chhachh document.
     public final class NativeShare {
+        private boolean valid(String token) {
+            return token != null && token.equals(nativeDownloadToken);
+        }
+
+        private int rankApp(String pkg) {
+            if ("com.whatsapp".equals(pkg)) return 0;
+            if ("com.facebook.orca".equals(pkg)) return 1;
+            if ("org.telegram.messenger".equals(pkg)) return 2;
+            if ("com.facebook.katana".equals(pkg)) return 3;
+            if ("com.instagram.android".equals(pkg)) return 4;
+            if ("com.google.android.gm".equals(pkg)) return 5;
+            if ("com.twitter.android".equals(pkg)) return 6;
+            if ("com.snapchat.android".equals(pkg)) return 7;
+            if ("com.zhiliaoapp.musically".equals(pkg)) return 8;
+            return 100;
+        }
+
+        // Return the ORIGINAL Android installed app labels and icons. The
+        // resulting tiles are displayed inside the ONE Chhachh Share sheet.
+        // No fake/social brand images are shipped with the website.
+        @JavascriptInterface public String listShareApps(String token) {
+            if (!valid(token)) return "[]";
+            JSONArray result = new JSONArray();
+            try {
+                PackageManager pm = getPackageManager();
+                Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain");
+                java.util.List<ResolveInfo> candidates = new ArrayList<>(
+                        pm.queryIntentActivities(send, PackageManager.MATCH_DEFAULT_ONLY));
+                candidates.sort((a, b) -> {
+                    String ap = a.activityInfo == null ? "" : a.activityInfo.packageName;
+                    String bp = b.activityInfo == null ? "" : b.activityInfo.packageName;
+                    int x = rankApp(ap);
+                    int y = rankApp(bp);
+                    if (x != y) return Integer.compare(x,y);
+                    return String.valueOf(a.loadLabel(pm))
+                            .compareToIgnoreCase(String.valueOf(b.loadLabel(pm)));
+                });
+                nativeShareApps.clear();
+                java.util.HashSet<String> seen = new java.util.HashSet<>();
+                for (ResolveInfo item : candidates) {
+                    if (result.length() >= 16) break;
+                    try {
+                        if (item.activityInfo == null || !item.activityInfo.exported) continue;
+                        String pkg = item.activityInfo.packageName;
+                        if (pkg == null || pkg.equals(getPackageName()) || seen.contains(pkg)) continue;
+                        Drawable drawable = item.loadIcon(pm);
+                        if (drawable == null) continue;
+                        int px = Math.round(48 * getResources().getDisplayMetrics().density);
+                        px = Math.max(48, Math.min(px, 96));
+                        Bitmap bitmap = Bitmap.createBitmap(px,px,Bitmap.Config.ARGB_8888);
+                        Canvas canvas = new Canvas(bitmap);
+                        drawable.setBounds(0,0,px,px);
+                        drawable.draw(canvas);
+                        ByteArrayOutputStream output = new ByteArrayOutputStream();
+                        if (!bitmap.compress(Bitmap.CompressFormat.PNG, 85, output)) continue;
+                        String icon = "data:image/png;base64," +
+                                Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP);
+                        if (icon.length() > 95000) continue;
+                        String id = "app" + result.length();
+                        nativeShareApps.put(id, new ComponentName(pkg,item.activityInfo.name));
+                        JSONObject row = new JSONObject();
+                        row.put("id",id);
+                        row.put("label", String.valueOf(item.loadLabel(pm)));
+                        row.put("icon",icon);
+                        result.put(row);
+                        seen.add(pkg);
+                    } catch (Exception ignored) {
+                        // One broken installed app icon cannot hide ALL other real apps.
+                    }
+                }
+            } catch (Exception ignored) {
+                // Missing resolver services: do not invent external app destinations.
+            }
+            return result.toString();
+        }
+
+        @JavascriptInterface public boolean sendToShareApp(String token, String url, String id) {
+            if (!valid(token) || url == null || url.length() > 2048 ||
+                    id == null || !id.matches("app[0-9]{1,2}")) return false;
+            ComponentName component = nativeShareApps.get(id);
+            Uri uri;
+            try { uri = Uri.parse(url); } catch (Exception ignored) {return false;}
+            if (component == null || !isTrusted(uri)) return false;
+            try {
+                if (!getPackageManager().getActivityInfo(component,0).exported) return false;
+            } catch (Exception ignored) {return false;}
+            final String shareUrl = uri.toString();
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                Intent send = new Intent(Intent.ACTION_SEND);
+                send.setType("text/plain");
+                send.setComponent(component);
+                send.putExtra(Intent.EXTRA_TEXT,shareUrl);
+                send.putExtra(Intent.EXTRA_SUBJECT,"Chhachh");
+                try {startActivity(send);}
+                catch (Exception ignored) { /* Target was uninstalled or changed. */ }
+            });
+            return true;
+        }
+        @JavascriptInterface public boolean openPost(String token, String url, String title,
+                                                     String kind, int id) {
+            if (token == null || !token.equals(nativeDownloadToken) ||
+                    url == null || url.length() > 2048 || id < 1 ||
+                    !("post".equals(kind) || "shop".equals(kind) || "vote".equals(kind)
+                      || "announcement".equals(kind))) return false;
+            Uri uri;
+            try { uri = Uri.parse(url); } catch (Exception ignored) { return false; }
+            if (!isTrusted(uri)) return false;
+            final String target = uri.toString();
+            final String label = title != null && title.length() <= 100 && !title.trim().isEmpty()
+                    ? title.trim() : "Chhachh";
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                Intent send = new Intent(Intent.ACTION_SEND);
+                send.setType("text/plain");
+                send.putExtra(Intent.EXTRA_TEXT, target);
+                send.putExtra(Intent.EXTRA_SUBJECT, label);
+                Intent chooser = Intent.createChooser(send, "Share");
+                pendingChooserNonce = "";
+                if (Build.VERSION.SDK_INT >= 34) {
+                    String nonce = UUID.randomUUID().toString();
+                    pendingChooserNonce = nonce;
+                    PendingIntent repost = sharePendingIntent(INTERNAL_SHARE_REPOST, nonce, kind, id);
+                    PendingIntent recipients = sharePendingIntent(INTERNAL_SHARE_RECIPIENTS, nonce, kind, id);
+                    ChooserAction[] actions = new ChooserAction[] {
+                        new ChooserAction.Builder(shareChooserIcon(true), "Repost", repost).build(),
+                        new ChooserAction.Builder(shareChooserIcon(false), "Send to", recipients).build()
+                    };
+                    chooser.putExtra(Intent.EXTRA_CHOOSER_CUSTOM_ACTIONS, actions);
+                }
+                try { startActivity(chooser); }
+                catch (ActivityNotFoundException ignored) { pendingChooserNonce = ""; }
+            });
+            return true;
+        }
+
         @JavascriptInterface public boolean open(String token, String url, String title) {
             if (token == null || !token.equals(nativeDownloadToken) ||
                     url == null || url.length() > 2048) return false;
@@ -899,6 +1263,7 @@ public final class MainActivity extends Activity {
         releaseForeground = true;
         releaseHandler.removeCallbacks(releaseTimer);
         releaseHandler.postDelayed(releaseTimer, 1500L);
+        if (ChhachhApplication.ready(this)) fetchNativeFcmToken();
     }
     @Override protected void onDestroy() {
         releaseForeground = false;
@@ -913,7 +1278,10 @@ public final class MainActivity extends Activity {
         clearUnusedCameraFiles(null);
         pendingChooserParams = null;
         if (web != null) {
-            root.removeView(web);
+            if (adManager != null) {
+                adManager.detachWeb(web);
+                adManager = null;
+            } else root.removeView(web);
             web.destroy();
             web = null;
         }

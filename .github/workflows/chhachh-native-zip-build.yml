@@ -28,6 +28,10 @@ jobs:
           sparse-checkout: |
             chhachh_Android_Professional_Native_Source.zip
             chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java
+            chhachh_android_canonical/app/src/main/java/com/chhachh/app/ChhachhFirebaseMessagingService.java
+            chhachh_android_canonical/app/src/main/java/com/chhachh/app/ChhachhApplication.java
+            chhachh_android_canonical/app/src/main/java/com/chhachh/app/ChhachhAdManager.java
+            chhachh_android_canonical/app/src/main/res/drawable/chhachh_notification.xml
             chhachh_android_canonical/app/build.gradle
             chhachh_android_canonical/app/src/main/AndroidManifest.xml
             chhachh_android_canonical/app/src/main/res/drawable-nodpi/chhachh_launcher_exact.png
@@ -42,11 +46,16 @@ jobs:
           unzip -q chhachh_Android_Professional_Native_Source.zip -d current-chhachh-app -x 'app/src/main/java/com/chhachh/app/MainActivity.java' 'app/build.gradle' 'app/src/main/AndroidManifest.xml'
           mkdir -p current-chhachh-app/app/src/main/java/com/chhachh/app
           install -m 644 chhachh_android_canonical/app/src/main/java/com/chhachh/app/MainActivity.java current-chhachh-app/app/src/main/java/com/chhachh/app/MainActivity.java
+          install -m 644 chhachh_android_canonical/app/src/main/java/com/chhachh/app/ChhachhFirebaseMessagingService.java current-chhachh-app/app/src/main/java/com/chhachh/app/ChhachhFirebaseMessagingService.java
+          install -m 644 chhachh_android_canonical/app/src/main/java/com/chhachh/app/ChhachhApplication.java current-chhachh-app/app/src/main/java/com/chhachh/app/ChhachhApplication.java
+          install -m 644 chhachh_android_canonical/app/src/main/java/com/chhachh/app/ChhachhAdManager.java current-chhachh-app/app/src/main/java/com/chhachh/app/ChhachhAdManager.java
+          mkdir -p current-chhachh-app/app/src/main/res/drawable
+          install -m 644 chhachh_android_canonical/app/src/main/res/drawable/chhachh_notification.xml current-chhachh-app/app/src/main/res/drawable/chhachh_notification.xml
           install -m 644 chhachh_android_canonical/app/build.gradle current-chhachh-app/app/build.gradle
           install -m 644 chhachh_android_canonical/app/src/main/AndroidManifest.xml current-chhachh-app/app/src/main/AndroidManifest.xml
           mkdir -p current-chhachh-app/app/src/main/res/drawable-nodpi
           install -m 644 chhachh_android_canonical/app/src/main/res/drawable-nodpi/chhachh_launcher_exact.png current-chhachh-app/app/src/main/res/drawable-nodpi/chhachh_launcher_exact.png
-          grep -q 'minSdk 23' current-chhachh-app/app/build.gradle
+          grep -q 'minSdk 24' current-chhachh-app/app/build.gradle
           test -f current-chhachh-app/app/src/main/java/com/chhachh/app/MainActivity.java
           test -f current-chhachh-app/app/src/main/AndroidManifest.xml
           test -f current-chhachh-app/app/build.gradle
@@ -63,14 +72,26 @@ jobs:
           export ANDROID_SDK_ROOT="$ANDROID_HOME"
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
+          sdkmanager --install 'platforms;android-36' 'build-tools;35.0.0'
       - name: Set up Gradle 8.11.1
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
       - name: Build chhachh release APK without signing key
         working-directory: current-chhachh-app
-        run: gradle --no-daemon :app:assembleDebug :app:assembleRelease
+        run: gradle --no-daemon :app:assembleDebug :app:assembleRelease :app:bundleRelease
+      - name: Preserve AAB for Google Play upload signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s current-chhachh-app/app/build/outputs/bundle/release/app-release.aab
+          cp current-chhachh-app/app/build/outputs/bundle/release/app-release.aab Chhachh_v1.5.3_version15_UNSIGNED.aab
+      - name: Upload unsigned Android App Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: chhachh-v1-5-3-version15-unsigned-aab
+          path: Chhachh_v1.5.3_version15_UNSIGNED.aab
+          if-no-files-found: error
       - name: Align unsigned release APK
         shell: bash
         run: |
@@ -107,7 +128,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        api-level: [23, 35]
+        api-level: [24, 35]
     steps:
       - name: Download freshly built debug APK
         uses: actions/download-artifact@v4
