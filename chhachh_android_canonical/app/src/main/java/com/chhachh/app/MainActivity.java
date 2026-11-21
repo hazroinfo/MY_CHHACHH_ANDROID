@@ -43,6 +43,8 @@ import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
 import android.util.Base64;
 import android.media.MediaScannerConnection;
+import org.json.JSONObject;
+import java.io.InputStream;
 import android.webkit.GeolocationPermissions;
 import android.webkit.PermissionRequest;
 import android.webkit.SslErrorHandler;
@@ -111,6 +113,8 @@ public final class MainActivity extends Activity {
     private volatile String nativeDownloadToken = UUID.randomUUID().toString();
     private final NativeDownloads nativeDownloads = new NativeDownloads();
     private final NativeShare nativeShare = new NativeShare();
+    private final NativePush nativePush = new NativePush();
+    private volatile boolean firebaseConfigLoading = false;
     private static final String INTERNAL_SHARE_REPOST = "com.chhachh.app.SHARE_REPOST";
     private static final String INTERNAL_SHARE_RECIPIENTS = "com.chhachh.app.SHARE_RECIPIENTS";
     // A one-time nonce binds Android's chooser actions to the active WebView.
@@ -143,6 +147,86 @@ public final class MainActivity extends Activity {
                 "('" + kind + "'," + id + "))", null));
     }
 
+    // The JavaScript interface is callable only with the current trusted
+    // navigation token. The returned FCM token belongs to the signed-in user
+    // only after the web page posts it to the authenticated backend.
+    public final class NativePush {
+        @JavascriptInterface public String getToken(String token) {
+            if (token == null || !token.equals(nativeDownloadToken) ||
+                    web == null || web.getUrl() == null ||
+                    !isTrusted(Uri.parse(web.getUrl()))) return "";
+            return getSharedPreferences("chhachh_push", MODE_PRIVATE)
+                    .getString("current_fcm_token", "");
+        }
+    }
+
+    private void fetchNativeFcmToken() {
+        if (!ChhachhApplication.ready(this)) return;
+        try {
+            FirebaseMessaging.getInstance().getToken()
+                .addOnSuccessListener(fcm -> {
+                    if (fcm != null && !fcm.isEmpty()) {
+                        getSharedPreferences("chhachh_push", MODE_PRIVATE).edit()
+                                .putString("current_fcm_token", fcm).apply();
+                        signalNativeFcmToken();
+                    }
+                });
+        } catch (Exception ignored) { /* Missing Google Play services. */ }
+    }
+
+    private void signalNativeFcmToken() {
+        if (web == null) return;
+        web.post(() -> {
+            if (web != null && web.getUrl() != null && isTrusted(Uri.parse(web.getUrl())))
+                web.evaluateJavascript("window.dispatchEvent(new Event('chhachh:native-fcm-token'))", null);
+        });
+    }
+
+    private void refreshFirebaseClientConfig() {
+        if (firebaseConfigLoading) return;
+        firebaseConfigLoading = true;
+        new Thread(() -> {
+            HttpURLConnection conn = null;
+            boolean configured = false;
+            try {
+                // Public Firebase Android client identifiers only.
+                // No HTTP redirects, untrusted hosts, private keys or credentials.
+                URL address = new URL("https://chhachh.com/api/android/firebase-client");
+                conn = (HttpURLConnection) address.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setInstanceFollowRedirects(false);
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+                conn.setRequestProperty("Accept", "application/json");
+                if (conn.getResponseCode() == 200) {
+                    try (InputStream input = conn.getInputStream()) {
+                        byte[] bytes = new byte[12000];
+                        int used = 0;
+                        while (used < bytes.length) {
+                            int got = input.read(bytes, used, bytes.length-used);
+                            if (got < 0) break;
+                            used += got;
+                        }
+                        if (used > 0 && used < bytes.length) {
+                            JSONObject data = new JSONObject(
+                                    new String(bytes, 0, used, StandardCharsets.UTF_8));
+                            configured = ChhachhApplication.initializeFromOptions(
+                                    getApplicationContext(), data);
+                        }
+                    }
+                }
+            } catch (Exception ignored) { /* Offline or config not saved yet. */ }
+            finally {
+                if (conn != null) conn.disconnect();
+                firebaseConfigLoading = false;
+            }
+            if (configured) runOnUiThread(() -> {
+                fetchNativeFcmToken();
+                requestNotificationPermissionOnce();
+            });
+        }, "chhachh-firebase-config").start();
+    }
+
     private void requestNotificationPermissionOnce() {
         if (Build.VERSION.SDK_INT < 33 ||
                 checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
@@ -168,17 +252,11 @@ public final class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         ChhachhFirebaseMessagingService.ensureChannels(this);
-        // A configured Firebase project is mandatory before obtaining a real push token.
-        // Firebase data is configured through the Play bundle; never invent Firebase IDs.
-        if (FirebaseApp.initializeApp(this) != null) {
-            FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token -> {
-                if (token != null && !token.isEmpty())
-                    getSharedPreferences("chhachh_push", MODE_PRIVATE).edit()
-                            .putString("current_fcm_token", token).apply();
-            });
-        }
-        // Initialize Google Mobile Ads using its embedded test ID.
-        // No ads are requested until verified live IDs and policy-based placements exist.
+        // Native Firebase initializes from the owner's saved client configuration,
+        // fetched from Chhachh after install. Server credentials are NEVER in this app.
+        if (ChhachhApplication.ready(this)) fetchNativeFcmToken();
+        // Initialize the configured Google Mobile Ads SDK, but never request
+        // an ad unless the admin enables an approved ad placement.
         new Thread(() -> {
             try { MobileAds.initialize(getApplicationContext(), status -> {}); }
             catch (Exception ignored) { }
@@ -260,8 +338,10 @@ public final class MainActivity extends Activity {
                 ++navigationToken;
                 if (loadingRing != null) loadingRing.setVisibility(View.GONE);
                 // Deliberately no progress bar. Website owns its round loader.
-                if (url != null && isTrusted(Uri.parse(url))) hideOffline();
-                requestNotificationPermissionOnce();
+                if (url != null && isTrusted(Uri.parse(url))) {
+                    hideOffline();
+                    refreshFirebaseClientConfig();
+                }
             }
             @Override public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail detail) {
                 recreate();
@@ -324,6 +404,7 @@ public final class MainActivity extends Activity {
         });
         web.addJavascriptInterface(nativeDownloads, "ChhachhNativeDownloads");
         web.addJavascriptInterface(nativeShare, "ChhachhNativeShare");
+        web.addJavascriptInterface(nativePush, "ChhachhNativePush");
         web.setDownloadListener((url, ua, disposition, mime, len) -> download(url, ua, disposition, mime));
         Uri launch = getIntent() == null ? null : getIntent().getData();
         web.loadUrl(isTrusted(launch) ? launch.toString() : HOME);
@@ -1052,6 +1133,7 @@ public final class MainActivity extends Activity {
         releaseForeground = true;
         releaseHandler.removeCallbacks(releaseTimer);
         releaseHandler.postDelayed(releaseTimer, 1500L);
+        if (ChhachhApplication.ready(this)) fetchNativeFcmToken();
     }
     @Override protected void onDestroy() {
         releaseForeground = false;
