@@ -96,7 +96,6 @@ public final class MainActivity extends Activity {
     private static final int REQUEST_CAMERA_CAPTURE_PERMISSION = 405;
     private static final int REQUEST_NOTIFICATION_PERMISSION = 406;
     private WebView web;
-    private ProgressBar loadingRing;
     private long navigationToken = 0;
     private float refreshGestureStartY = -1;
     private FrameLayout root, offline;
@@ -274,16 +273,8 @@ public final class MainActivity extends Activity {
         web.setHorizontalScrollBarEnabled(false);
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
         root.addView(web, new FrameLayout.LayoutParams(-1, -1));
-        // Keep the approved round cyan loading feedback, never the old blue line
-        // or a full-screen white overlay. Only actual main-frame navigation shows it.
-        loadingRing = new ProgressBar(this);
-        loadingRing.setIndeterminateTintList(ColorStateList.valueOf(Color.rgb(0, 242, 255)));
-        int ringSize = Math.round(26 * getResources().getDisplayMetrics().density);
-        FrameLayout.LayoutParams ringLayout = new FrameLayout.LayoutParams(
-                ringSize, ringSize, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        ringLayout.topMargin = Math.round(6 * getResources().getDisplayMetrics().density);
-        root.addView(loadingRing, ringLayout);
-        loadingRing.setVisibility(View.GONE);
+        // The website owns the only cyan loading indicator.
+        // No second Android loading ring or blue progress bar is overlaid.
         enableSafeHomeRefresh();
         configureWindowInsets();
         WebSettings s = web.getSettings();
@@ -324,11 +315,7 @@ public final class MainActivity extends Activity {
             }
             @Override public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 nativeDownloadToken = UUID.randomUUID().toString();
-                long token = ++navigationToken;
-                view.postDelayed(() -> {
-                    if (token == navigationToken && loadingRing != null)
-                        loadingRing.setVisibility(View.VISIBLE);
-                }, 180);
+                ++navigationToken;
             }
             @Override public void onPageFinished(WebView view, String url) {
                 if (url != null && isTrusted(Uri.parse(url))) {
@@ -336,8 +323,7 @@ public final class MainActivity extends Activity {
                         + nativeDownloadToken + "',configurable:true})", null);
                 }
                 ++navigationToken;
-                if (loadingRing != null) loadingRing.setVisibility(View.GONE);
-                // Deliberately no progress bar. Website owns its round loader.
+                // Website owns its only loader; no native overlay or page jump.
                 if (url != null && isTrusted(Uri.parse(url))) {
                     hideOffline();
                     refreshFirebaseClientConfig();
