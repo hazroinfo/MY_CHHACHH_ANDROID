@@ -12,6 +12,13 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <!-- Android 11+ visibility for only genuine text-sharing apps. No QUERY_ALL_PACKAGES. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="text/plain" />
+        </intent>
+    </queries>
     <application android:name=".ChhachhApplication" android:allowBackup="false" android:label="chhachh"
         android:theme="@style/AppTheme" android:icon="@drawable/chhachh_launcher_exact"
         android:roundIcon="@drawable/chhachh_launcher_exact" android:usesCleartextTraffic="false"
